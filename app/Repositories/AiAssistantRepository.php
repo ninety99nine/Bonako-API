@@ -34,8 +34,11 @@ class AiAssistantRepository extends BaseRepository
     public function showAiAssistant(User $user)
     {
         $aiAssistant = $user->aiAssistant;
-        $this->setModel($user->aiAssistant);
-        if(is_null($aiAssistant)) throw new ModelNotFoundException;
-        return $this;
+
+        if(is_null($aiAssistant)) {
+            return $this->createAiAssistant($user);
+        }else{
+            return $this->setModel($user->aiAssistant);
+        }
     }
 }

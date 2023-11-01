@@ -1083,17 +1083,8 @@ class UserRepository extends BaseRepository
         //  Get the User ID that this shortcode is reserved for
         $reservedForUserId = $user->id;
 
-        try{
-
-            //  Get the existing AI Assistant information for the user
-            $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
-
-        }catch(ModelNotFoundException) {
-
-            //  Create the AI Assistant information for the user
-            $aiAssistant = $this->aiAssistantRepository()->createAiAssistant($user)->model;
-
-        }
+        //  Get the existing AI Assistant information for the user
+        $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
 
         //  Request a payment shortcode for this AI Assistant
         $shortcodeRepository = $this->shortcodeRepository()->generatePaymentShortcode($aiAssistant, $reservedForUserId);
@@ -1153,21 +1144,11 @@ class UserRepository extends BaseRepository
     {
         $user = $this->getUser();
 
-        try{
+        //  Get the existing AI Assistant information for the user
+        $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
 
-            //  Get the existing AI Assistant information for the user
-            $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
-
-            //  Get the latest subscription matching the given user to this AiAssistant model
-            $latestSubscription = $aiAssistant->subscriptions()->where('user_id', $user->id)->latest()->first();
-
-        }catch(ModelNotFoundException) {
-
-            //  Create the AI Assistant information for the user
-            $aiAssistant = $this->aiAssistantRepository()->createAiAssistant($user)->model;
-            $latestSubscription = null;
-
-        }
+        //  Get the latest subscription matching the given user to this AiAssistant model
+        $latestSubscription = $aiAssistant->subscriptions()->where('user_id', $user->id)->latest()->first();
 
         //  Create a subscription
         $subscriptionRepository = $this->subscriptionRepository()->create($aiAssistant, $request, $latestSubscription);
@@ -1237,10 +1218,7 @@ class UserRepository extends BaseRepository
      */
     public function showAiAssistant()
     {
-        $aiAssistant = $this->getUser()->aiAssistant;
-        if(is_null($aiAssistant)) throw new ModelNotFoundException;
-
-        return $this->aiAssistantRepository()->setModel($aiAssistant);
+        return $this->aiAssistantRepository()->showAiAssistant($this->getUser());
     }
 
     /**
