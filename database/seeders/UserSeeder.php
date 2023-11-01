@@ -26,7 +26,7 @@ class UserSeeder extends Seeder
         if (app()->environment('local', 'dev')) {
 
             //  Create 8 fake users
-            User::factory()->count(2)->create();
+            //  User::factory()->count(8)->create();
 
         }
     }
