@@ -1191,7 +1191,7 @@ class StoreRepository extends BaseRepository
         $visitShortcode = $store->visitShortcode;
         $hasVisitShortcode = !is_null($visitShortcode);
 
-        $message = $store->name . " here 👋,\n\nEitadah, check us out on Perfect Order 😉\n\n";
+        $message = $store->name . " here 👋,\n\Check us out on Perfect Order 😉\n\n";
 
         if ($hasProducts) {
             $message .= collect($products)->map(function ($product, $index) {
