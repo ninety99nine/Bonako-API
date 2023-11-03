@@ -74,16 +74,16 @@ class ConvertCartRequest extends FormRequest
         }
 
         //  Make sure that the "cart_products" is an array if provided
-        if($this->request->has('cart_products') && is_string($this->request->get('cart_products'))) {
+        if($this->request->has('cart_products') && is_string($this->request->all()['cart_products'])) {
             $this->merge([
-                'cart_products' => json_decode($this->request->get('cart_products'))
+                'cart_products' => json_decode($this->request->all()['cart_products'])
             ]);
         }
 
         //  Make sure that the "cart_coupon_codes" is an array if provided
-        if($this->request->has('cart_coupon_codes') && is_string($this->request->get('cart_coupon_codes'))) {
+        if($this->request->has('cart_coupon_codes') && is_string($this->request->all()['cart_coupon_codes'])) {
             $this->merge([
-                'cart_coupon_codes' => json_decode($this->request->get('cart_coupon_codes'))
+                'cart_coupon_codes' => json_decode($this->request->all()['cart_coupon_codes'])
             ]);
         }
 

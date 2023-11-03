@@ -17,7 +17,7 @@ class AiMessageCategory extends BaseModel
     const DESCRIPTION_MIN_CHARACTERS = 3;
     const DESCRIPTION_MAX_CHARACTERS = 200;
     const SYSTEM_PROMPT_MIN_CHARACTERS = 3;
-    const SYSTEM_PROMPT_MAX_CHARACTERS = 200;
+    const SYSTEM_PROMPT_MAX_CHARACTERS = 500;
 
     protected $casts = [];
 

@@ -23,6 +23,7 @@ use Illuminate\Notifications\DatabaseNotification;
 use App\Exceptions\DeleteOfSuperAdminRestrictedException;
 use App\Models\AiAssistant;
 use App\Models\SubscriptionPlan;
+use App\Services\Sms\SmsService;
 use Http\Discovery\Exception\NotFoundException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -1061,7 +1062,7 @@ class UserRepository extends BaseRepository
         //  Get the user
         $user = $this->getUser();
 
-        //  Get the existing AI Assistant information for the user
+        //  Get the AI Assistant information for the user
         $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
 
         //  Calculate the user access subscription amount
@@ -1083,7 +1084,7 @@ class UserRepository extends BaseRepository
         //  Get the User ID that this shortcode is reserved for
         $reservedForUserId = $user->id;
 
-        //  Get the existing AI Assistant information for the user
+        //  Get the AI Assistant information for the user
         $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
 
         //  Request a payment shortcode for this AI Assistant
@@ -1144,7 +1145,7 @@ class UserRepository extends BaseRepository
     {
         $user = $this->getUser();
 
-        //  Get the existing AI Assistant information for the user
+        //  Get the AI Assistant information for the user
         $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
 
         //  Get the latest subscription matching the given user to this AiAssistant model
@@ -1189,6 +1190,13 @@ class UserRepository extends BaseRepository
             'remaining_paid_tokens_expire_at' => $subscriptionExpiresAt,
             'remaining_paid_tokens_after_last_subscription' => $remainingPaidTokensAfterLastSubscription,
         ]);
+
+        /// Send sms to user that their subscription was paid successfully
+        SmsService::sendOrangeSms(
+            $subscription->craftSubscriptionSuccessfulSmsMessageForUser($user, $aiAssistant),
+            $user->mobile_number->withExtension,
+            null, null, null
+        );
 
         //  If we want to return the AI Assistant model with the subscription embedded
         if( $request->input('embed') ) {

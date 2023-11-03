@@ -68,16 +68,8 @@ class AiMessageRepository extends BaseRepository
         //  Set the user content
         $userContent = $request->input('user_content');
 
-        //  Get the AI Assistant information for the current authenticated user
-        $aiAssistant = AiAssistant::where('user_id', auth()->user()->id)->first();
-
-        //  If the AI Assistant information for the current authenticated user does not exist
-        if(is_null($aiAssistant)) {
-
-            //  Create the AI Assistant information for the current authenticated user
-            $aiAssistant = $this->aiAssistantRepository()->createAiAssistant(auth()->user())->model;
-
-        }
+        //  Get the AI Assistant information for the user
+        $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
 
         $doesNotHaveAnyFreeRequestsLeft = $aiAssistant->total_requests >= AiAssistant::MAXIMUM_FREE_REQUESTS;
         $doesNotHaveAnyTokensLeft = $aiAssistant->remaining_paid_tokens <= 0;
@@ -116,9 +108,7 @@ class AiMessageRepository extends BaseRepository
             $previousAiMessages = $user->aiMessages()->latest()->take(10)->get();
 
             //  Get the AI Message Category (From Cache or Database)
-            $aiMessageCategory = Cache::remember('AI_MESSAGE_CATEGORY_'.$categoryId, Carbon::now()->addDay(), function () use ($categoryId) {
-                return AiMessageCategory::find($categoryId);
-            });
+            $aiMessageCategory = AiMessageCategory::find($categoryId);
 
             //  Send the reply to the Ai Model and return the AI message reply content
             $result = $this->sendUserContentToAiAssistant($userContent, $previousAiMessages, $aiMessageCategory, $stream);
@@ -139,12 +129,14 @@ class AiMessageRepository extends BaseRepository
 
                 $remainingPaidTokens = $doesNotHaveAnyFreeRequestsLeft ? ($aiAssistant->remaining_paid_tokens - $totalTokensUsed) : $aiAssistant->remaining_paid_tokens;
                 $freeTokensUsed = $doesNotHaveAnyFreeRequestsLeft ? $aiAssistant->free_tokens_used : ($aiAssistant->free_tokens_used + $totalTokensUsed);
+                $requiresSubscription = $remainingPaidTokens <= 0;
 
                 $aiAssistant->update([
                     'response_tokens_used' => $aiAssistant->response_tokens_used + $responseTokensUsed,
                     'request_tokens_used' => $aiAssistant->request_tokens_used + $requestTokensUsed,
                     'total_tokens_used' => $aiAssistant->total_tokens_used + $totalTokensUsed,
                     'total_requests' => $aiAssistant->total_requests + 1,
+                    'requires_subscription' => $requiresSubscription,
                     'remaining_paid_tokens' => $remainingPaidTokens,
                     'free_tokens_used' => $freeTokensUsed,
                 ]);
@@ -177,12 +169,14 @@ class AiMessageRepository extends BaseRepository
 
                 $remainingPaidTokens = $doesNotHaveAnyFreeRequestsLeft ? ($aiAssistant->remaining_paid_tokens - $totalTokensUsed) : $aiAssistant->remaining_paid_tokens;
                 $freeTokensUsed = $doesNotHaveAnyFreeRequestsLeft ? $aiAssistant->free_tokens_used : ($aiAssistant->free_tokens_used + $totalTokensUsed);
+                $requiresSubscription = $remainingPaidTokens <= 0;
 
                 $aiAssistant->update([
                     'response_tokens_used' => $aiAssistant->response_tokens_used + $responseTokensUsed,
                     'request_tokens_used' => $aiAssistant->request_tokens_used + $requestTokensUsed,
                     'total_tokens_used' => $aiAssistant->total_tokens_used + $totalTokensUsed,
                     'total_requests' => $aiAssistant->total_requests + 1,
+                    'requires_subscription' => $requiresSubscription,
                     'remaining_paid_tokens' => $remainingPaidTokens,
                     'free_tokens_used' => $freeTokensUsed,
                 ]);
@@ -260,7 +254,7 @@ class AiMessageRepository extends BaseRepository
          */
         $user = auth()->user();
 
-        $systemContent = $aiMessageCategory->system_prompt;
+        $systemContent = $aiMessageCategory->system_prompt.' ';
         $systemContent .= 'You are talking to '.$user->first_name.' who is an entrepreneur. ';
         $systemContent .= 'Here\'s more information about '.$user->first_name.":\n";
         $systemContent .= 'First name: '.$user->first_name."\n";
@@ -278,8 +272,11 @@ class AiMessageRepository extends BaseRepository
 
         }
 
-        $systemContent .= 'Make sure that you personalize your replies e.g When '.$user->first_name.' greets you, you can reply "Hi '.$user->first_name.' how can I help you today?", however don\'t repeat the person\'s name unnecessarily. '.
-                          'Reply as quick as possible since this chat is served on a USSD interface which timeouts in a few seconds.';
+        $systemContent .= 'Make sure that you personalize your replies e.g When '.$user->first_name.' greets you, you can reply "Hi '.$user->first_name.' how can I help you today?", however don\'t repeat the person\'s name unnecessarily. ';
+
+        if($stream == false) {
+            $systemContent .= 'Reply as quick as possible since this chat is served on a USSD interface which timeouts in a few seconds.';
+        }
 
         $messages = [];
 

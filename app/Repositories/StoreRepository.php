@@ -56,6 +56,7 @@ use App\Notifications\Users\InvitationToJoinStoreTeamCreated;
 use App\Notifications\Users\InvitationToJoinStoreTeamDeclined;
 use App\Notifications\Users\RemoveStoreTeamMember;
 use App\Notifications\Users\UnfollowedStore;
+use App\Services\Sms\SmsService;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -432,7 +433,7 @@ class StoreRepository extends BaseRepository
         if( in_array($filter, ['team member', 'team member left', 'team member joined', 'team member joined as creator', 'team member joined as non creator', 'team member invited', 'team member declined']) ) {
 
             //  Query stores where this user is associated as a team member
-            $stores = $user->storesAsTeamMember()->orderByPivot('last_seen_at', 'ASC');
+            $stores = $user->storesAsTeamMember()->orderByPivot('last_seen_at', 'DESC');
 
             if($filter == 'team member left') {
 
@@ -1034,18 +1035,26 @@ class StoreRepository extends BaseRepository
     public function createStoreAccessSubscription(Request $request)
     {
         /**
-         *  @var store $store
+         *  @var Store $store
          */
         $store = $this->model;
 
+        /**
+         *  @var User $user
+         */
+        $user = auth()->user();
+
         //  Get the latest subscription matching the given authenticated user to this store
-        $latestSubscription = $store->subscriptions()->where('user_id', auth()->user()->id)->latest()->first();
+        $latestSubscription = $store->subscriptions()->where('user_id', $user->id)->latest()->first();
 
         //  Create a subscription
         $subscriptionRepository = $this->subscriptionRepository()->create($store, $request, $latestSubscription);
 
+        //  Get the subscription
+        $subscription = $subscriptionRepository->model;
+
         //  Get the subscription end datetime
-        $subscriptionExpiresAt = $subscriptionRepository->model->end_at;
+        $subscriptionExpiresAt = $subscription->end_at;
 
         //  Update the last subscription end at on the store
         $store->update([
@@ -1053,7 +1062,7 @@ class StoreRepository extends BaseRepository
         ]);
 
         //  Update the last subscription end at on the user and store association
-        DB::table('user_store_association')->where('user_id', auth()->user()->id)->where('store_id', $store->id)->update([
+        DB::table('user_store_association')->where('user_id', $user->id)->where('store_id', $store->id)->update([
             'last_subscription_end_at' => $subscriptionExpiresAt
         ]);
 
@@ -1069,6 +1078,13 @@ class StoreRepository extends BaseRepository
 
         //  Expire the payment shortcode
         $this->expirePaymentShortcode();
+
+        /// Send sms to user that their subscription was paid successfully
+        SmsService::sendOrangeSms(
+            $subscription->craftSubscriptionSuccessfulSmsMessageForUser($user, $store),
+            $user->mobile_number->withExtension,
+            null, null, null
+        );
 
         //  If we want to return the store with the subscription and visit shortcode embedded
         if( $request->input('embed') ) {

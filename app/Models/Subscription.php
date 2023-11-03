@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use App\Models\Base\BaseModel;
+use App\Traits\SubscriptionTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Subscription extends BaseModel
 {
-    use HasFactory;
+    use HasFactory, SubscriptionTrait;
 
     const FILTERS = [
         'All', 'Active', 'Inactive'

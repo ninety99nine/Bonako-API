@@ -24,9 +24,9 @@ class UpdateAssignedStoreArrangementRequest extends FormRequest
     public function getValidatorInstance()
     {
         //  Make sure that the "arrangement" is an array if provided
-        if($this->request->has('arrangement') && is_string($this->request->get('arrangement'))) {
+        if($this->request->has('arrangement') && is_string($this->request->all()['arrangement'])) {
             $this->merge([
-                'arrangement' => json_decode($this->request->get('arrangement'))
+                'arrangement' => json_decode($this->request->all()['arrangement'])
             ]);
         }
 
