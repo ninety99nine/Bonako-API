@@ -990,6 +990,16 @@ class UserRepository extends BaseRepository
     }
 
     /**
+     *  Show the user's first store
+     *
+     *  @return array
+     */
+    public function showUserFirstCreatedStore()
+    {
+        return $this->storeRepository()->showUserFirstCreatedStore($this->getUser());
+    }
+
+    /**
      *  Show user store filters
      *
      *  @return array

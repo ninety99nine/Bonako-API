@@ -18,7 +18,12 @@ class UserStoreAssociation extends BasePivot
 
     protected $casts = [
         'is_assigned' => 'boolean',
+
         'last_seen_at' => 'datetime',
+        'last_seen_on_ussd_at' => 'datetime',
+        'last_seen_on_web_app_at' => 'datetime',
+        'last_seen_on_mobile_app_at' => 'datetime',
+
         'mobile_number' => MobileNumber::class,
         'is_associated_as_customer' => 'boolean',
         'last_subscription_end_at' => 'datetime',
@@ -159,6 +164,9 @@ class UserStoreAssociation extends BasePivot
         'avg_total_coupons_cancelled',
 
         /*  Timestamps  */
+        'last_seen_on_mobile_app_at',
+        'last_seen_on_web_app_at',
+        'last_seen_on_ussd_at',
         'last_seen_at',
         'created_at',
         'updated_at'

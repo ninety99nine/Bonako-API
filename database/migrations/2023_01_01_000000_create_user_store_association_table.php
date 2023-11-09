@@ -109,6 +109,9 @@ class CreateUserStoreAssociationTable extends Migration
 
             /*  Timestamps  */
             $table->timestamp('last_seen_at')->nullable();
+            $table->timestamp('last_seen_on_ussd_at')->nullable();
+            $table->timestamp('last_seen_on_web_app_at')->nullable();
+            $table->timestamp('last_seen_on_mobile_app_at')->nullable();
             $table->timestamps();
 
             /* Add Indexes */

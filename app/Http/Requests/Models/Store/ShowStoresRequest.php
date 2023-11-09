@@ -55,6 +55,7 @@ class ShowStoresRequest extends FormRequest
             'filter' => ['bail', 'sometimes', 'required', 'string', Rule::in($filters)],
             'with_count_active_subscriptions' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_auth_active_subscription' => ['bail', 'sometimes', 'required', 'boolean'],
+            'with_count_collected_orders' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_count_team_members' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_visible_products' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_visit_shortcode' => ['bail', 'sometimes', 'required', 'boolean'],

@@ -2,19 +2,17 @@
 
 namespace App\Repositories;
 
-use Carbon\Carbon;
 use App\Models\User;
 use App\Models\AiAssistant;
 use Illuminate\Http\Request;
 use App\Traits\Base\BaseTrait;
+use App\Models\AiMessageCategory;
 use OpenAI\Laravel\Facades\OpenAI;
 use App\Repositories\BaseRepository;
-use Illuminate\Support\Facades\Cache;
 use Rajentrivedi\TokenizerX\TokenizerX;
 use App\Repositories\AiAssistantRepository;
 use Illuminate\Database\Eloquent\Collection;
 use App\Exceptions\AiMessageLimitReachedException;
-use App\Models\AiMessageCategory;
 
 class AiMessageRepository extends BaseRepository
 {

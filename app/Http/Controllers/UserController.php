@@ -312,6 +312,11 @@ class UserController extends BaseController
         return response($this->repository->setModel($this->chooseUser())->showOrders()->transform(), Response::HTTP_OK);
     }
 
+    public function showFirstCreatedStore(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showUserFirstCreatedStore(), Response::HTTP_OK);
+    }
+
     public function showStoreFilters(User $user)
     {
         return response($this->repository->setModel($this->chooseUser())->showStoreFilters(), Response::HTTP_OK);

@@ -206,6 +206,7 @@ class UserResource extends BaseResource
             new ResourceLink('show.orders', route($prefix.'orders.show', $params),'Show orders'),
 
             //  Stores
+            new ResourceLink('show.first.created.store', route($prefix.'first.created.store.show', $params),'Show store filters'),
             new ResourceLink('show.store.filters', route($prefix.'store.filters.show', $params),'Show store filters'),
             new ResourceLink('join.stores', route($prefix.'stores.join', $params),'Join store'),
             new ResourceLink('create.stores', route($prefix.'stores.create', $params),'Create store'),

@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Exceptions\XPlatformHeaderRequiredException;
 use Exception;
 use App\Models\Order;
 use App\Models\Store;
@@ -38,13 +39,31 @@ trait UserTrait
      *  @return void
      */
     public function updateLastSeenAtStore(Store $store) {
+
+        $now = now();
+
+        $data = [
+            'store_id' => $store->id,
+            'user_id' => $this->id,
+            'last_seen_at' => $now
+        ];
+
+        //  Check the platform e.g Web, Ussd or Mobile
+        $platform = strtolower(request()->header('X-Platform'));
+
+        if( $platform === 'web' ) {
+            $data['last_seen_on_web_app_at'] = $now;
+        }else if( $platform === 'ussd' ) {
+            $data['last_seen_on_ussd_at'] = $now;
+        }else if( $platform === 'mobile' ) {
+            $data['last_seen_on_mobile_app_at'] = $now;
+        }else{
+            throw new XPlatformHeaderRequiredException;
+        }
+
         UserStoreAssociation::updateOrCreate(
             ['store_id' => $store->id, 'user_id' => $this->id],
-            [
-                'store_id' => $store->id,
-                'user_id' => $this->id,
-                'last_seen_at' => now(),
-            ]
+            $data
         );
     }
 

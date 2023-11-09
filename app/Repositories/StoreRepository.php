@@ -402,6 +402,30 @@ class StoreRepository extends BaseRepository
     }
 
     /**
+     *  Show the user's first created store
+     *
+     *  @param User $user
+     *  @return array
+     */
+    public function showUserFirstCreatedStore(User $user)
+    {
+        //  Query the first store ever created by this user
+        $firstStoreCreated = $user->storesAsTeamMember()->joinedTeamAsCreator()->oldest();
+
+        //  Eager load the store relationships based on request inputs
+        $firstStoreCreated = $this->eagerLoadStoreRelationships($firstStoreCreated);
+
+        //  Get the first store ever created by this user
+        $firstStoreCreated = $firstStoreCreated->model->first();
+
+        //  Return the store
+        return [
+            'exists' => is_null($firstStoreCreated) == false,
+            'store' => $firstStoreCreated ? $this->setModel($firstStoreCreated)->transform() : null
+        ];
+    }
+
+    /**
      *  Show the user stores
      *
      *  @param User $user
@@ -607,6 +631,16 @@ class StoreRepository extends BaseRepository
 
             //  Additionally we can eager load the total orders on these stores as well
             $model = $model->withCount(['orders']);
+
+        }
+
+        //  Check if we want to eager load the total collected orders on each store
+        if( request()->input('with_count_collected_orders') ) {
+
+            //  Additionally we can eager load the total collected orders on these stores as well
+            $model = $model->withCount(['orders as collected_orders_count' => function ($query) {
+                $query->where('collection_verified', '1');
+            }]);
 
         }
 
@@ -4598,6 +4632,8 @@ class StoreRepository extends BaseRepository
 
                 $teamMemberJoinCode = $teamMemberStatus == 'Invited' ? $this->generateRandomSixDigitCode() : null;
 
+                $isAssigned = $teamMemberRole == 'Creator';
+
                 $record = [
                     'team_member_permissions' => json_encode($teamMemberPermissions),
                     'invited_to_join_team_by_user_id' => auth()->user()->id,
@@ -4608,6 +4644,9 @@ class StoreRepository extends BaseRepository
                     'created_at' => now(),
                     'updated_at' => now(),
                     'user_id' => $userId,
+
+                    //  Automatically assign store to user if the user is a creator
+                    'is_assigned' => $isAssigned,
 
                     //  Automatically follow by default
                     'follower_status' => 'Following',

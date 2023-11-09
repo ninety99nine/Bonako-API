@@ -154,6 +154,7 @@ foreach($options as $option) {
 
             //  Stores
             Route::prefix('stores')->group(function () {
+                Route::get('/first-created-store', 'showFirstCreatedStore')->name('.first.created.store.show')->whereNumber('user');
                 Route::get('/filters', 'showStoreFilters')->name('.store.filters.show')->whereNumber('user');
                 Route::post('/join', 'joinStore')->name('.stores.join')->whereNumber('user');
                 Route::post('/', 'createStore')->name('.stores.create')->whereNumber('user');
