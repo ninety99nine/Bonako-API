@@ -1468,7 +1468,7 @@ class UserRepository extends BaseRepository
         $totalOrders = $this->getUser()->orders()->count();
         $totalReviews = $this->getUser()->reviews()->count();
         $totalNotifications = $this->getUser()->notifications()->count();
-        $totalGroupsAsJoinedMember = $this->getUser()->friendGroups()->count();
+        $totalGroupsJoinedAsMember = $this->getUser()->friendGroups()->count();
         $totalStoresAsFollower = $this->getUser()->storesAsFollower()->count();
         $totalStoresAsCustomer = $this->getUser()->storesAsCustomer()->count();
         $totalStoresAsRecentVisitor = $this->getUser()->storesAsRecentVisitor()->count();
@@ -1482,7 +1482,7 @@ class UserRepository extends BaseRepository
             'totalNotifications' => $totalNotifications,
             'totalStoresAsFollower' => $totalStoresAsFollower,
             'totalStoresAsCustomer' => $totalStoresAsCustomer,
-            'totalGroupsAsJoinedMember' => $totalGroupsAsJoinedMember,
+            'totalGroupsJoinedAsMember' => $totalGroupsJoinedAsMember,
             'totalStoresJoinedAsCreator' => $totalStoresJoinedAsCreator,
             'totalStoresAsRecentVisitor' => $totalStoresAsRecentVisitor,
             'totalStoresJoinedAsTeamMember' => $totalStoresJoinedAsTeamMember,
