@@ -150,6 +150,9 @@ class UserResource extends BaseResource
             new ResourceLink('update.user', route($prefix.'update', $params),'Update user'),
             new ResourceLink('delete.user', route($prefix.'delete', $params),'Delete user'),
             new ResourceLink('confirm.delete.user', route($prefix.'confirm.delete', $params),'Confirm delete user'),
+            new ResourceLink('show.profile.photo', route($prefix.'profile.photo.show', $params), 'Show user profile photo'),
+            new ResourceLink('update.profile.photo', route($prefix.'profile.photo.update', $params), 'Update user profile photo'),
+            new ResourceLink('delete.profile.photo', route($prefix.'profile.photo.delete', $params), 'Delete user profile photo'),
 
             //  Access Tokens
             new ResourceLink('logout', route($prefix.'logout', $params),'Logout'),

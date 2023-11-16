@@ -36,10 +36,12 @@ use App\Http\Requests\Models\FriendGroup\RemoveFriendsFromFriendGroupRequest;
 use App\Http\Requests\Models\FriendGroup\UpdateLastSelectedFriendGroupsRequest;
 use App\Http\Requests\Models\Store\CreateStoreRequest;
 use App\Http\Requests\Models\Store\JoinStoreRequest;
+use App\Http\Requests\Models\User\UpdateProfilePhotoRequest;
 use App\Http\Requests\Models\User\CalculateAiAssistantSubscriptionRequest;
 use App\Http\Requests\Models\User\CreateAiAssistantSubscriptionRequest;
 use App\Http\Requests\Models\User\GenerateAiAssistantPaymentShortcodeRequest;
 use App\Http\Requests\Models\User\RemoveFriendRequest as UserRemoveFriendRequest;
+use App\Http\Requests\Models\User\SearchUserByMobileNumberRequest;
 use App\Models\AiMessage;
 use App\Repositories\AiMessageRepository;
 use App\Traits\Base\BaseTrait;
@@ -69,6 +71,11 @@ class UserController extends BaseController
         return response(null, Response::HTTP_OK);
     }
 
+    public function searchUserByMobileNumber(SearchUserByMobileNumberRequest $request)
+    {
+        return response($this->repository->searchUserByMobileNumber($request), Response::HTTP_OK);
+    }
+
     public function show(User $user)
     {
         return response($this->repository->setModel($this->chooseUser())->transform(), Response::HTTP_OK);
@@ -87,6 +94,21 @@ class UserController extends BaseController
     public function delete(DeleteRequest $request, User $user)
     {
         return response($this->repository->setModel($this->chooseUser())->delete(), Response::HTTP_OK);
+    }
+
+    public function showProfilePhoto(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showProfilePhoto(), Response::HTTP_OK);
+    }
+
+    public function updateProfilePhoto(UpdateProfilePhotoRequest $request, User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->updateProfilePhoto($request), Response::HTTP_CREATED);
+    }
+
+    public function deleteProfilePhoto(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->removeExistingProfilePhoto(), Response::HTTP_OK);
     }
 
     public function showTokens(User $user)

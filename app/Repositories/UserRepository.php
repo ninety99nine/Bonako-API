@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Address;
 use App\Models\AiMessage;
 use App\Enums\AccessToken;
+use App\Enums\CanSaveChanges;
 use App\Models\FriendGroup;
 use Illuminate\Http\Request;
 use App\Traits\Base\BaseTrait;
@@ -23,6 +24,7 @@ use Illuminate\Notifications\DatabaseNotification;
 use App\Exceptions\DeleteOfSuperAdminRestrictedException;
 use App\Models\AiAssistant;
 use App\Models\SubscriptionPlan;
+use App\Services\AWS\AWSService;
 use App\Services\Sms\SmsService;
 use Http\Discovery\Exception\NotFoundException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -204,6 +206,26 @@ class UserRepository extends BaseRepository
     }
 
     /**
+     *  Search for a user using the mobile number
+     *
+     *  @param Request $request
+     *  @return array
+     */
+    public function searchUserByMobileNumber($request)
+    {
+        //  Get the specified mobile number
+        $mobileNumber = request()->input('mobile_number');
+
+        //  Get the user matching the specified mobile number
+        $user = $this->model->where('mobile_number', $mobileNumber)->first();
+
+        return [
+            'exists' => !is_null($user),
+            'user' => $user == null ? null : $this->setModel($user)->transform()
+        ];
+    }
+
+    /**
      *  Register a new user account and return that created user account
      *
      *  @param Request $request
@@ -274,6 +296,141 @@ class UserRepository extends BaseRepository
 
         //  Delete the user
         return parent::delete();
+
+    }
+
+
+
+    /**
+     *  Show the user profile photo
+     *
+     *  @return array
+     */
+    public function showProfilePhoto() {
+        return [
+            'profile_photo' => $this->model->profile_photo
+        ];
+    }
+
+    /**
+     *  Update the user profile photo
+     *
+     *  @param \Illuminate\Http\Request $request
+     *
+     *  @return UserRepository
+     */
+    public function updateProfilePhoto(Request $request) {
+
+        //  Remove the exiting profile photo (if any) and save the new profile photo (if any)
+        return $this->removeExistingProfilePhoto(CanSaveChanges::NO)->storeProfilePhoto($request);
+
+    }
+
+    /**
+     *  Remove the existing user profile photo
+     *
+     *  @param CanSaveChanges $canSaveChanges - Whether to save the user changes after deleting the profile photo
+     *  @return array | UserRepository
+     */
+    public function removeExistingProfilePhoto($canSaveChanges = CanSaveChanges::YES) {
+
+        /**
+         *  @var User $user
+         */
+        $user = $this->getUser();
+
+        //  Check if we have an existing profile photo stored
+        $hasExistingProfilePhoto = !empty($user->profile_photo);
+
+        //  If the user has an existing profile photo stored
+        if( $hasExistingProfilePhoto ) {
+
+            //  Delete the profile photo file
+            AWSService::delete($user->profile_photo);
+
+        }
+
+        //  If we should save these changes on the database
+        if($canSaveChanges == CanSaveChanges::YES) {
+
+            //  Save the user changes
+            parent::update(['profile_photo' => null]);
+
+            return [
+                'message' => 'Profile photo deleted successfully'
+            ];
+
+        //  If we should not save these changes on the database
+        }else{
+
+            //  Remove the profile photo url reference from the user
+            $user->profile_photo = null;
+
+            //  Set the modified user
+            $this->setModel($user);
+
+        }
+
+        return $this;
+
+    }
+
+    /**
+     *  Store the user profile photo
+     *
+     *  @param \Illuminate\Http\Request $request
+     *
+     *  @return UserRepository|array
+     */
+    public function storeProfilePhoto(Request $request) {
+
+        /**
+         *  @var User $user
+         */
+        $user = $this->getUser();
+
+        //  Check if we have a new profile photo provided
+        $hasNewProfilePhoto = $request->hasFile('profile_photo');
+
+        /**
+         *  Save the new profile photo when the following condition is satisfied:
+         *
+         *  1) The profile photo is provided when we are updating the profile photo only
+         *
+         *  If the profile photo is provided while creating or updating the user as
+         *  a whole, then the profile photo will be updated with the rest of the
+         *  user details as a single query.
+         *
+         *  Refer to the saving() method of the UserObserver::class
+         */
+        $updatingTheUserProfilePhotoOnly = $request->routeIs('user.profile.photo.update') || $request->routeIs('auth.user.profile.photo.update');
+
+        //  If we have a new profile photo provided
+        if( $hasNewProfilePhoto ) {
+
+            //  Save the profile photo on AWS and update the user with the profile photo url
+            $user->profile_photo = AWSService::store('profile_photos', $request->profile_photo);
+
+            //  Set the modified user
+            $this->setModel($user);
+
+            if( $updatingTheUserProfilePhotoOnly ) {
+
+                //  Save the user changes
+                $user->save();
+
+            }
+
+        }
+
+        if( $updatingTheUserProfilePhotoOnly ) {
+
+            //  Return the profile photo image url
+            return ['profile photo' => $user->profile_photo];
+
+        }
+
+        return $this;
 
     }
 
@@ -1308,21 +1465,27 @@ class UserRepository extends BaseRepository
      */
     public function showResourceTotals()
     {
-        $totalGroups = $this->getUser()->friendGroups()->count();
+        $totalOrders = $this->getUser()->orders()->count();
+        $totalReviews = $this->getUser()->reviews()->count();
         $totalNotifications = $this->getUser()->notifications()->count();
-        $totalStoresFollowing = $this->getUser()->storesAsFollower()->count();
-        $totalStoresRecentlyVisited = $this->getUser()->storesAsRecentVisitor()->count();
-        $totalStoresJoined = $this->getUser()->storesAsTeamMember()->joinedTeam()->count();
+        $totalGroupsAsJoinedMember = $this->getUser()->friendGroups()->count();
+        $totalStoresAsFollower = $this->getUser()->storesAsFollower()->count();
+        $totalStoresAsCustomer = $this->getUser()->storesAsCustomer()->count();
+        $totalStoresAsRecentVisitor = $this->getUser()->storesAsRecentVisitor()->count();
+        $totalStoresJoinedAsTeamMember = $this->getUser()->storesAsTeamMember()->joinedTeam()->count();
         $totalStoresJoinedAsCreator = $this->getUser()->storesAsTeamMember()->joinedTeamAsCreator()->count();
         $totalStoresJoinedAsNonCreator = $this->getUser()->storesAsTeamMember()->joinedTeamAsNonCreator()->count();
 
         return [
-            'totalGroups' => $totalGroups,
-            'totalStoresJoined' => $totalStoresJoined,
+            'totalOrders' => $totalOrders,
+            'totalReviews' => $totalReviews,
             'totalNotifications' => $totalNotifications,
-            'totalStoresFollowing' => $totalStoresFollowing,
+            'totalStoresAsFollower' => $totalStoresAsFollower,
+            'totalStoresAsCustomer' => $totalStoresAsCustomer,
+            'totalGroupsAsJoinedMember' => $totalGroupsAsJoinedMember,
             'totalStoresJoinedAsCreator' => $totalStoresJoinedAsCreator,
-            'totalStoresRecentlyVisited' => $totalStoresRecentlyVisited,
+            'totalStoresAsRecentVisitor' => $totalStoresAsRecentVisitor,
+            'totalStoresJoinedAsTeamMember' => $totalStoresJoinedAsTeamMember,
             'totalStoresJoinedAsNonCreator' => $totalStoresJoinedAsNonCreator,
         ];
     }

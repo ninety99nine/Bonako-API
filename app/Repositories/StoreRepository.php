@@ -223,8 +223,19 @@ class StoreRepository extends BaseRepository
         //  Get the request filter
         $filter = request()->input('filter');
 
+        //  Get the request mobile number
+        $mobileNumber = request()->input('mobile_number');
+
         //  Query the stores by the filter (If provided)
         $stores = $this->queryStoresByFilter($filter);
+
+        //  If the mobile number is provided
+        if($mobileNumber) {
+
+            //  Query stores that match the provided mobile number
+            $stores = $stores->where('mobile_number', $mobileNumber);
+
+        }
 
         return $this->eagerLoadStoreRelationships($stores)->get();
     }
@@ -236,8 +247,6 @@ class StoreRepository extends BaseRepository
      */
     public function showBrandStores()
     {
-        broadcast(new Testing('Requesting brand stores'));
-
         //  Get the request filter
         $filter = request()->input('filter');
 
@@ -420,7 +429,7 @@ class StoreRepository extends BaseRepository
 
         //  Return the store
         return [
-            'exists' => is_null($firstStoreCreated) == false,
+            'exists' => !is_null($firstStoreCreated),
             'store' => $firstStoreCreated ? $this->setModel($firstStoreCreated)->transform() : null
         ];
     }
@@ -1851,7 +1860,6 @@ class StoreRepository extends BaseRepository
         return [
             'logo' => $this->model->logo
         ];
-
     }
 
     /**

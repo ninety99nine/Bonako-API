@@ -37,6 +37,8 @@ class User extends BaseAuthenticatable /* Authenticatable */
     const LAST_NAME_MIN_CHARACTERS = 3;
     const LAST_NAME_MAX_CHARACTERS = 20;
     const PASSWORD_MIN_CHARACTERS = 6;
+    const ABOUT_ME_MAX_CHARACTERS = 200;
+    const ABOUT_ME_MIN_CHARACTERS = 3;
     const NOTIFICATION_FILTERS = ['All', 'Read', 'Unread', 'Invitations', 'Orders', 'Friend Groups'];
 
     protected $casts = [
@@ -48,15 +50,13 @@ class User extends BaseAuthenticatable /* Authenticatable */
     ];
 
     protected $fillable = [
-        'first_name', 'last_name', 'password', 'mobile_number', 'mobile_number_verified_at',
+        'first_name', 'last_name', 'about_me', 'profile_photo', 'password', 'mobile_number', 'mobile_number_verified_at',
         'accepted_terms_and_conditions', 'last_seen_at', 'registered_by_user_id'
     ];
 
     protected $hidden = [
         'password', 'remember_token',
     ];
-
-
 
     /**
      *  The channels the user receives notification broadcasts on.
@@ -153,6 +153,16 @@ class User extends BaseAuthenticatable /* Authenticatable */
     public function storesAsAssigned()
     {
         return $this->stores()->where('is_assigned', '1');
+    }
+
+    /**
+     *  Returns the associated reviews that have been submitted by this user
+     *
+     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
+     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
     }
 
     /**

@@ -137,27 +137,4 @@ class MobileNumberService
     {
         return self::getMobileNetworkName($mobileNumber) === "btc";
     }
-
-    /**
-     *  Get the mobile number user account
-     */
-    public static function showUserAccount($mobileNumber)
-    {
-        $user = User::where('mobile_number', $mobileNumber)->first();
-
-        if($user) {
-
-            return [
-                'name' => $user->name,
-                'links' => [
-                    'show.user.assigned.stores' => route('user.stores.show', ['user' => $user->id, 'filter' => 'assigned'])
-                ]
-            ];
-
-        }else{
-
-            throw new ModelNotFoundException();
-
-        }
-    }
 }

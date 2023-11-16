@@ -16,6 +16,8 @@ class CreateUsersTable extends Migration
             $table->id();
             $table->string('first_name', User::FIRST_NAME_MAX_CHARACTERS);
             $table->string('last_name', User::LAST_NAME_MAX_CHARACTERS);
+            $table->string('about_me', User::ABOUT_ME_MAX_CHARACTERS)->nullable();
+            $table->string('profile_photo')->nullable();
             $table->string('mobile_number', 11)->unique();
             $table->timestamp('last_seen_at')->nullable();
             $table->timestamp('mobile_number_verified_at')->nullable();

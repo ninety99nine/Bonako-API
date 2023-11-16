@@ -36,6 +36,7 @@ foreach($options as $option) {
                 Route::get('/', 'index')->name('.show');
                 Route::post('/', 'create')->name('.create');
                 Route::post('/validate-create', 'validateCreate')->name('.validate.create');
+                Route::post('/', 'searchUserByMobileNumber')->name('.search.by.mobile.number');
             });
 
         }
@@ -50,6 +51,9 @@ foreach($options as $option) {
             Route::put('/', 'update')->name('.update')->whereNumber('user');
             Route::delete('/', 'delete')->name('.delete')->whereNumber('user');
             Route::post('/confirm-delete', 'confirmDelete')->name('.confirm.delete')->whereNumber('user');
+            Route::get('/profile-photo', 'showProfilePhoto')->name('.profile.photo.show')->whereNumber('user');
+            Route::post('/profile-photo', 'updateProfilePhoto')->name('.profile.photo.update')->whereNumber('user');
+            Route::delete('/profile-photo', 'deleteProfilePhoto')->name('.profile.photo.delete')->whereNumber('user');
 
             Route::post('/logout', 'logout')->name('.logout')->whereNumber('user');
             Route::get('/tokens', 'showTokens')->name('.tokens.show')->whereNumber('user');

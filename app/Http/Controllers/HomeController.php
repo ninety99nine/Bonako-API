@@ -60,7 +60,7 @@ class HomeController extends Controller
             'show.payment.method.filters' => route('payment.method.filters.show'),
             'show.shortcode.owner' => route('shortcode.owner.show'),
             'show.subscription.plans' => route('subscription.plans.show'),
-            'show.mobile.number.user.account' => route('mobile.number.user.account.show'),
+            'search.user.by.mobile.number' => route('users.search.by.mobile.number'),
 
             'show.terms.and.conditions' => route('terms.and.conditions.show'),  //  redirect
 
