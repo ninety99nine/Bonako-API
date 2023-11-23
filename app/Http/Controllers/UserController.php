@@ -42,6 +42,7 @@ use App\Http\Requests\Models\User\CreateAiAssistantSubscriptionRequest;
 use App\Http\Requests\Models\User\GenerateAiAssistantPaymentShortcodeRequest;
 use App\Http\Requests\Models\User\RemoveFriendRequest as UserRemoveFriendRequest;
 use App\Http\Requests\Models\User\SearchUserByMobileNumberRequest;
+use App\Http\Requests\Models\User\ShowReviewsRequest;
 use App\Models\AiMessage;
 use App\Repositories\AiMessageRepository;
 use App\Traits\Base\BaseTrait;
@@ -332,6 +333,16 @@ class UserController extends BaseController
     public function showOrders(ShowOrdersRequest $request, User $user)
     {
         return response($this->repository->setModel($this->chooseUser())->showOrders()->transform(), Response::HTTP_OK);
+    }
+
+    public function showReviewFilters(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showReviewFilters(), Response::HTTP_OK);
+    }
+
+    public function showReviews(ShowReviewsRequest $request, User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showReviews()->transform(), Response::HTTP_OK);
     }
 
     public function showFirstCreatedStore(User $user)

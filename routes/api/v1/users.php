@@ -156,6 +156,12 @@ foreach($options as $option) {
                 Route::get('/', 'showOrders')->name('.orders.show')->whereNumber('user');
             });
 
+            //  Reviews
+            Route::prefix('reviews')->group(function () {
+                Route::get('/filters', 'showReviewFilters')->name('.review.filters.show')->whereNumber('user');
+                Route::get('/', 'showReviews')->name('.reviews.show')->whereNumber('user');
+            });
+
             //  Stores
             Route::prefix('stores')->group(function () {
                 Route::get('/first-created-store', 'showFirstCreatedStore')->name('.first.created.store.show')->whereNumber('user');

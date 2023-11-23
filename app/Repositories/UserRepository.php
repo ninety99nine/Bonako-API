@@ -96,6 +96,16 @@ class UserRepository extends BaseRepository
     }
 
     /**
+     *  Return the ReviewRepository instance
+     *
+     *  @return ReviewRepository
+     */
+    public function reviewRepository()
+    {
+        return resolve(ReviewRepository::class);
+    }
+
+    /**
      *  Return the StoreRepository instance
      *
      *  @return StoreRepository
@@ -1144,6 +1154,26 @@ class UserRepository extends BaseRepository
     public function showOrders()
     {
         return $this->orderRepository()->showUserOrders($this->getUser());
+    }
+
+    /**
+     *  Show user review filters
+     *
+     *  @return array
+     */
+    public function showReviewFilters()
+    {
+        return $this->reviewRepository()->showUserReviewFilters($this->getUser());
+    }
+
+    /**
+     *  Show user reviews
+     *
+     *  @return ReviewRepository
+     */
+    public function showReviews()
+    {
+        return $this->reviewRepository()->showUserReviews($this->getUser());
     }
 
     /**

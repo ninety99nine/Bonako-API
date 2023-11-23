@@ -2,12 +2,12 @@
 
 namespace App\Http\Requests\Models\User;
 
-use App\Models\Order;
+use App\Models\Review;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class ShowOrdersRequest extends FormRequest
+class ShowReviewsRequest extends FormRequest
 {
     use BaseTrait;
 
@@ -31,7 +31,7 @@ class ShowOrdersRequest extends FormRequest
         /**
          *  Convert the "filter" to the correct format if it has been set on the request inputs
          *
-         *  Example: convert "waiting" or "Waiting" into "waiting"
+         *  Example: convert "Customer Service" or "customerService" into "customer service"
          */
         if($this->request->has('filter')) {
             $this->merge([
@@ -49,15 +49,10 @@ class ShowOrdersRequest extends FormRequest
      */
     public function rules()
     {
-        $filters = collect(Order::USER_ORDER_FILTERS)->map(fn($filter) => strtolower($filter));
+        $filters = collect(Review::USER_REVIEW_FILTERS)->map(fn($filter) => strtolower($filter));
 
         return [
-            'start_at_order_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
-            'customer_user_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
-            'friend_user_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
-            'except_order_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
-            'store_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
-            'with_customer' => ['bail', 'sometimes', 'required', 'boolean'],
+            'with_store' => ['bail', 'sometimes', 'required', 'boolean'],
             'filter' => ['sometimes', 'string', Rule::in($filters)],
         ];
     }
@@ -70,8 +65,8 @@ class ShowOrdersRequest extends FormRequest
     public function messages()
     {
         return [
-            'filter.string' => 'Answer "'.collect(Order::USER_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
-            'filter.in' => 'Answer "'.collect(Order::USER_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
+            'filter.string' => 'Answer "'.collect(Review::USER_REVIEW_FILTERS)->join('", "', '" or "').' to filter reviews',
+            'filter.in' => 'Answer "'.collect(Review::USER_REVIEW_FILTERS)->join('", "', '" or "').' to filter reviews',
         ];
     }
 

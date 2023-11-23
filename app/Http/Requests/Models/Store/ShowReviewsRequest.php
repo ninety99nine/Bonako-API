@@ -50,7 +50,7 @@ class ShowReviewsRequest extends FormRequest
      */
     public function rules()
     {
-        $filters = collect(Review::FILTERS)->map(fn($filter) => strtolower($filter));
+        $filters = collect(Review::STORE_REVIEW_FILTERS)->map(fn($filter) => strtolower($filter));
 
         return [
             'user_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
@@ -67,8 +67,8 @@ class ShowReviewsRequest extends FormRequest
     public function messages()
     {
         return [
-            'filter.string' => 'Answer "'.collect(Review::FILTERS)->join('", "', '" or "').' to show filtered reviews',
-            'filter.in' => 'Answer "'.collect(Review::FILTERS)->join('", "', '" or "').' to show filtered reviews',
+            'filter.string' => 'Answer "'.collect(Review::STORE_REVIEW_FILTERS)->join('", "', '" or "').' to show filtered reviews',
+            'filter.in' => 'Answer "'.collect(Review::STORE_REVIEW_FILTERS)->join('", "', '" or "').' to show filtered reviews',
         ];
     }
 

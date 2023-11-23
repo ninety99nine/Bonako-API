@@ -18,7 +18,8 @@ class Review extends BaseModel
     const COMMENT_MIN_CHARACTERS = 3;
     const COMMENT_MAX_CHARACTERS = 160;
 
-    const FILTERS = ['All', ...self::SUBJECTS, 'Me'];
+    const USER_REVIEW_FILTERS = ['All', ...self::SUBJECTS];
+    const STORE_REVIEW_FILTERS = ['All', ...self::SUBJECTS, 'Me'];
     const SUBJECTS = ['Product', 'Customer Service', 'Delivery', 'Payment'];
 
     protected $fillable = ['rating', 'subject', 'comment', 'store_id', 'user_id'];

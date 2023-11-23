@@ -2279,59 +2279,13 @@ class StoreRepository extends BaseRepository
          *  @var Store $store
          */
         $store = $this->model;
-
-        $filters = collect(Review::FILTERS);
-
-        /**
-         *  $result = [
-         *      [
-         *          'name' => 'All',
-         *          'total' => 6000,
-         *          'total_summarized' => '6k'
-         *      ],
-         *      [
-         *          'name' => 'Product',
-         *          'total' => 2000,
-         *          'total_summarized' => '2k'
-         *      ],
-         *      [
-         *          'name' => 'Customer Service',
-         *          'total' => 1000,
-         *          'total_summarized' => '1k'
-         *      ],
-         *      ...
-         *  ];
-         */
-        return $filters->map(function($filter) use ($store) {
-
-            if(collect(Review::SUBJECTS)->contains($filter)) {
-
-                $total = $store->reviews()->where('subject', $filter)->count();
-
-            }elseif(strtolower($filter) == 'me') {
-
-                $total = $store->reviews()->where('user_id', auth()->user()->id)->count();
-
-            }elseif(strtolower($filter) == 'all') {
-
-                // Such as "$filter = All"
-                $total = $store->reviews()->count();
-
-            }
-
-            return [
-                'name' => ucwords($filter),
-                'total' => $total,
-                'total_summarized' => $this->convertNumberToShortenedPrefix($total)
-            ];
-
-        })->toArray();
+        return $this->reviewRepository()->showStoreReviewFilters($store);
     }
 
     /**
      *  Show the store reviews
      *
-     *  @return ProductRepository
+     *  @return ReviewRepository
      */
     public function showReviews()
     {
@@ -2339,49 +2293,7 @@ class StoreRepository extends BaseRepository
          *  @var Store $store
          */
         $store = $this->model;
-        $userId = request()->input('user_id');
-        $reviews = $store->reviews()->latest();
-        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
-
-        //  If we have the filter
-        if( !empty($filter) ) {
-
-            //  Get the review subjects
-            $subjects = collect(Review::SUBJECTS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
-
-            //  If the filter matches one of the review subjects
-            if(collect($subjects)->contains($filter)) {
-
-                //  Set Query for reviews matching the given filter
-                $reviews = $reviews->where('subject', $filter);
-
-            //  If the filter is set to "me"
-            }elseif($filter == 'me') {
-
-                //  Set Query for reviews matching the current authenticated user
-                $reviews = $reviews->where('user_id', auth()->user()->id);
-
-            }
-
-        }
-
-        //  If we have the user id
-        if( $filter == 'me' && !empty($userId) ) {
-
-            //  Set Query for reviews matching the given user id
-            $reviews = $reviews->where('user_id', $userId);
-
-        }
-
-        //  Check if we want to eager load the users on each review
-        if( request()->input('with_user') ) {
-
-            //  Additionally we can eager load the users on these reviews as well
-            $reviews = $reviews->with(['user']);
-
-        }
-
-        return $this->reviewRepository()->setModel($reviews)->get();
+        return $this->reviewRepository()->showStoreReviews($store);
     }
 
     /**

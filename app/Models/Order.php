@@ -28,8 +28,8 @@ class Order extends BaseModel
     const PAYMENT_STATUSES = Transaction::STATUSES;
     const COLLECTION_TYPES = ['Delivery', 'Pickup'];
     const STORE_ORDER_FILTERS = ['All', ...self::STATUSES, 'Me'];
-    const USER_ORDER_FILTERS = ['All', ...self::ORDER_FOR_OPTIONS, 'Shared With Me'];
     const ORDER_FOR_OPTIONS = ['Me', 'Me And Friends', 'Friends Only', 'Business'];
+    const USER_ORDER_FILTERS = ['All', ...self::ORDER_FOR_OPTIONS, 'Shared With Me'];
     const STATUSES = ['Waiting', 'On Its Way', 'Ready For Pickup', 'Cancelled', 'Completed'];
     const CANCELLATION_REASONS = [
         'Not Available', 'No stock', 'No payment', 'No delivery', 'No pickup', 'Changes in order',

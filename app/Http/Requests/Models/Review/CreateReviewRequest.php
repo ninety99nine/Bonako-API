@@ -50,7 +50,7 @@ class CreateReviewRequest extends FormRequest
      */
     public function rules()
     {
-        $subjects = collect(Review::FILTERS)->map(fn($filter) => strtolower($filter));
+        $subjects = collect(Review::STORE_REVIEW_FILTERS)->map(fn($filter) => strtolower($filter));
 
         return [
             'subject' => ['bail', 'required', Rule::in($subjects)],
