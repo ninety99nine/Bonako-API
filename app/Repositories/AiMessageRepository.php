@@ -300,11 +300,11 @@ class AiMessageRepository extends BaseRepository
             $assistantContent = $previousAiMessage->assistant_content;
 
             if (strlen($userContent) > 200) {
-                $userContent = substr($userContent, 0, 197) . '...';
+                $userContent = substr($userContent, 0, 200);
             }
 
             if (strlen($assistantContent) > 200) {
-                $assistantContent = substr($assistantContent, 0, 197) . '...';
+                $assistantContent = substr($assistantContent, 0, 200);
             }
 
             array_push($messages, [
