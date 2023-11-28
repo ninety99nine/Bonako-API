@@ -39,6 +39,7 @@ use App\Http\Requests\Models\Store\ShowShoppingCartOrderForUsersRequest;
 use App\Http\Requests\Models\Store\countShoppingCartOrderForUsersRequest;
 use App\Http\Requests\Models\Store\DeleteAdvertRequest;
 use App\Http\Requests\Models\Store\ShowCustomersRequest;
+use App\Http\Requests\Models\Store\ShowStoreOrdersRequest;
 use App\Http\Requests\Models\Store\ShowSubscriptionsRequest;
 use App\Http\Requests\Models\Store\UpdateCoverPhotoRequest;
 use App\Http\Requests\Models\Store\UpdateFollowingRequest;
@@ -219,7 +220,7 @@ class StoreController extends BaseController
         return response($this->repository->setModel($store)->showOrderFilters(), Response::HTTP_OK);
     }
 
-    public function showOrders(Store $store)
+    public function showOrders(ShowStoreOrdersRequest $request, Store $store)
     {
         return response($this->repository->setModel($store)->showOrders()->transform(), Response::HTTP_OK);
     }

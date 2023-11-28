@@ -74,6 +74,7 @@ class FriendGroupResource extends BaseResource
             new ResourceLink('remove.friend.group.stores', route($prefix.'stores.remove', $params), 'Remove friend group stores'),
 
             //  Orders
+            new ResourceLink('show.friend.group.order.filters', route($prefix.'order.filters.show', $params), 'Show friend group orders'),
             new ResourceLink('show.friend.group.orders', route($prefix.'orders.show', $params), 'Show friend group orders'),
 
             //  Members

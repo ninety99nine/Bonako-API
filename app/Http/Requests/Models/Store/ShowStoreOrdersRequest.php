@@ -2,12 +2,12 @@
 
 namespace App\Http\Requests\Models\Store;
 
-use App\Models\Subscription;
+use App\Models\Order;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class ShowSubscriptionsRequest extends FormRequest
+class ShowStoreOrdersRequest extends FormRequest
 {
     use BaseTrait;
 
@@ -31,7 +31,7 @@ class ShowSubscriptionsRequest extends FormRequest
         /**
          *  Convert the "filter" to the correct format if it has been set on the request inputs
          *
-         *  Example: convert "Inactive" or "inActive" into "inactive"
+         *  Example: convert "waiting" or "Waiting" into "waiting"
          */
         if($this->has('filter')) {
             $this->merge([
@@ -49,9 +49,11 @@ class ShowSubscriptionsRequest extends FormRequest
      */
     public function rules()
     {
-        $filters = collect(Subscription::FILTERS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
+        $filters = collect(Order::STORE_ORDER_FILTERS)->map(fn($filter) => strtolower($filter));
 
         return [
+            'start_at_order_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
+            'with_customer' => ['bail', 'sometimes', 'required', 'boolean'],
             'filter' => ['sometimes', 'string', Rule::in($filters)],
         ];
     }
@@ -64,8 +66,8 @@ class ShowSubscriptionsRequest extends FormRequest
     public function messages()
     {
         return [
-            'filter.string' => 'Answer "'.collect(Subscription::FILTERS)->join('", "', '" or "').' to filter subscriptions',
-            'filter.in' => 'Answer "'.collect(Subscription::FILTERS)->join('", "', '" or "').' to filter subscriptions',
+            'filter.string' => 'Answer "'.collect(Order::STORE_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
+            'filter.in' => 'Answer "'.collect(Order::STORE_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
         ];
     }
 

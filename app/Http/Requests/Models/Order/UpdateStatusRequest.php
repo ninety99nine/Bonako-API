@@ -33,9 +33,9 @@ class UpdateStatusRequest extends FormRequest
          *
          *  Example: convert "onItsWay" or "On Its Way" into "on its way"
          */
-        if($this->request->has('status')) {
+        if($this->has('status')) {
             $this->merge([
-                'status' => $this->separateWordsThenLowercase($this->request->get('status'))
+                'status' => $this->separateWordsThenLowercase($this->get('status'))
             ]);
         }
 

@@ -24,7 +24,7 @@ class RemoveStoreFromFriendGroupRequest extends FormRequest
     public function getValidatorInstance()
     {
         //  Make sure that the "friend_group_ids" is an array if provided
-        if($this->request->has('friend_group_ids') && is_string($this->request->all()['friend_group_ids'])) {
+        if($this->has('friend_group_ids') && is_string($this->request->all()['friend_group_ids'])) {
             $this->merge([
                 'friend_group_ids' => json_decode($this->request->all()['friend_group_ids'])
             ]);

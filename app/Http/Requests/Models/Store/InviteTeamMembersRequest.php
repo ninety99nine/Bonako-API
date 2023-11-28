@@ -34,14 +34,14 @@ class InviteTeamMembersRequest extends FormRequest
     public function getValidatorInstance()
     {
         //  Make sure that the "mobile_numbers" is an array if provided
-        if($this->request->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
+        if($this->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
             $this->merge([
                 'mobile_numbers' => json_decode($this->request->all()['mobile_numbers'])
             ]);
         }
 
         //  Make sure that the "permissions" is an array if provided
-        if($this->request->has('permissions')) {
+        if($this->has('permissions')) {
 
             if(is_string($this->request->all()['permissions'])) {
 

@@ -31,9 +31,9 @@ class ShowFriendGroupsRequest extends FormRequest
          *
          *  Example: convert "waiting" or "Waiting" into "waiting"
          */
-        if($this->request->has('filter')) {
+        if($this->has('filter')) {
             $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->request->get('filter'))
+                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
             ]);
         }
 

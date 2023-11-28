@@ -219,6 +219,17 @@ class User extends BaseAuthenticatable /* Authenticatable */
      *
      *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
      */
+    public function ordersAsCustomerOrFriend()
+    {
+        return $this->orders()->where('user_order_collection_association.role', 'Customer')
+                              ->orWhere('user_order_collection_association.role', 'Friend');
+    }
+
+    /**
+     *  Get the Orders where this User is listed as a customer
+     *
+     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
+     */
     public function ordersAsCustomer()
     {
         return $this->orders()->where('user_order_collection_association.role', 'Customer');

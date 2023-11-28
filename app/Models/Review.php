@@ -22,6 +22,10 @@ class Review extends BaseModel
     const STORE_REVIEW_FILTERS = ['All', ...self::SUBJECTS, 'Me'];
     const SUBJECTS = ['Product', 'Customer Service', 'Delivery', 'Payment'];
 
+    const USER_REVIEW_ASSOCIATIONS = [
+        'Reviewer', 'Team Member'
+    ];
+
     protected $fillable = ['rating', 'subject', 'comment', 'store_id', 'user_id'];
 
     /****************************

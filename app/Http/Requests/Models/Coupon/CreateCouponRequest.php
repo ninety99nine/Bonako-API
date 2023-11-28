@@ -30,35 +30,35 @@ class CreateCouponRequest extends FormRequest
          *
          *  Example: convert "percentage" into "Percentage"
          */
-        if($this->request->has('discount_type')) {
+        if($this->has('discount_type')) {
             $this->merge([
                 'discount_type' => strtolower($this->request->all()['discount_type'])
             ]);
         }
 
         //  Make sure that the "hours_of_day" is an array if provided
-        if($this->request->has('hours_of_day') && is_string($this->request->all()['hours_of_day'])) {
+        if($this->has('hours_of_day') && is_string($this->request->all()['hours_of_day'])) {
             $this->merge([
                 'hours_of_day' => json_decode($this->request->all()['hours_of_day'])
             ]);
         }
 
         //  Make sure that the "days_of_the_week" is an array if provided
-        if($this->request->has('days_of_the_week') && is_string($this->request->all()['days_of_the_week'])) {
+        if($this->has('days_of_the_week') && is_string($this->request->all()['days_of_the_week'])) {
             $this->merge([
                 'days_of_the_week' => json_decode($this->request->all()['days_of_the_week'])
             ]);
         }
 
         //  Make sure that the "days_of_the_month" is an array if provided
-        if($this->request->has('days_of_the_month') && is_string($this->request->all()['days_of_the_month'])) {
+        if($this->has('days_of_the_month') && is_string($this->request->all()['days_of_the_month'])) {
             $this->merge([
                 'days_of_the_month' => json_decode($this->request->all()['days_of_the_month'])
             ]);
         }
 
         //  Make sure that the "months_of_the_year" is an array if provided
-        if($this->request->has('months_of_the_year') && is_string($this->request->all()['months_of_the_year'])) {
+        if($this->has('months_of_the_year') && is_string($this->request->all()['months_of_the_year'])) {
             $this->merge([
                 'months_of_the_year' => json_decode($this->request->all()['months_of_the_year'])
             ]);

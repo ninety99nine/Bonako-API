@@ -7,7 +7,7 @@ use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class ShowReviewsRequest extends FormRequest
+class ShowUserReviewFiltersRequest extends FormRequest
 {
     use BaseTrait;
 
@@ -29,13 +29,13 @@ class ShowReviewsRequest extends FormRequest
     public function getValidatorInstance()
     {
         /**
-         *  Convert the "filter" to the correct format if it has been set on the request inputs
+         *  Convert the "user_review_association" to the correct format if it has been set on the request inputs
          *
-         *  Example: convert "Customer Service" or "customerService" into "customer service"
+         *  Example: convert "teamMember" or "Team Member" into "team member"
          */
-        if($this->request->has('filter')) {
+        if($this->has('user_review_association')) {
             $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->request->get('filter'))
+                'user_review_association' => $this->separateWordsThenLowercase($this->get('user_review_association'))
             ]);
         }
 
@@ -49,11 +49,10 @@ class ShowReviewsRequest extends FormRequest
      */
     public function rules()
     {
-        $filters = collect(Review::USER_REVIEW_FILTERS)->map(fn($filter) => strtolower($filter));
+        $userReviewAssociations = collect(Review::USER_REVIEW_ASSOCIATIONS)->map(fn($userOrderAssociation) => $this->separateWordsThenLowercase($userOrderAssociation));
 
         return [
-            'with_store' => ['bail', 'sometimes', 'required', 'boolean'],
-            'filter' => ['sometimes', 'string', Rule::in($filters)],
+            'user_review_association' => ['required', 'string', Rule::in($userReviewAssociations)],
         ];
     }
 
@@ -65,8 +64,8 @@ class ShowReviewsRequest extends FormRequest
     public function messages()
     {
         return [
-            'filter.string' => 'Answer "'.collect(Review::USER_REVIEW_FILTERS)->join('", "', '" or "').' to filter reviews',
-            'filter.in' => 'Answer "'.collect(Review::USER_REVIEW_FILTERS)->join('", "', '" or "').' to filter reviews',
+            'user_order_association.in' => 'Answer "'.collect(Review::USER_REVIEW_ASSOCIATIONS)->join('", "', '" or "').' for user review association',
+            'user_order_association.string' => 'Answer "'.collect(Review::USER_REVIEW_ASSOCIATIONS)->join('", "', '" or "').' for user review association',
         ];
     }
 

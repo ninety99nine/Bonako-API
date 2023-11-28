@@ -35,9 +35,9 @@ class UpdateFollowingRequest extends FormRequest
          *
          *  Example: convert "following" or "Following" into "Following"
          */
-        if($this->request->has('status')) {
+        if($this->has('status')) {
             $this->merge([
-                'status' => $this->separateWordsThenLowercase($this->request->get('status'))
+                'status' => $this->separateWordsThenLowercase($this->get('status'))
             ]);
         }
 

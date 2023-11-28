@@ -30,21 +30,21 @@ class InspectCartRequest extends FormRequest
          *
          *  Example: convert "Gaborone" into "gaborone"
          */
-        if($this->request->has('delivery_destination_name')) {
+        if($this->has('delivery_destination_name')) {
             $this->merge([
-                'delivery_destination_name' => strtolower($this->request->get('delivery_destination_name'))
+                'delivery_destination_name' => strtolower($this->get('delivery_destination_name'))
             ]);
         }
 
         //  Make sure that the "cart_products" is an array if provided
-        if($this->request->has('cart_products') && is_string($this->request->all()['cart_products'])) {
+        if($this->has('cart_products') && is_string($this->request->all()['cart_products'])) {
             $this->merge([
                 'cart_products' => json_decode($this->request->all()['cart_products'])
             ]);
         }
 
         //  Make sure that the "cart_coupon_codes" is an array if provided
-        if($this->request->has('cart_coupon_codes') && is_string($this->request->all()['cart_coupon_codes'])) {
+        if($this->has('cart_coupon_codes') && is_string($this->request->all()['cart_coupon_codes'])) {
             $this->merge([
                 'cart_coupon_codes' => json_decode($this->request->all()['cart_coupon_codes'])
             ]);

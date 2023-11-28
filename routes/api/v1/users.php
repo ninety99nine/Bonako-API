@@ -142,8 +142,9 @@ foreach($options as $option) {
                     });
 
                     //  Friends Group Orders
-                    Route::prefix('orders')->name('.orders')->group(function () {
-                        Route::get('/', 'showFriendGroupOrders')->name('.show')->whereNumber(['user', 'friend_group']);
+                    Route::prefix('orders')->group(function () {
+                        Route::get('/filters', 'showFriendGroupOrderFilters')->name('.order.filters.show')->whereNumber('user');
+                        Route::get('/', 'showFriendGroupOrders')->name('.orders.show')->whereNumber(['user', 'friend_group']);
                     });
 
                 });

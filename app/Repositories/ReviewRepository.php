@@ -63,9 +63,6 @@ class ReviewRepository extends BaseRepository
         //  Get the store review filters
         $filters = collect(Review::STORE_REVIEW_FILTERS);
 
-        //  Get the review subjects
-        $subjects = collect(Review::SUBJECTS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
-
         /**
          *  $result = [
          *      [
@@ -81,7 +78,7 @@ class ReviewRepository extends BaseRepository
          *      [
          *          'name' => 'Customer Service',
          *          'total' => 1000k,
-         *          'total_summarized' => '6k'
+         *          'total_summarized' => '1k'
          *      ],
          *      ...
          *  ];
@@ -89,7 +86,7 @@ class ReviewRepository extends BaseRepository
         return $filters->map(function($filter) use ($store) {
 
             //  Count the store reviews with the specified filter
-            $total = $this->queryStoreReviewsByFilter($store, $filter)->count();
+            $total = $this->queryStoreReviews($store, $filter)->count();
 
             return [
                 'name' => ucwords($filter),
@@ -112,7 +109,7 @@ class ReviewRepository extends BaseRepository
         $filter = $this->separateWordsThenLowercase(request()->input('filter'));
 
         //  Query the store reviews with the specified filter
-        $reviews = $this->queryStoreReviewsByFilter($store, $filter);
+        $reviews = $this->queryStoreReviews($store, $filter);
 
         //  Eager load the review relationships based on request inputs
         return $this->eagerLoadReviewRelationships($reviews)->get();
@@ -125,7 +122,7 @@ class ReviewRepository extends BaseRepository
      *  @param string $filter - The filter to query the reviews
      *  @return \Illuminate\Database\Eloquent\Builder
      */
-    public function queryStoreReviewsByFilter($store, $filter)
+    public function queryStoreReviews($store, $filter)
     {
         //  Get the latest reviews first
         $reviews = $store->reviews()->latest();
@@ -180,7 +177,7 @@ class ReviewRepository extends BaseRepository
          *      [
          *          'name' => 'Customer Service',
          *          'total' => 1000k,
-         *          'total_summarized' => '6k'
+         *          'total_summarized' => '1k'
          *      ],
          *      ...
          *  ];
@@ -188,7 +185,7 @@ class ReviewRepository extends BaseRepository
         return $filters->map(function($filter) use ($user) {
 
             //  Count the user reviews with the specified filter
-            $total = $this->queryUserReviewsByFilter($user, $filter)->count();
+            $total = $this->queryUserReviews($user, $filter)->count();
 
             return [
                 'name' => ucwords($filter),
@@ -211,7 +208,7 @@ class ReviewRepository extends BaseRepository
         $filter = $this->separateWordsThenLowercase(request()->input('filter'));
 
         //  Query the user reviews with the specified filter
-        $reviews = $this->queryUserReviewsByFilter($user, $filter);
+        $reviews = $this->queryUserReviews($user, $filter);
 
         //  Eager load the review relationships based on request inputs
         return $this->eagerLoadReviewRelationships($reviews)->get();
@@ -224,13 +221,31 @@ class ReviewRepository extends BaseRepository
      *  @param string $filter - The filter to query the reviews
      *  @return \Illuminate\Database\Eloquent\Builder
      */
-    public function queryUserReviewsByFilter($user, $filter)
+    public function queryUserReviews($user, $filter)
     {
-        //  Get the latest reviews first
-        $reviews = $user->reviews()->latest();
-
-        //  Get the specified filter
+        //  Normalize the filter
         $filter = $this->separateWordsThenLowercase($filter);
+
+        //  Set the $userReviewAssociation e.g reviewer or team member
+        $userReviewAssociation = $this->separateWordsThenLowercase(request()->input('user_review_association'));
+
+        //  If the user must be associated as a reviewer
+        if($userReviewAssociation == 'reviewer') {
+
+            //  Query the reviews where the user is associated as a customer
+            $reviews = $user->reviews()->latest();
+
+        //  If the user must be associated as a team member
+        }else if($userReviewAssociation == 'team member') {
+
+            //  Query the reviews where the user is associated as a team member
+            $reviews = Review::whereHas('store', function ($query) use ($user) {
+                $query->whereHas('teamMembers', function ($query2) use ($user) {
+                    $query2->joinedTeam()->matchingUserId($user->id);
+                });
+            });
+
+        }
 
         //  Get the review subjects
         $subjects = collect(Review::SUBJECTS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
@@ -240,6 +255,9 @@ class ReviewRepository extends BaseRepository
             $reviews = $reviews->where('subject', $filter);
 
         }
+
+        //  Get the latest reviews first
+        $reviews = $reviews->latest();
 
         return $reviews;
     }

@@ -34,9 +34,9 @@ class UpdateStoreRequest extends FormRequest
          *
          *  Example: convert "buy" or "buyNow" into "buy now"
          */
-        if($this->request->has('call_to_action')) {
+        if($this->has('call_to_action')) {
             $this->merge([
-                'call_to_action' => $this->separateWordsThenLowercase($this->request->get('call_to_action'))
+                'call_to_action' => $this->separateWordsThenLowercase($this->get('call_to_action'))
             ]);
         }
 
@@ -45,9 +45,9 @@ class UpdateStoreRequest extends FormRequest
          *
          *  Example: convert "Stanbic Bank" or "stanbicBank" into "buy now"
          */
-        if($this->request->has('banking_with')) {
+        if($this->has('banking_with')) {
             $this->merge([
-                'banking_with' => $this->separateWordsThenLowercase($this->request->get('banking_with'))
+                'banking_with' => $this->separateWordsThenLowercase($this->get('banking_with'))
             ]);
         }
 
@@ -56,9 +56,9 @@ class UpdateStoreRequest extends FormRequest
          *
          *  Example: convert "Company" or "CompanY" into "company"
          */
-        if($this->request->has('registered_with_cipa_as')) {
+        if($this->has('registered_with_cipa_as')) {
             $this->merge([
-                'registered_with_cipa_as' => $this->separateWordsThenLowercase($this->request->get('registered_with_cipa_as'))
+                'registered_with_cipa_as' => $this->separateWordsThenLowercase($this->get('registered_with_cipa_as'))
             ]);
         }
 
@@ -71,15 +71,15 @@ class UpdateStoreRequest extends FormRequest
          *
          *  required_if:registered_with_bank,true
          */
-        if($this->request->has('registered_with_bank')) {
+        if($this->has('registered_with_bank')) {
             $this->merge([
-                'registered_with_bank' => (bool) $this->request->get('registered_with_bank')
+                'registered_with_bank' => (bool) $this->get('registered_with_bank')
             ]);
         }
 
-        if($this->request->has('registered_with_cipa')) {
+        if($this->has('registered_with_cipa')) {
             $this->merge([
-                'registered_with_cipa' => (bool) $this->request->get('registered_with_cipa')
+                'registered_with_cipa' => (bool) $this->get('registered_with_cipa')
             ]);
         }
 

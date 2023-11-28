@@ -7,6 +7,14 @@ trait UserStoreAssociationTrait
     /*
      *  Scope: Return users that have accepted the invitation to follow the store
      */
+    public function scopeMatchingUserId($query, $userId)
+    {
+        return $query->where('user_store_association.user_id', $userId);
+    }
+
+    /*
+     *  Scope: Return users that have accepted the invitation to follow the store
+     */
     public function scopeFollowing($query)
     {
         return $query->where('user_store_association.follower_status', 'Following');

@@ -33,9 +33,9 @@ class ShowStoresRequest extends FormRequest
          *
          *  Example: convert "popularToday" or "Popular Today" into "popular today"
          */
-        if($this->request->has('filter')) {
+        if($this->has('filter')) {
             $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->request->get('filter'))
+                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
             ]);
         }
 

@@ -34,9 +34,9 @@ class CreateReviewRequest extends FormRequest
          *
          *  Example: convert "customerSupport" or "Customer Support" into "customer support"
          */
-        if($this->request->has('subject')) {
+        if($this->has('subject')) {
             $this->merge([
-                'subject' => $this->separateWordsThenLowercase($this->request->get('subject'))
+                'subject' => $this->separateWordsThenLowercase($this->get('subject'))
             ]);
         }
 

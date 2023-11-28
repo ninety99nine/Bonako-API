@@ -12,8 +12,8 @@ use App\Http\Requests\Models\DeleteRequest;
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Models\User\CreateUserRequest;
 use App\Http\Requests\Models\User\UpdateUserRequest;
-use App\Http\Requests\Models\User\ShowOrdersRequest;
-use App\Http\Requests\Models\Store\ShowUserStoresRequest;
+use App\Http\Requests\Models\User\ShowUserOrdersRequest;
+use App\Http\Requests\Models\User\ShowUserStoresRequest;
 use App\Http\Requests\Models\User\CreateFriendRequest;
 use App\Http\Requests\Models\Address\CreateAddressRequest;
 use App\Http\Requests\Models\Address\UpdateAddressRequest;
@@ -42,7 +42,11 @@ use App\Http\Requests\Models\User\CreateAiAssistantSubscriptionRequest;
 use App\Http\Requests\Models\User\GenerateAiAssistantPaymentShortcodeRequest;
 use App\Http\Requests\Models\User\RemoveFriendRequest as UserRemoveFriendRequest;
 use App\Http\Requests\Models\User\SearchUserByMobileNumberRequest;
-use App\Http\Requests\Models\User\ShowReviewsRequest;
+use App\Http\Requests\Models\User\ShowFriendGroupOrderFiltersRequest;
+use App\Http\Requests\Models\User\ShowFriendGroupOrdersRequest;
+use App\Http\Requests\Models\User\ShowUserReviewsRequest;
+use App\Http\Requests\Models\User\ShowUserOrderFiltersRequest;
+use App\Http\Requests\Models\User\ShowUserReviewFiltersRequest;
 use App\Models\AiMessage;
 use App\Repositories\AiMessageRepository;
 use App\Traits\Base\BaseTrait;
@@ -317,7 +321,12 @@ class UserController extends BaseController
         return response($this->repository->setModel($this->chooseUser())->removeFriendGroupStores($request, $friendGroup), Response::HTTP_OK);
     }
 
-    public function showFriendGroupOrders(ShowOrdersRequest $request, User $user, FriendGroup $friendGroup)
+    public function showFriendGroupOrderFilters(ShowFriendGroupOrderFiltersRequest $request, User $user, FriendGroup $friendGroup)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showFriendGroupOrderFilters($friendGroup), Response::HTTP_OK);
+    }
+
+    public function showFriendGroupOrders(ShowFriendGroupOrdersRequest $request, User $user, FriendGroup $friendGroup)
     {
         return response($this->repository->setModel($this->chooseUser())->showFriendGroupOrders($friendGroup)->transform(), Response::HTTP_OK);
     }
@@ -325,22 +334,22 @@ class UserController extends BaseController
 
 
 
-    public function showOrderFilters(User $user)
+    public function showOrderFilters(ShowUserOrderFiltersRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showOrderFilters(), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->showUserOrderFilters(), Response::HTTP_OK);
     }
 
-    public function showOrders(ShowOrdersRequest $request, User $user)
+    public function showOrders(ShowUserOrdersRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showOrders()->transform(), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->showUserOrders()->transform(), Response::HTTP_OK);
     }
 
-    public function showReviewFilters(User $user)
+    public function showReviewFilters(ShowUserReviewFiltersRequest $request, User $user)
     {
         return response($this->repository->setModel($this->chooseUser())->showReviewFilters(), Response::HTTP_OK);
     }
 
-    public function showReviews(ShowReviewsRequest $request, User $user)
+    public function showReviews(ShowUserReviewsRequest $request, User $user)
     {
         return response($this->repository->setModel($this->chooseUser())->showReviews()->transform(), Response::HTTP_OK);
     }

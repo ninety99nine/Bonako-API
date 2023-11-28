@@ -34,9 +34,9 @@ class ShowReviewsRequest extends FormRequest
          *
          *  Example: convert "customerSupport" or "Customer Support" into "customer support"
          */
-        if($this->request->has('filter')) {
+        if($this->has('filter')) {
             $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->request->get('filter'))
+                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
             ]);
         }
 

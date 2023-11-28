@@ -7,7 +7,7 @@ use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class ShowOrdersRequest extends FormRequest
+class ShowFriendGroupOrdersRequest extends FormRequest
 {
     use BaseTrait;
 
@@ -33,9 +33,19 @@ class ShowOrdersRequest extends FormRequest
          *
          *  Example: convert "waiting" or "Waiting" into "waiting"
          */
-        if($this->request->has('filter')) {
+        if($this->has('filter')) {
             $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->request->get('filter'))
+                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
+            ]);
+        }
+        /**
+         *  Convert the "user_order_association" to the correct format if it has been set on the request inputs
+         *
+         *  Example: convert "teamMember" or "Team Member" into "team member"
+         */
+        if($this->has('user_order_association')) {
+            $this->merge([
+                'user_order_association' => $this->separateWordsThenLowercase($this->get('user_order_association'))
             ]);
         }
 
@@ -49,13 +59,12 @@ class ShowOrdersRequest extends FormRequest
      */
     public function rules()
     {
-        $filters = collect(Order::USER_ORDER_FILTERS)->map(fn($filter) => strtolower($filter));
+        $filters = collect(Order::FRIEND_GROUP_ORDER_FILTERS)->map(fn($filter) => strtolower($filter));
+        $userOrderAssociations = collect(Order::USER_ORDER_ASSOCIATIONS)->map(fn($userOrderAssociation) => $this->separateWordsThenLowercase($userOrderAssociation));
 
         return [
+            'user_order_association' => ['required', 'string', Rule::in($userOrderAssociations)],
             'start_at_order_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
-            'customer_user_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
-            'friend_user_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
-            'except_order_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
             'store_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
             'with_customer' => ['bail', 'sometimes', 'required', 'boolean'],
             'filter' => ['sometimes', 'string', Rule::in($filters)],
@@ -70,8 +79,10 @@ class ShowOrdersRequest extends FormRequest
     public function messages()
     {
         return [
-            'filter.string' => 'Answer "'.collect(Order::USER_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
-            'filter.in' => 'Answer "'.collect(Order::USER_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
+            'filter.in' => 'Answer "'.collect(Order::FRIEND_GROUP_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
+            'filter.string' => 'Answer "'.collect(Order::FRIEND_GROUP_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
+            'user_order_association.in' => 'Answer "'.collect(Order::USER_ORDER_ASSOCIATIONS)->join('", "', '" or "').' for user order association',
+            'user_order_association.string' => 'Answer "'.collect(Order::USER_ORDER_ASSOCIATIONS)->join('", "', '" or "').' for user order association',
         ];
     }
 

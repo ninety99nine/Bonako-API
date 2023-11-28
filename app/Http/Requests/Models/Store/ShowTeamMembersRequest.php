@@ -34,9 +34,9 @@ class ShowTeamMembersRequest extends FormRequest
          *
          *  Example: convert "joined" or "Joined" into "joined"
          */
-        if($this->request->has('filter')) {
+        if($this->has('filter')) {
             $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->request->get('filter'))
+                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
             ]);
         }
 

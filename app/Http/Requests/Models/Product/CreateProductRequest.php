@@ -30,9 +30,9 @@ class CreateProductRequest extends FormRequest
          *
          *  Example: convert "unlimited" into "Unlimited"
          */
-        if($this->request->has('allowed_quantity_per_order')) {
+        if($this->has('allowed_quantity_per_order')) {
             $this->merge([
-                'allowed_quantity_per_order' => strtolower($this->request->get('allowed_quantity_per_order'))
+                'allowed_quantity_per_order' => strtolower($this->get('allowed_quantity_per_order'))
             ]);
         }
 
@@ -41,9 +41,9 @@ class CreateProductRequest extends FormRequest
          *
          *  Example: convert "unlimited" into "Unlimited"
          */
-        if($this->request->has('stock_quantity_type')) {
+        if($this->has('stock_quantity_type')) {
             $this->merge([
-                'stock_quantity_type' => strtolower($this->request->get('stock_quantity_type'))
+                'stock_quantity_type' => strtolower($this->get('stock_quantity_type'))
             ]);
         }
 

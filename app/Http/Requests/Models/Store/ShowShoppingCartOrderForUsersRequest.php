@@ -34,9 +34,9 @@ class ShowShoppingCartOrderForUsersRequest extends FormRequest
          *
          *  Example: convert "Me And Friends" or "me and Friends" into "me and friends"
          */
-        if($this->request->has('order_for')) {
+        if($this->has('order_for')) {
             $this->merge([
-                'order_for' => $this->separateWordsThenLowercase($this->request->get('order_for'))
+                'order_for' => $this->separateWordsThenLowercase($this->get('order_for'))
             ]);
         }
 

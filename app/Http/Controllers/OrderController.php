@@ -9,7 +9,6 @@ use App\Repositories\OrderRepository;
 use App\Http\Requests\Models\DeleteRequest;
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Models\UncancelRequest;
-use App\Http\Requests\Models\Order\ShowOrdersRequest;
 use App\Http\Requests\Models\Order\UpdateOrderRequest;
 use App\Http\Requests\Models\Order\CancelOrderRequest;
 use App\Http\Requests\Models\Order\UpdateStatusRequest;

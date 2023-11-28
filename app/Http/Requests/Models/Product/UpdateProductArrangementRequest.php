@@ -24,7 +24,7 @@ class UpdateProductArrangementRequest extends FormRequest
     public function getValidatorInstance()
     {
         //  Make sure that the "arrangement" is an array if provided
-        if($this->request->has('arrangement') && is_string($this->request->all()['arrangement'])) {
+        if($this->has('arrangement') && is_string($this->request->all()['arrangement'])) {
             $this->merge([
                 'arrangement' => json_decode($this->request->all()['arrangement'])
             ]);

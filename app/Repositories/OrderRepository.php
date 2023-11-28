@@ -40,6 +40,7 @@ use App\Exceptions\OrderWithPendingTransactionsCannotBeUpdatedException;
 use App\Exceptions\OrderWithPendingTransactionsCannotBeCancelledException;
 use App\Models\Address;
 use App\Models\DeliveryAddress;
+use App\Models\FriendGroup;
 use App\Models\MobileVerification;
 use App\Models\Pivots\UserOrderCollectionAssociation;
 use App\Models\Pivots\UserStoreAssociation;
@@ -265,9 +266,6 @@ class OrderRepository extends BaseRepository
     {
         $filters = collect(Order::STORE_ORDER_FILTERS);
 
-        //  Get the order statuses
-        $statuses = collect(Order::STATUSES)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
-
         /**
          *  $result = [
          *      [
@@ -276,35 +274,21 @@ class OrderRepository extends BaseRepository
          *          'total_summarized' => '6k'
          *      ],
          *      [
-         *          'name' => 'Me',
-         *          'total' => 2000,
-         *          'total_summarized' => '2k'
+         *          'name' => 'Waiting',
+         *          'total' => 4000,
+         *          'total_summarized' => '4k'
          *      ],
          *      [
-         *          'name' => 'Waiting',
-         *          'total' => 1000k,
-         *          'total_summarized' => '6k'
+         *          'name' => 'On Its Way',
+         *          'total' => 2000,
+         *          'total_summarized' => '2k'
          *      ],
          *      ...
          *  ];
          */
-        return $filters->map(function($filter) use ($store, $statuses) {
+        return $filters->map(function($filter) use ($store) {
 
-            $filter = $this->separateWordsThenLowercase($filter);
-
-            if(collect($statuses)->contains($filter)) {
-
-                $total = $store->orders()->where('status', $filter)->count();
-
-            }elseif(strtolower($filter) == 'me') {
-
-                $total = $store->orders()->authAsCustomer()->count();
-
-            }elseif(strtolower($filter) == 'all') {
-
-                $total = $store->orders()->count();
-
-            }
+            $total = $this->queryStoreOrders($store, $filter)->count();
 
             return [
                 'name' => ucwords($filter),
@@ -323,32 +307,26 @@ class OrderRepository extends BaseRepository
      */
     public function showStoreOrders(Store $store)
     {
-        /**
-         *  Set the current authenticated user
-         *
-         *  @var User $user
-         */
-        $user = auth()->user();
+        //  The $filter is used to identify orders that match the specified order status
+        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
 
-        /**
-         *  The $friendUserId is used to identify orders where the
-         *  current authenticated user is associated to those
-         *  orders as a friend
-         */
-        $friendUserId = request()->input('friend_user_id');
+        //  Query the store orders based on the specified filter (if provided)
+        $orders = $this->queryStoreOrders($store, $filter);
 
-        /**
-         *  The $exceptOrderId is used to identify orders except
-         *  the order specified by this order id
-         */
-        $exceptOrderId = request()->input('except_order_id');
+        //  Eager load the order relationships based on request inputs
+        return $this->eagerLoadOrderRelationships($orders)->get();
+    }
 
-        /**
-         *  The $customerUserId is used to identify orders where the
-         *  current authenticated user is associated to those
-         *  orders as a customer
-         */
-        $customerUserId = request()->input('customer_user_id');
+    /**
+     *  Query the orders by the specified filter
+     *
+     *  @param User $user
+     *  @param string $filter - The filter to query the orders
+     */
+    public function queryStoreOrders($store, $filter)
+    {
+        //  Normalize the filter
+        $filter = $this->separateWordsThenLowercase($filter);
 
         /**
          *  The $startAtOrderId is used to identify orders that have
@@ -356,70 +334,61 @@ class OrderRepository extends BaseRepository
          */
         $startAtOrderId = request()->input('start_at_order_id');
 
-        /**
-         *  The $filter is used to identify orders that match
-         *  the specified order status
-         */
-        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
+        //  Set the $userOrderAssociation e.g customer, friend or team member
+        $userOrderAssociation = $this->separateWordsThenLowercase(request()->input('user_order_association'));
 
-        /**
-         *  The $friendUserIdMatchesAuthenticatedUser is used to identify if the
-         *  specified $friendUserId matches the current authenticated user
-         */
-        $friendUserIdMatchesAuthenticatedUser = $friendUserId == $user->id;
+        //  If the user must be associated as a customer
+        if($userOrderAssociation == 'customer') {
 
-        /**
-         *  The $customerUserIdMatchesAuthenticatedUser is used to identify if the
-         *  specified $customerUserId matches the current authenticated user
-         */
-        $customerUserIdMatchesAuthenticatedUser = $customerUserId == $user->id;
+            //  Query the store orders where the user is associated as a customer
+            $orders = $store->orders()->whereHas('users', function ($query) {
+                $query->where('user_order_collection_association.role', 'Customer')
+                      ->where('user_order_collection_association.user_id', auth()->user()->id);
+            });
 
-        //  If the customer user id is the same as the current authenticated user id
-        if( $customerUserIdMatchesAuthenticatedUser ) {
+        //  If the user must be associated as a friend
+        }else if($userOrderAssociation == 'friend') {
 
-            //  Get the orders where this user is a customer
-            $orders = $user->ordersAsCustomer()->where('store_id', $store->id);
+            //  Query the store orders where the user is associated as a friend
+            $orders = $store->orders()->whereHas('users', function ($query) {
+                $query->where('user_order_collection_association.role', 'Friend')
+                      ->where('user_order_collection_association.user_id', auth()->user()->id);
+            });
 
-            //  If the friend user id is specified
-            if(!empty($friendUserId)) {
+            //  If the user must be associated as a customer or friend
+            }else if($userOrderAssociation == 'customer or friend') {
 
-                //  Set Query to filter the orders where the specified user id is a friend
-                $orders = $orders->userAsFriend($friendUserId);
+                //  Query the friend group orders where the user is associated as a friend
+                $orders = $store->orders()->whereHas('users', function ($query) {
+                    $query->where(function ($subquery) {
+                        $subquery->where('user_order_collection_association.role', 'Customer')
+                                ->orWhere('user_order_collection_association.role', 'Friend');
+                    })->where('user_order_collection_association.user_id', auth()->user()->id);
+                });
 
-            }
+        //  If the user must be associated as a team member
+        }else if($userOrderAssociation == 'team member') {
 
-        //  If the friend user id is the same as the current authenticated user id
-        }else if( $friendUserIdMatchesAuthenticatedUser ) {
+            //  Query the store orders where the user is associated as a team member
+            $orders = Order::whereHas('store', function ($query) use ($store) {
+                $query->where('stores.id', $store->id)->whereHas('teamMembers', function ($query2) {
+                    $query2->joinedTeam()->matchingUserId(auth()->user()->id);
+                });
+            });
 
-            //  Get the orders where this user is a friend
-            $orders = $user->ordersAsFriend()->where('store_id', $store->id);
+        }
 
-            //  If the customer user id is specified
-            if(!empty($customerUserId)) {
+        //  If we have the filter
+        if( !empty($filter) ) {
 
-                //  Set Query to filter the orders where the specified user id is a customer
-                $orders = $orders->userAsCustomer($customerUserId);
+            //  Get the order statuses
+            $statuses = collect(Order::STATUSES)->map(fn($status) => $this->separateWordsThenLowercase($status));
 
-            }
+            //  If the filter matches one of the order statuses
+            if(collect($statuses)->contains($filter)) {
 
-        }else{
-
-            //  Set Query to filter the orders by the specified store
-            $orders = $store->orders();
-
-            //  If the customer user id is specified
-            if(!empty($customerUserId)) {
-
-                //  Set Query to filter the orders where the specified user id is a customer
-                $orders = $orders->userAsCustomer($customerUserId);
-
-            }
-
-            //  If the friend user id is specified
-            if(!empty($friendUserId)) {
-
-                //  Set Query to filter the orders where the specified user id is a friend
-                $orders = $orders->userAsFriend($friendUserId);
+                //  Query orders matching the given filter
+                $orders = $orders->where('status', $filter);
 
             }
 
@@ -428,57 +397,16 @@ class OrderRepository extends BaseRepository
         //  If we have the start at order id
         if( !empty($startAtOrderId) ) {
 
-            //  Set Query for orders where the first order id matches the given order id
-            $orders = $orders->where('orders.id', '<=', $startAtOrderId);
+            //  Query for orders where the first order id matches the given order id
+            $orders = $orders->where('orders.id', '>=', $startAtOrderId);
 
         }
 
-        //  If we have the except order id
-        if( !empty($exceptOrderId) ) {
-
-            //  Set Query for orders except the specified order id
-            $orders = $orders->where('orders.id', '!=', $exceptOrderId);
-
-        }
-
-        //  If we have the filter
-        if( !empty($filter) ) {
-
-            //  Get the order statuses
-            $statuses = collect(Order::STATUSES)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
-
-            //  If the filter matches one of the order statuses
-            if(collect($statuses)->contains($filter)) {
-
-                //  Set Query for orders matching the given filter
-                $orders = $orders->where('status', $filter);
-
-            /**
-             *  If the filter is set to "me" except for when customer User ID matches the authenticated user,
-             *  then we can filter the orders such that the authenticated user is matched as the customer.
-             *
-             *  Note that "$customerUserIdMatchesAuthenticatedUser == true" and $filter == 'me' present
-             *  the same kind of logic, so if $customerUserIdMatchesAuthenticatedUser == true then we
-             *  don't need to implement the logic of $filter == 'me', since it results to the same
-             *  outcome:
-             *
-             *  "$user->ordersAsCustomer()" - ($customerUserIdMatchesAuthenticatedUser == true)
-             *  "$orders->authAsCustomer()" - ($filter == 'me')
-             */
-            }elseif($customerUserIdMatchesAuthenticatedUser == false && $filter == 'me') {
-
-                //  Set Query for orders matching the current authenticated user
-                $orders = $orders->authAsCustomer();
-
-            }
-
-        }
-
-        //  Show Latest Orders First
+        //  Query the latest orders first
         $orders = $orders->latest();
 
-        //  Eager load the order relationships based on request inputs
-        return $this->eagerLoadOrderRelationships($orders)->get();
+        //  Return the orders query
+        return $orders;
     }
 
     /**
@@ -492,9 +420,6 @@ class OrderRepository extends BaseRepository
         //  Get the user order filters
         $filters = collect(Order::USER_ORDER_FILTERS);
 
-        //  Get the order for options
-        $orderForOptions = collect(Order::ORDER_FOR_OPTIONS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
-
         /**
          *  $result = [
          *      [
@@ -503,35 +428,21 @@ class OrderRepository extends BaseRepository
          *          'total_summarized' => '6k'
          *      ],
          *      [
-         *          'name' => 'Me',
-         *          'total' => 2000,
-         *          'total_summarized' => '2k'
+         *          'name' => 'Waiting',
+         *          'total' => 4000,
+         *          'total_summarized' => '4k'
          *      ],
          *      [
-         *          'name' => 'Me And Friends',
-         *          'total' => 1000k,
-         *          'total_summarized' => '6k'
+         *          'name' => 'On Its Way',
+         *          'total' => 2000,
+         *          'total_summarized' => '2k'
          *      ],
          *      ...
          *  ];
          */
-        return $filters->map(function($filter) use ($user, $orderForOptions) {
+        return $filters->map(function($filter) use ($user) {
 
-            $filter = $this->separateWordsThenLowercase($filter);
-
-            if(collect($orderForOptions)->contains($filter)) {
-
-                $total = $user->orders()->where('order_for', $filter)->count();
-
-            }elseif($filter == 'shared with me') {
-
-                $total = $user->ordersAsFriend()->count();
-
-            }elseif($filter == 'all') {
-
-                $total = $user->orders()->count();
-
-            }
+            $total = $this->queryUserOrders($user, $filter)->count();
 
             return [
                 'name' => ucwords($filter),
@@ -543,7 +454,7 @@ class OrderRepository extends BaseRepository
     }
 
     /**
-     *  Show the store orders
+     *  Show the user orders
      *
      *  @param User $user
      *  @return OrderRepository
@@ -558,25 +469,32 @@ class OrderRepository extends BaseRepository
          */
         request()->merge(['with_store' => '1']);
 
-        /**
-         *  The $friendUserId is used to identify orders where the
-         *  current authenticated user is associated to those
-         *  orders as a friend
-         */
-        $friendUserId = request()->input('friend_user_id');
+        //  The $filter is used to identify orders that match the specified order status
+        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
 
-        /**
-         *  The $exceptOrderId is used to identify orders except
-         *  the order specified by this order id
-         */
-        $exceptOrderId = request()->input('except_order_id');
+        //  Query the user orders based on the specified filter (if provided)
+        $orders = $this->queryUserOrders($user, $filter);
 
+        //  Eager load the order relationships based on request inputs
+        return $this->eagerLoadOrderRelationships($orders)->get();
+    }
+
+    /**
+     *  Query the orders by the specified filter
+     *
+     *  @param User $user
+     *  @param string $filter - The filter to query the orders
+     */
+    public function queryUserOrders($user, $filter)
+    {
         /**
-         *  The $customerUserId is used to identify orders where the
-         *  current authenticated user is associated to those
-         *  orders as a customer
+         *  The $storeId is used to identify orders
+         *  matching the specified store
          */
-        $customerUserId = request()->input('customer_user_id');
+        $storeId = request()->input('store_id');
+
+        //  Normalize the filter
+        $filter = $this->separateWordsThenLowercase($filter);
 
         /**
          *  The $startAtOrderId is used to identify orders that have
@@ -584,105 +502,257 @@ class OrderRepository extends BaseRepository
          */
         $startAtOrderId = request()->input('start_at_order_id');
 
-        /**
-         *  The $storeId is used to identify orders
-         *  matching the specified store
-         */
-        $storeId = request()->input('store_id');
+        //  Set the $userOrderAssociation e.g customer, friend or team member
+        $userOrderAssociation = $this->separateWordsThenLowercase(request()->input('user_order_association'));
 
-        /**
-         *  The $filter is used to identify orders that match
-         *  the specified order status
-         */
-        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
+        //  If the user must be associated as a customer
+        if($userOrderAssociation == 'customer') {
 
-        /**
-         *  The $friendUserIdMatchesSpecifiedUser is used to identify if the
-         *  specified $friendUserId matches the specified user
-         */
-        $friendUserIdMatchesSpecifiedUser = $friendUserId == $user->id;
+            //  Query the orders where the user is associated as a customer
+            $orders = $user->ordersAsCustomer();
 
-        //  Set the user orders query
-        $orders = $user->orders();
+        //  If the user must be associated as a friend
+        }else if($userOrderAssociation == 'friend') {
 
-        //  If the customer user id is specified
-        if(!empty($customerUserId)) {
+            //  Query the orders where the user is associated as a friend
+            $orders = $user->ordersAsFriend();
 
-            //  Set Query to filter the orders where the specified user id is a customer
-            $orders = $orders->userAsCustomer($customerUserId);
+        //  If the user must be associated as a customer or friend
+        }else if($userOrderAssociation == 'customer or friend') {
 
-        }
+            //  Query the orders where the user is associated as a customer or friend
+            $orders = $user->ordersAsCustomerOrFriend();
 
-        //  If the friend user id is specified
-        if(!empty($friendUserId)) {
+        //  If the user must be associated as a team member
+        }else if($userOrderAssociation == 'team member') {
 
-            //  Set Query to filter the orders where the specified user id is a friend
-            $orders = $orders->userAsFriend($friendUserId);
-
-        }
-
-        //  If we have the start at order id
-        if( !empty($startAtOrderId) ) {
-
-            //  Set Query for orders where the first order id matches the given order id
-            $orders = $orders->where('orders.id', '>=', $startAtOrderId);
-
-        }
-
-        //  If we have the except order id
-        if( !empty($exceptOrderId) ) {
-
-            //  Set Query for orders except the specified order id
-            $orders = $orders->where('orders.id', '!=', $exceptOrderId);
-
-        }
-
-        //  If we have the store id
-        if( !empty($storeId) ) {
-
-            //  Set Query for orders matching the specified store id
-            $orders = $orders->where('store_id', $storeId);
+            //  Query the orders where the user is associated as a team member
+            $orders = Order::whereHas('store', function ($query) use ($user) {
+                $query->whereHas('teamMembers', function ($query2) use ($user) {
+                    $query2->joinedTeam()->matchingUserId($user->id);
+                });
+            });
 
         }
 
         //  If we have the filter
         if( !empty($filter) ) {
 
-            //  Get the order for options
-            $filters = collect(Order::ORDER_FOR_OPTIONS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
+            //  Get the order statuses
+            $statuses = collect(Order::STATUSES)->map(fn($status) => $this->separateWordsThenLowercase($status));
 
-            //  If the filter matches one of the order for options
-            if(collect($filters)->contains($filter)) {
+            //  If the filter matches one of the order statuses
+            if(collect($statuses)->contains($filter)) {
 
-                //  Set Query for orders matching the given filter
-                $orders = $orders->where('order_for', $filter);
-
-            /**
-             *  If the filter is set to "shared with me" except for when friend User ID matches the specified user,
-             *  then we can filter the orders such that the specified user is matched as the friend.
-             *
-             *  Note that "$friendUserIdMatchesSpecifiedUser == true" and $filter == 'shared with me' present
-             *  the same kind of logic, so if $friendUserIdMatchesSpecifiedUser == true then we don't need to
-             *  implement the logic of $filter == 'shared with me', since it results to the same outcome:
-             *
-             *  "$orders->userAsFriend($friendUserId)" - ($friendUserIdMatchesSpecifiedUser == true)
-             *  "$orders->userAsFriend($friendUserId)" - ($filter == 'shared with me')
-             */
-            }elseif($friendUserIdMatchesSpecifiedUser == false && $filter == 'shared with me') {
-
-                //  Set Query for orders matching the current authenticated user
-                $orders = $orders->userAsFriend($friendUserId);
+                //  Query orders matching the given filter
+                $orders = $orders->where('status', $filter);
 
             }
 
         }
 
-        //  Show Latest Orders First
+        //  If we have the start at order id
+        if( !empty($startAtOrderId) ) {
+
+            //  Query for orders where the first order id matches the given order id
+            $orders = $orders->where('orders.id', '>=', $startAtOrderId);
+
+        }
+
+        //  If we have the store id
+        if( !empty($storeId) ) {
+
+            //  Query for orders matching the specified store id
+            $orders = $orders->where('store_id', $storeId);
+
+        }
+
+        //  Query the latest orders first
         $orders = $orders->latest();
+
+        //  Return the orders query
+        return $orders;
+    }
+
+    /**
+     *  Show the friend group order filters
+     *
+     *  @param FriendGroup $friendGroup
+     *  @return array
+     */
+    public function showFriendGroupOrderFilters(FriendGroup $friendGroup)
+    {
+        //  Get the friend group order filters
+        $filters = collect(Order::FRIEND_GROUP_ORDER_FILTERS);
+
+        /**
+         *  $result = [
+         *      [
+         *          'name' => 'All',
+         *          'total' => 6000,
+         *          'total_summarized' => '6k'
+         *      ],
+         *      [
+         *          'name' => 'Waiting',
+         *          'total' => 4000,
+         *          'total_summarized' => '4k'
+         *      ],
+         *      [
+         *          'name' => 'On Its Way',
+         *          'total' => 2000,
+         *          'total_summarized' => '2k'
+         *      ],
+         *      ...
+         *  ];
+         */
+        return $filters->map(function($filter) use ($friendGroup) {
+
+            $total = $this->queryFriendGroupOrders($friendGroup, $filter)->count();
+
+            return [
+                'name' => ucwords($filter),
+                'total' => $total,
+                'total_summarized' => $this->convertNumberToShortenedPrefix($total)
+            ];
+
+        })->toArray();
+    }
+
+    /**
+     *  Show the store orders
+     *
+     *  @param FriendGroup $friendGroup
+     *  @return OrderRepository
+     */
+    public function showFriendGroupOrders(FriendGroup $friendGroup)
+    {
+        /**
+         *  Always eager load the store so that methods such as getPayableAmountsAttribute()
+         *  and getCanRequestPaymentAttribute() can be properly processed. Currently they
+         *  depend on the request store e.g /stores/{store_id} or the eager loaded store
+         *  in order to compute their logic.
+         */
+        //request()->merge(['with_store' => '1']);
+
+        //  The $filter is used to identify orders that match the specified order status
+        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
+
+        //  Query the user orders based on the specified filter (if provided)
+        $orders = $this->queryFriendGroupOrders($friendGroup, $filter);
 
         //  Eager load the order relationships based on request inputs
         return $this->eagerLoadOrderRelationships($orders)->get();
     }
+
+    /**
+     *  Query the orders by the specified filter
+     *
+     *  @param FriendGroup $friendGroup
+     *  @param string $filter - The filter to query the orders
+     */
+    public function queryFriendGroupOrders($friendGroup, $filter)
+    {
+        /**
+         *  The $storeId is used to identify orders
+         *  matching the specified store
+         */
+        $storeId = request()->input('store_id');
+
+        //  Normalize the filter
+        $filter = $this->separateWordsThenLowercase($filter);
+
+        /**
+         *  The $startAtOrderId is used to identify orders that have
+         *  been placed after the order specified by this order id
+         */
+        $startAtOrderId = request()->input('start_at_order_id');
+
+        //  Set the $userOrderAssociation e.g customer, friend or team member
+        $userOrderAssociation = $this->separateWordsThenLowercase(request()->input('user_order_association'));
+
+        //  If the user must be associated as a customer
+        if($userOrderAssociation == 'customer') {
+
+            //  Query the friend group orders where the user is associated as a customer
+            $orders = $friendGroup->orders()->whereHas('users', function ($query) {
+                $query->where('user_order_collection_association.role', 'Customer')
+                      ->where('user_order_collection_association.user_id', auth()->user()->id);
+            });
+
+        //  If the user must be associated as a friend
+        }else if($userOrderAssociation == 'friend') {
+
+            //  Query the friend group orders where the user is associated as a friend
+            $orders = $friendGroup->orders()->whereHas('users', function ($query) {
+                $query->where('user_order_collection_association.role', 'Friend')
+                      ->where('user_order_collection_association.user_id', auth()->user()->id);
+            });
+
+        //  If the user must be associated as a customer or friend
+        }else if($userOrderAssociation == 'customer or friend') {
+
+            //  Query the friend group orders where the user is associated as a friend
+            $orders = $friendGroup->orders()->whereHas('users', function ($query) {
+                $query->where(function ($subquery) {
+                    $subquery->where('user_order_collection_association.role', 'Customer')
+                            ->orWhere('user_order_collection_association.role', 'Friend');
+                })->where('user_order_collection_association.user_id', auth()->user()->id);
+            });
+
+        //  If the user must be associated as a team member
+        }else if($userOrderAssociation == 'team member') {
+
+            //  Query the store orders where the user is associated as a team member
+            $orders = Order::whereHas('friendGroups', function ($query) use ($friendGroup) {
+                $query->where('friend_groups.id', $friendGroup->id)->whereHas('store', function ($query) {
+                    $query->whereHas('teamMembers', function ($query2) {
+                        $query2->joinedTeam()->matchingUserId(auth()->user()->id);
+                    });
+                });
+            });
+
+        }
+
+        //  If we have the filter
+        if( !empty($filter) ) {
+
+            //  Get the order statuses
+            $statuses = collect(Order::STATUSES)->map(fn($status) => $this->separateWordsThenLowercase($status));
+
+            //  If the filter matches one of the order statuses
+            if(collect($statuses)->contains($filter)) {
+
+                //  Query orders matching the given filter
+                $orders = $orders->where('status', $filter);
+
+            }
+
+        }
+
+        //  If we have the start at order id
+        if( !empty($startAtOrderId) ) {
+
+            //  Query for orders where the first order id matches the given order id
+            $orders = $orders->where('orders.id', '>=', $startAtOrderId);
+
+        }
+
+        //  If we have the store id
+        if( !empty($storeId) ) {
+
+            //  Query for orders matching the specified store id
+            $orders = $orders->where('store_id', $storeId);
+
+        }
+
+        //  Query the latest orders first
+        $orders = $orders->latest();
+
+        //  Return the orders query
+        return $orders;
+    }
+
+
 
 
     /**

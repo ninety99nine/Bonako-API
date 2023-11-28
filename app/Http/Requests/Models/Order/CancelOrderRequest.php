@@ -31,9 +31,9 @@ class CancelOrderRequest extends FormRequest
          *
          *  Example: convert "no stock" into "No Stock"
          */
-        if($this->request->has('cancellation_reason')) {
+        if($this->has('cancellation_reason')) {
             $this->merge([
-                'cancellation_reason' => $this->separateWordsThenLowercase($this->request->get('cancellation_reason'))
+                'cancellation_reason' => $this->separateWordsThenLowercase($this->get('cancellation_reason'))
             ]);
         }
 

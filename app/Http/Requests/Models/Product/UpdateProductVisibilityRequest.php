@@ -24,7 +24,7 @@ class UpdateProductVisibilityRequest extends FormRequest
     public function getValidatorInstance()
     {
         //  Make sure that the "visibility" is an array if provided
-        if($this->request->has('visibility') && is_string($this->request->all()['visibility'])) {
+        if($this->has('visibility') && is_string($this->request->all()['visibility'])) {
             $this->merge([
                 'visibility' => json_decode($this->request->all()['visibility'])
             ]);

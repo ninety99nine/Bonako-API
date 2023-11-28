@@ -33,18 +33,18 @@ class UpdateTeamMemberPermissionsRequest extends FormRequest
     public function getValidatorInstance()
     {
         //  Make sure that the "permissions" is an array if provided
-        if($this->request->has('permissions')) {
+        if($this->has('permissions')) {
 
-            if(is_string($this->request->get('permissions'))) {
+            if(is_string($this->get('permissions'))) {
 
                 $this->merge([
-                    'permissions' => collect(json_decode($this->request->get('permissions')))->map(fn($permission) => $this->separateWordsThenLowercase($permission))
+                    'permissions' => collect(json_decode($this->get('permissions')))->map(fn($permission) => $this->separateWordsThenLowercase($permission))
                 ]);
 
             }else{
 
                 $this->merge([
-                    'permissions' => collect($this->request->get('permissions'))->map(fn($permission) => $this->separateWordsThenLowercase($permission))
+                    'permissions' => collect($this->get('permissions'))->map(fn($permission) => $this->separateWordsThenLowercase($permission))
                 ]);
 
             }

@@ -263,7 +263,7 @@ class UserRepository extends BaseRepository
         }
 
         //  The selected fields are allowed to update an account
-        $data = $request->only(['first_name', 'last_name', 'mobile_number', 'password']);
+        $data = $request->only(['first_name', 'last_name', 'about_me', 'mobile_number', 'password']);
 
         //  Update existing account
         parent::update($data);
@@ -872,19 +872,24 @@ class UserRepository extends BaseRepository
     }
 
     /**
-     *  Show friend group orders
+     *  Show friend group  order filters
      *
-     *  @param FriendGroup $friendGroup
+     *  @return array
+     */
+    public function showFriendGroupOrderFilters(FriendGroup $friendGroup)
+    {
+        return $this->orderRepository()->showFriendGroupOrderFilters($friendGroup);
+    }
+
+    /**
+     *  Show friend group  orders
+     *
      *  @return OrderRepository
      */
     public function showFriendGroupOrders(FriendGroup $friendGroup)
     {
-        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupOrders();
+        return $this->orderRepository()->showFriendGroupOrders($friendGroup);
     }
-
-
-
-
 
 
     /**
@@ -1141,7 +1146,7 @@ class UserRepository extends BaseRepository
      *
      *  @return array
      */
-    public function showOrderFilters()
+    public function showUserOrderFilters()
     {
         return $this->orderRepository()->showUserOrderFilters($this->getUser());
     }
@@ -1151,7 +1156,7 @@ class UserRepository extends BaseRepository
      *
      *  @return OrderRepository
      */
-    public function showOrders()
+    public function showUserOrders()
     {
         return $this->orderRepository()->showUserOrders($this->getUser());
     }

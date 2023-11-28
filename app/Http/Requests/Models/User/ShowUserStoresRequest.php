@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Models\Store;
+namespace App\Http\Requests\Models\User;
 
 use App\Models\Store;
 use App\Traits\Base\BaseTrait;
@@ -33,9 +33,9 @@ class ShowUserStoresRequest extends FormRequest
          *
          *  Example: convert "TeamMember" or "Team Member" into "team member"
          */
-        if($this->request->has('filter')) {
+        if($this->has('filter')) {
             $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->request->get('filter'))
+                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
             ]);
         }
 

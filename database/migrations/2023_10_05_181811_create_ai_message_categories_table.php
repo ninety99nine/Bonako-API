@@ -18,7 +18,7 @@ class CreateAiMessageCategoriesTable extends Migration
             $table->id();
             $table->string('name', AiMessageCategory::NAME_MAX_CHARACTERS);
             $table->string('description', AiMessageCategory::DESCRIPTION_MAX_CHARACTERS);
-            $table->string('system_prompt', AiMessageCategory::SYSTEM_PROMPT_MAX_CHARACTERS);
+            $table->text('system_prompt');
 
             /* Add Timestamps */
             $table->timestamps();
