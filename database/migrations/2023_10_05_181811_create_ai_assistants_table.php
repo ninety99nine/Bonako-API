@@ -24,8 +24,11 @@ class CreateAiAssistantsTable extends Migration
             $table->integer('total_tokens_used')->default(0);
             $table->integer('total_requests')->default(0);
             $table->timestamp('remaining_paid_tokens_expire_at')->nullable();
-            $table->foreignId('user_id');
+            $table->foreignId('user_id')->constrained();
             $table->timestamps();
+
+            /* Add Indexes */
+            $table->index('user_id');
 
             /* Foreign Key Constraints */
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();

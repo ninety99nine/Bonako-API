@@ -73,8 +73,8 @@ class CreateCouponsTable extends Migration
             $table->unsignedMediumInteger('remaining_quantity')->default(0);
 
             /*  Ownership  */
-            $table->foreignId('store_id');
-            $table->foreignId('user_id')->nullable();
+            $table->foreignId('store_id')->constrained();
+            $table->foreignId('user_id')->constrained()->nullable();
 
             /*  Timestamps  */
             $table->timestamps();

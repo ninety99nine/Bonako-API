@@ -93,10 +93,18 @@ class Shortcode extends BaseModel
         //  Set the resource name e.g store, transaction, e.t.c
         $resourceName = Str::replace('_', ' ', $this->owner_type);
 
-        //  Set the instruction
-        $instruction = $this->forPaying()
-            ? 'Dial '.$dialingCode.' to pay for this '.$resourceName
-            : 'Dial '.$dialingCode.' to visit this '.$resourceName;
+        if($this->owner_type == 'sms alert') {
+
+            $instruction = 'Dial '.$dialingCode.' to buy SMS alerts';
+
+        }else{
+
+            //  Set the instruction
+            $instruction = $this->forPaying()
+                ? 'Dial '.$dialingCode.' to pay for this '.$resourceName
+                : 'Dial '.$dialingCode.' to visit this '.$resourceName;
+
+        }
 
         return [
             'code' => $dialingCode,

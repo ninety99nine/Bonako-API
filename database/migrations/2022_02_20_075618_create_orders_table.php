@@ -47,26 +47,26 @@ class CreateOrdersTable extends Migration
             $table->boolean('collection_verified')->default(false);
             $table->timestamp('collection_verified_at')->nullable();
 
-            $table->foreignId('collection_by_user_id')->nullable();
+            $table->foreignId('collection_by_user_id')->constrained()->nullable();
             $table->string('collection_by_user_first_name')->nullable();
             $table->string('collection_by_user_last_name')->nullable();
-            $table->foreignId('collection_verified_by_user_id')->nullable();
+            $table->foreignId('collection_verified_by_user_id')->constrained()->nullable();
             $table->string('collection_verified_by_user_first_name')->nullable();
             $table->string('collection_verified_by_user_last_name')->nullable();
             $table->enum('collection_type', Order::COLLECTION_TYPES)->nullable();
             $table->string('destination_name')->nullable();
-            $table->foreignId('delivery_address_id')->nullable();
+            $table->foreignId('delivery_address_id')->constrained()->nullable();
 
             /*  Occasion Information  */
-            $table->foreignId('occasion_id')->nullable();
+            $table->foreignId('occasion_id')->constrained()->nullable();
 
             /*  Collection Information  */
-            $table->foreignId('payment_method_id')->nullable();
+            $table->foreignId('payment_method_id')->constrained()->nullable();
 
             /*  Customer Information  */
             $table->string('customer_first_name');
             $table->string('customer_last_name');
-            $table->foreignId('customer_user_id')->nullable();
+            $table->foreignId('customer_user_id')->constrained()->nullable();
 
             /*  Order For Information  */
             $table->enum('order_for', Order::ORDER_FOR_OPTIONS)->default(Arr::first(Order::ORDER_FOR_OPTIONS));
@@ -74,7 +74,7 @@ class CreateOrdersTable extends Migration
             $table->unsignedTinyInteger('order_for_total_friends')->default(0);
 
             /*  Store Information  */
-            $table->foreignId('store_id');
+            $table->foreignId('store_id')->constrained();
 
             /*  Team Views  */
             $table->unsignedSmallInteger('total_views_by_team')->default(1);

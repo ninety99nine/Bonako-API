@@ -20,7 +20,7 @@ class CreateAddressesTable extends Migration
             $table->string('name', Address::NAME_MAX_CHARACTERS);
             $table->string('address_line', Address::ADDRESS_LINE_MAX_CHARACTERS);
             $table->boolean('share_address')->default(1);
-            $table->foreignId('user_id');
+            $table->foreignId('user_id')->constrained();
             $table->timestamps();
 
             /* Add Indexes */

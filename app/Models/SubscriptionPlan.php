@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\Money;
 use App\Casts\Status;
 use App\Casts\Currency;
+use App\Casts\JsonToArray;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -12,15 +13,16 @@ class SubscriptionPlan extends BaseModel
 {
     use HasFactory;
 
-    const TYPES = ['Fixed', 'Variable'];
-    const SERVICES = ['Store Access', 'Store Reporting Access', 'AI Assistant Access'];
+    const TYPES = ['Subscription', 'One-Off'];
+    const SERVICES = ['Store Access', 'Store Reporting Access', 'AI Assistant Access', 'SMS Alerts'];
 
     protected $casts = [
-        'active' => 'boolean'
+        'active' => 'boolean',
+        'price' => Money::class,
+        'metadata' => JsonToArray::class,
     ];
 
     protected $tranformableCasts = [
-        'price' => Money::class,
         'active' => Status::class,
         'currency' => Currency::class,
     ];
@@ -28,7 +30,7 @@ class SubscriptionPlan extends BaseModel
     protected $fillable = [
 
         /*  Basic Information  */
-        'name', 'description', 'service', 'type', 'frequency', 'duration', 'currency', 'price', 'active'
+        'name', 'description', 'service', 'type', 'currency', 'price', 'active', 'metadata'
 
     ];
 }

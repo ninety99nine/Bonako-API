@@ -23,12 +23,13 @@ class CreateTransactionsTable extends Migration
             /*  Basic Information  */
             $table->enum('payment_status', Transaction::STATUSES)->default(Arr::last(Transaction::STATUSES));
             $table->string('description')->nullable();
+            $table->string('proof_of_payment_photo')->nullable();
 
             /*  Amount Information  */
             $table->char('currency', 3)->default(Store::CURRENCY);
             $table->decimal('amount', 10, 2)->default(0);
             $table->unsignedTinyInteger('percentage')->default(100);
-            $table->foreignId('payment_method_id');
+            $table->foreignId('payment_method_id')->constrained();
 
             /*  DPO Information  */
             $table->string('dpo_payment_url')->nullable();
@@ -39,18 +40,20 @@ class CreateTransactionsTable extends Migration
             $table->json('orange_money_payment_response')->nullable();
 
             /*  Payer Information  */
-            $table->foreignId('payer_user_id')->nullable();
+            $table->foreignId('paid_by_user_id')->constrained()->nullable();
 
             /*  Verifier Information  */
-            $table->foreignId('verified_by_user_id')->nullable();
+            $table->boolean('is_verified')->default(false);
+            $table->enum('verified_by', Transaction::VERIFIERS);
+            $table->foreignId('verified_by_user_id')->constrained()->nullable();
 
             /*  Requester Information  */
-            $table->foreignId('requested_by_user_id')->nullable();
+            $table->foreignId('requested_by_user_id')->constrained()->nullable();
 
             /*  Cancellation Information  */
             $table->boolean('is_cancelled')->default(false);
             $table->string('cancellation_reason')->nullable();
-            $table->foreignId('cancelled_by_user_id')->nullable();
+            $table->foreignId('cancelled_by_user_id')->constrained()->nullable();
 
             /*  Owenership Information  */
             $table->string('owner_type');
@@ -61,13 +64,13 @@ class CreateTransactionsTable extends Migration
 
             /* Add Indexes */
             $table->index('payment_status');
-            $table->index('payer_user_id');
+            $table->index('paid_by_user_id');
             $table->index('verified_by_user_id');
             $table->index('requested_by_user_id');
             $table->index('cancelled_by_user_id');
 
             /* Foreign Key Constraints */
-            $table->foreign('payer_user_id')->references('id')->on('users')->nullOnDelete();
+            $table->foreign('paid_by_user_id')->references('id')->on('users')->nullOnDelete();
             $table->foreign('verified_by_user_id')->references('id')->on('users')->nullOnDelete();
             $table->foreign('requested_by_user_id')->references('id')->on('users')->nullOnDelete();
             $table->foreign('cancelled_by_user_id')->references('id')->on('users')->nullOnDelete();

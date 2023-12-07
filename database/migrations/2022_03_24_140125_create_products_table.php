@@ -83,9 +83,9 @@ class CreateProductsTable extends Migration
             $table->unsignedTinyInteger('position')->nullable();
 
             /*  Ownership Information  */
-            $table->foreignId('parent_product_id')->nullable();
-            $table->foreignId('user_id')->nullable();
-            $table->foreignId('store_id');
+            $table->foreignId('parent_product_id')->constrained()->nullable();
+            $table->foreignId('user_id')->constrained()->nullable();
+            $table->foreignId('store_id')->constrained();
 
             /*  Timestamps  */
             $table->timestamps();

@@ -39,8 +39,8 @@ class DirectPayOnlineService
     {
         $relationships = [];
 
-        if($transaction->relationLoaded('payingUser') == false) {
-            array_push($relationships, 'payingUser');
+        if($transaction->relationLoaded('payedByUser') == false) {
+            array_push($relationships, 'payedByUser');
         }
 
         if($transaction->relationLoaded('owner') == false) {
@@ -77,10 +77,10 @@ class DirectPayOnlineService
         $transactionCurrency = $transaction->currency;
         $transactionAmount = $transaction->amount->amount;
 
-        $payingUser = $transaction->payingUser;
-        $lastName = $payingUser->last_name ?? null;
-        $firstName = $payingUser->first_name ?? null;
-        $mobileNumber = $payingUser->mobile_number ?? null;
+        $payedByUser = $transaction->payedByUser;
+        $lastName = $payedByUser->last_name ?? null;
+        $firstName = $payedByUser->first_name ?? null;
+        $mobileNumber = $payedByUser->mobile_number ?? null;
 
         $metaData = 'Store ID: '.$store->id.'\n'.
                     'Store Name: '.$store->name.'\n'.
@@ -360,7 +360,7 @@ class DirectPayOnlineService
 
                 foreach($users->concat($teamMembers) as $user) {
 
-                    /// Send order mark as verified payment sms to user
+                    // Send order mark as verified payment sms to user
                     SmsService::sendOrangeSms(
                         $order->craftOrderMarkAsVerifiedPaymentSmsMessage($store, $transaction),
                         $user->mobile_number->withExtension,

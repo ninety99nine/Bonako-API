@@ -25,6 +25,7 @@ use App\Http\Requests\Auth\GenerateMobileVerificationCodeRequest;
 use App\Http\Requests\Models\AiMessage\CreateAiMessageRequest;
 use App\Http\Requests\Models\AiMessage\ShowAiMessagesRequest;
 use App\Http\Requests\Models\AiMessage\UpdateAiMessageRequest;
+use App\Http\Requests\Models\SmsAlertActivityAssociation\UpdateSmsAlertActivityAssociationRequest;
 use App\Http\Requests\Models\FriendGroup\UpdateFriendGroupRequest;
 use App\Http\Requests\Models\FriendGroup\CreateFriendGroupRequest;
 use App\Http\Requests\Models\FriendGroup\DeleteFriendGroupsRequest;
@@ -38,8 +39,11 @@ use App\Http\Requests\Models\Store\CreateStoreRequest;
 use App\Http\Requests\Models\Store\JoinStoreRequest;
 use App\Http\Requests\Models\User\UpdateProfilePhotoRequest;
 use App\Http\Requests\Models\User\CalculateAiAssistantSubscriptionRequest;
+use App\Http\Requests\Models\User\CalculateSmsAlertTransactionAmount;
 use App\Http\Requests\Models\User\CreateAiAssistantSubscriptionRequest;
+use App\Http\Requests\Models\User\CreateSmsAlertTransactionRequest;
 use App\Http\Requests\Models\User\GenerateAiAssistantPaymentShortcodeRequest;
+use App\Http\Requests\Models\User\GenerateSmsAlertPaymentShortcodeRequest;
 use App\Http\Requests\Models\User\RemoveFriendRequest as UserRemoveFriendRequest;
 use App\Http\Requests\Models\User\SearchUserByMobileNumberRequest;
 use App\Http\Requests\Models\User\ShowFriendGroupOrderFiltersRequest;
@@ -48,6 +52,7 @@ use App\Http\Requests\Models\User\ShowUserReviewsRequest;
 use App\Http\Requests\Models\User\ShowUserOrderFiltersRequest;
 use App\Http\Requests\Models\User\ShowUserReviewFiltersRequest;
 use App\Models\AiMessage;
+use App\Models\SmsAlertActivityAssociation;
 use App\Repositories\AiMessageRepository;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\DatabaseNotification;
@@ -444,6 +449,43 @@ class UserController extends BaseController
     {
         return response($this->repository->setModel($this->chooseUser())->deleteAiMessage($friendGroup), Response::HTTP_OK);
     }
+
+
+
+
+
+    public function showSmsAlert(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showSmsAlert()->transform(), Response::HTTP_OK);
+    }
+
+    public function generateSmsAlertPaymentShortcode(GenerateSmsAlertPaymentShortcodeRequest $request, User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->generateSmsAlertPaymentShortcode($request)->transform(), Response::HTTP_OK);
+    }
+
+    public function showSmsAlertTransactions(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showSmsAlertTransactions()->transform(), Response::HTTP_OK);
+    }
+
+    public function createSmsAlertTransaction(CreateSmsAlertTransactionRequest $request, User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->createSmsAlertTransaction($request)->transform(), Response::HTTP_OK);
+    }
+
+    public function calculateSmsAlertTransactionAmount(CalculateSmsAlertTransactionAmount $request, User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->calculateSmsAlertTransactionAmount($request), Response::HTTP_OK);
+    }
+
+    public function updateSmsAlertActivityAssociation(UpdateSmsAlertActivityAssociationRequest $request, User $user, SmsAlertActivityAssociation $smsAlertActivityAssociation)
+    {
+        return response($this->repository->setModel($this->chooseUser())->updateSmsAlertActivityAssociation($smsAlertActivityAssociation, $request)->transform(), Response::HTTP_OK);
+    }
+
+
+
 
     public function showResourceTotals(User $user)
     {

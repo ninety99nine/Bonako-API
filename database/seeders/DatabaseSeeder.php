@@ -25,7 +25,8 @@ class DatabaseSeeder extends Seeder
             'friend_group_order_association', 'friend_group_store_association', 'store_payment_method_association',
             'user_friend_association', 'user_friend_group_association', 'user_order_view_association',
             'user_store_association', 'sms_messages', 'notifications', 'ai_message_categories',
-            'ai_messages'
+            'ai_messages', 'sms_alerts', 'sms_alert_activities', 'sms_alert_activity_associations',
+            'sms_alert_activity_stores'
         );
 
         $this->enableForeignKeyChecks();
@@ -42,6 +43,7 @@ class DatabaseSeeder extends Seeder
         //$this->call(FriendGroupSeeder::class);
         //$this->call(FriendSeeder::class);
         $this->call(AiMessageCategorySeeder::class);
+        $this->call(SmsAlertActivitySeeder::class);
         $this->call(OccasionSeeder::class);
     }
 }

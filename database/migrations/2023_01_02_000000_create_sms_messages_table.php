@@ -24,7 +24,6 @@ class CreateSmsMessagesTable extends Migration
             $table->boolean('sent')->default(false);
             $table->json('error')->nullable();
 
-
             /*  Timestamps  */
             $table->timestamps();
 

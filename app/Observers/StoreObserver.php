@@ -11,6 +11,7 @@ use App\Repositories\StoreRepository;
 use App\Repositories\ShortcodeRepository;
 use App\Notifications\Stores\StoreCreated;
 use App\Notifications\Stores\StoreDeleted;
+use App\Repositories\SmsAlertRepository;
 use Illuminate\Support\Facades\Notification;
 
 class StoreObserver
@@ -37,6 +38,16 @@ class StoreObserver
     public function shortcodeRepository()
     {
         return resolve(ShortcodeRepository::class);
+    }
+
+    /**
+     *  Return the SmsAlertRepository instance
+     *
+     *  @return SmsAlertRepository
+     */
+    public function smsAlertRepository()
+    {
+        return resolve(SmsAlertRepository::class);
     }
 
     /**
@@ -82,6 +93,9 @@ class StoreObserver
     {
         //  Add the authenticated user as a team member
         resolve(storeRepository::class)->setModel($store)->addCreator($this->chooseUser());
+
+        //  Add this store as an sms alertable store
+        $this->smsAlertRepository()->addSmsAlertableStore($this->chooseUser(), $store);
 
         //  Notify the Super-Admins on this store creation
         //  change to Notification::send() instead of Notification::sendNow() so that this is queued

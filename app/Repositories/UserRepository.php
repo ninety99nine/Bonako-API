@@ -23,6 +23,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Notifications\DatabaseNotification;
 use App\Exceptions\DeleteOfSuperAdminRestrictedException;
 use App\Models\AiAssistant;
+use App\Models\SmsAlertActivityAssociation;
 use App\Models\SubscriptionPlan;
 use App\Services\AWS\AWSService;
 use App\Services\Sms\SmsService;
@@ -156,6 +157,16 @@ class UserRepository extends BaseRepository
     }
 
     /**
+     *  Return the SmsAlertRepository instance
+     *
+     *  @return SmsAlertRepository
+     */
+    public function smsAlertRepository()
+    {
+        return resolve(SmsAlertRepository::class);
+    }
+
+    /**
      *  Return the ShortcodeRepository instance
      *
      *  @return ShortcodeRepository
@@ -163,6 +174,16 @@ class UserRepository extends BaseRepository
     public function shortcodeRepository()
     {
         return resolve(ShortcodeRepository::class);
+    }
+
+    /**
+     *  Return the TransactionRepository instance
+     *
+     *  @return TransactionRepository
+     */
+    public function transactionRepository()
+    {
+        return resolve(TransactionRepository::class);
     }
 
     /**
@@ -183,6 +204,16 @@ class UserRepository extends BaseRepository
     public function subscriptionRepository()
     {
         return resolve(SubscriptionRepository::class);
+    }
+
+    /**
+     *  Return the SmsAlertActivityAssociationRepository instance
+     *
+     *  @return SmsAlertActivityAssociationRepository
+     */
+    public function smsAlertActivityAssociationRepository()
+    {
+        return resolve(SmsAlertActivityAssociationRepository::class);
     }
 
     /**
@@ -1254,25 +1285,6 @@ class UserRepository extends BaseRepository
     }
 
     /**
-     *  Show the AI Assistant subscriptions
-     *
-     *  @return SubscriptionRepository
-     *  @throws ModelNotFoundException
-     */
-    public function showAiAssistantSubscriptions()
-    {
-        //  Get the user
-        $user = $this->getUser();
-
-        //  Get the AI Assistant information for the user
-        $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
-
-        //  Calculate the user access subscription amount
-        return $this->subscriptionRepository()->setModel($aiAssistant->subscriptions())->get();
-    }
-
-
-    /**
      *  Request the AI Assistant payment shortcode
      *
      *  This will allow the user to dial the shortcode and pay via USSD
@@ -1295,12 +1307,11 @@ class UserRepository extends BaseRepository
         //  If we want to return the AI Assistant model with the payment shortcode embedded
         if( $request->input('embed') ) {
 
-            return $this->aiAssistantRepository()->setModel(
+            //  Set the AI Assistant as the repository model with the payment shortcode
+            return $this->aiAssistantRepository(
 
-                //  Load the subscription on this AI Assistant model
-                $aiAssistant->load(['subscription' => function ($query) use ($user) {
-                    $query->where('user_id', $user->id);
-                }])
+                //  Load the payment shortcode on this AI Assistant
+                $aiAssistant->load('authPaymentShortcode')
 
             );
 
@@ -1311,6 +1322,24 @@ class UserRepository extends BaseRepository
             return $shortcodeRepository;
 
         }
+    }
+
+    /**
+     *  Show the AI Assistant subscriptions
+     *
+     *  @return SubscriptionRepository
+     *  @throws ModelNotFoundException
+     */
+    public function showAiAssistantSubscriptions()
+    {
+        //  Get the user
+        $user = $this->getUser();
+
+        //  Get the AI Assistant information for the user
+        $aiAssistant = $this->aiAssistantRepository()->showAiAssistant($user)->model;
+
+        //  Return the subscription repository
+        return $this->subscriptionRepository()->setModel($aiAssistant->subscriptions())->get();
     }
 
     /**
@@ -1393,7 +1422,7 @@ class UserRepository extends BaseRepository
             'remaining_paid_tokens_after_last_subscription' => $remainingPaidTokensAfterLastSubscription,
         ]);
 
-        /// Send sms to user that their subscription was paid successfully
+        // Send sms to user that their subscription was paid successfully
         SmsService::sendOrangeSms(
             $subscription->craftSubscriptionSuccessfulSmsMessageForUser($user, $aiAssistant),
             $user->mobile_number->withExtension,
@@ -1403,12 +1432,14 @@ class UserRepository extends BaseRepository
         //  If we want to return the AI Assistant model with the subscription embedded
         if( $request->input('embed') ) {
 
-            return $this->aiAssistantRepository()->setModel(
+            /**
+             *  Set the AI Assistant as the repository model with the
+             *  current authenticated user's active subscription
+             */
+            return $this->setModel(
 
-                //  Load the subscription on this AI Assistant model
-                $aiAssistant->load(['subscription' => function ($query) use ($user) {
-                    $query->where('user_id', $user->id);
-                }])
+                //  Load the subscription on this AI Assistant
+                $aiAssistant->load(['authActiveSubscription'])
 
             );
 
@@ -1494,6 +1525,170 @@ class UserRepository extends BaseRepository
     }
 
     /**
+     *  Show Sms Alert
+     *
+     *  @return SmsAlertRepository
+     */
+    public function showSmsAlert()
+    {
+        return $this->smsAlertRepository()->showSmsAlert($this->getUser());
+    }
+
+    /**
+     *  Request the Sms Alert payment shortcode
+     *
+     *  This will allow the user to dial the shortcode and pay via USSD
+     *
+     *  @return StoreRepository
+     */
+    public function generateSmsAlertPaymentShortcode(Request $request)
+    {
+        $user = $this->getUser();
+
+        //  Get the User ID that this shortcode is reserved for
+        $reservedForUserId = $user->id;
+
+        //  Get the SMS Alert information for the user
+        $smsAlert = $this->showSmsAlert()->model;
+
+        //  Request a payment shortcode for this SMS Alert
+        $shortcodeRepository = $this->shortcodeRepository()->generatePaymentShortcode($smsAlert, $reservedForUserId);
+
+        //  If we want to return the SMS Alert model with the payment shortcode embedded
+        if( $request->input('embed') ) {
+
+            //  Set the SMS Alert as the repository model with the payment shortcode
+            return $this->smsAlertRepository(
+
+                //  Load the payment shortcode on this SMS Alert
+                $smsAlert->load('authPaymentShortcode')
+
+            );
+
+        //  If we want to return the payment shortcode alone
+        }else{
+
+            //  Return the shortcode repository
+            return $shortcodeRepository;
+
+        }
+    }
+
+    /**
+     *  Show the SMS Alert transactions
+     *
+     *  @return TransactionRepository
+     */
+    public function showSmsAlertTransactions()
+    {
+        //  Get the SMS Alert information for the user
+        $smsAlert = $this->showSmsAlert()->model;
+
+        //  Return the transaction repository
+        return $this->transactionRepository()->setModel($smsAlert->transactions()->latest())->get();
+    }
+
+    /**
+     *  Create SMS Alert transaction
+     *
+     *  This grants the user sms credits to be used for SMS Alerts
+     *
+     *  @return SubscriptionRepository | AiAssistantRepository
+     */
+    public function createSmsAlertTransaction(Request $request)
+    {
+        //  Get the SMS Alert information for the user
+        $smsAlert = $this->showSmsAlert()->model;
+
+        //  Get the Subscription Plan ID
+        $subscriptionPlanId = $request->input('subscription_plan_id');
+
+        //  Get the Subscription Plan
+        $subscriptionPlan = SubscriptionPlan::find($subscriptionPlanId);
+
+        //  Create a transaction
+        $transactionRepository = $this->transactionRepository()->createSmsAlertTransaction($smsAlert, $subscriptionPlan, $request);
+
+        //  Get the transaction
+        $transaction = $transactionRepository->model;
+
+        //  Get the Subscription Plan credits
+        $credits = $subscriptionPlan->metadata['credits'];
+
+        //  Update the SMS Alert credits
+        $smsAlert->update(['sms_credits' => ($smsAlert->sms_credits + $credits)]);
+
+        // Send sms to user that their transaction was paid successfully
+        SmsService::sendOrangeSms(
+            $smsAlert->craftSuccessfulPaymentSmsMessage($this->getUser(), $transaction),
+            $this->getUser()->mobile_number->withExtension,
+            null, null, null
+        );
+
+        //  If we want to return the SMS Alert model with the transaction embedded
+        if( $request->input('embed') ) {
+
+            /**
+             *  Set the SMS Alert as the repository model
+             *  with the latest transaction
+             */
+            return $this->setModel(
+
+                //  Load the latest transaction on this SMS Alert
+                $smsAlert->load(['latestTransaction'])
+
+            );
+
+        //  If we want to return the transaction alone
+        }else{
+
+            //  Return the transaction repository model
+            return $transactionRepository;
+
+        }
+    }
+
+    /**
+     *  Calculate SMS Alert transaction amount
+     *
+     *  @param Request $request
+     *  @return array
+     */
+    public function calculateSmsAlertTransactionAmount(Request $request)
+    {
+        //  Get the credits required
+        $credits = $request->input('credits');
+
+        //  Get the Subscription Plan ID
+        $subscriptionPlanId = $request->input('subscription_plan_id');
+
+        //  Get the Subscription Plan
+        $subscriptionPlan = SubscriptionPlan::find($subscriptionPlanId);
+
+        //  Calculate the transaction amount
+        $amount = $subscriptionPlan->price->amount * $credits;
+
+        return [
+            'calculation' => $this->convertToMoneyFormat($amount, 'BWP')
+        ];
+    }
+
+    /**
+     *  Update the sms alert activity association
+     *
+     *  @param SmsAlertActivityAssociation $smsAlertActivityAssociation
+     *  @param Request $request
+     *  @return SmsAlertActivityAssociationRepository
+     */
+    public function updateSmsAlertActivityAssociation(SmsAlertActivityAssociation $smsAlertActivityAssociation, Request $request)
+    {
+        return $this->smsAlertActivityAssociationRepository()->setModel($smsAlertActivityAssociation)->update($request);
+    }
+
+
+
+
+    /**
      *  Show the user resource totals
      *
      *  @return array
@@ -1502,6 +1697,7 @@ class UserRepository extends BaseRepository
     {
         $totalOrders = $this->getUser()->orders()->count();
         $totalReviews = $this->getUser()->reviews()->count();
+        $totalSmsAlertCredits = $this->getUser()->smsAlert->sms_credits;
         $totalNotifications = $this->getUser()->notifications()->count();
         $totalGroupsJoinedAsMember = $this->getUser()->friendGroups()->count();
         $totalStoresAsFollower = $this->getUser()->storesAsFollower()->count();
@@ -1510,11 +1706,13 @@ class UserRepository extends BaseRepository
         $totalStoresJoinedAsTeamMember = $this->getUser()->storesAsTeamMember()->joinedTeam()->count();
         $totalStoresJoinedAsCreator = $this->getUser()->storesAsTeamMember()->joinedTeamAsCreator()->count();
         $totalStoresJoinedAsNonCreator = $this->getUser()->storesAsTeamMember()->joinedTeamAsNonCreator()->count();
+        $totalStoresInvitedToJoinAsTeamMember = $this->getUser()->storesAsTeamMember()->invitedToJoinTeam()->count();
 
         return [
             'totalOrders' => $totalOrders,
             'totalReviews' => $totalReviews,
             'totalNotifications' => $totalNotifications,
+            'totalSmsAlertCredits' => $totalSmsAlertCredits,
             'totalStoresAsFollower' => $totalStoresAsFollower,
             'totalStoresAsCustomer' => $totalStoresAsCustomer,
             'totalGroupsJoinedAsMember' => $totalGroupsJoinedAsMember,
@@ -1522,6 +1720,7 @@ class UserRepository extends BaseRepository
             'totalStoresAsRecentVisitor' => $totalStoresAsRecentVisitor,
             'totalStoresJoinedAsTeamMember' => $totalStoresJoinedAsTeamMember,
             'totalStoresJoinedAsNonCreator' => $totalStoresJoinedAsNonCreator,
+            'totalStoresInvitedToJoinAsTeamMember' => $totalStoresInvitedToJoinAsTeamMember,
         ];
     }
 }

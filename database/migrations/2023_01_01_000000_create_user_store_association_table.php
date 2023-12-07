@@ -21,10 +21,10 @@ class CreateUserStoreAssociationTable extends Migration
             $table->id();
 
             /*  Store Information  */
-            $table->foreignId('store_id');
+            $table->foreignId('store_id')->constrained();
 
             /*  User Information  */
-            $table->foreignId('user_id')->nullable();
+            $table->foreignId('user_id')->constrained()->nullable();
             $table->string('mobile_number', 11)->nullable();
 
             /*  Team Member Information  */
@@ -32,12 +32,12 @@ class CreateUserStoreAssociationTable extends Migration
             $table->enum('team_member_role', UserStoreAssociation::TEAM_MEMBER_ROLES)->nullable();
             $table->json('team_member_permissions')->nullable();
             $table->char('team_member_join_code', 6)->nullable();
-            $table->foreignId('invited_to_join_team_by_user_id')->nullable();
+            $table->foreignId('invited_to_join_team_by_user_id')->constrained()->nullable();
             $table->timestamp('last_subscription_end_at')->nullable();
 
             /*  Follower Information  */
             $table->enum('follower_status', UserStoreAssociation::FOLLOWER_STATUSES)->nullable();
-            $table->foreignId('invited_to_follow_by_user_id')->nullable();
+            $table->foreignId('invited_to_follow_by_user_id')->constrained()->nullable();
 
             /*  Assigned Information  */
             $table->boolean('is_assigned')->default(false);

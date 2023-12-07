@@ -13,12 +13,12 @@ use Illuminate\Support\Facades\Broadcast;
 |
 */
 
-/// Notify other devices on successful login
+// Notify other devices on successful login
 Broadcast::channel('login.{userId}', function ($user, $userId) {
     return (int) $user->id === (int) $userId;
 });
 
-/// Push user notification
+// Push user notification
 Broadcast::channel('user.notifications.{userId}', function ($user, $userId) {
     return (int) $user->id === (int) $userId;
 });

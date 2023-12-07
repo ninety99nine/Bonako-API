@@ -966,15 +966,12 @@ class StoreRepository extends BaseRepository
         if( $request->input('embed') ) {
 
             //  Set the store as the repository model with the payment shortcode
-            $this->setModel(
+            return $this->setModel(
 
                 //  Load the payment shortcode on this store
                 $store->load('authPaymentShortcode')
 
             );
-
-            //  Return the store repository with the eager loaded payment shortcode
-            return $this;
 
         //  If we want to return the payment shortcode alone
         }else{
@@ -1122,7 +1119,7 @@ class StoreRepository extends BaseRepository
         //  Expire the payment shortcode
         $this->expirePaymentShortcode();
 
-        /// Send sms to user that their subscription was paid successfully
+        // Send sms to user that their subscription was paid successfully
         SmsService::sendOrangeSms(
             $subscription->craftSubscriptionSuccessfulSmsMessageForUser($user, $store),
             $user->mobile_number->withExtension,
@@ -1136,15 +1133,12 @@ class StoreRepository extends BaseRepository
              *  Set the store as the repository model with the visit shortcode
              *  and the current authenticated user's active subscription
              */
-            $this->setModel(
+            return $this->setModel(
 
                 //  Load the visit shortcode and subscription on this store
                 $store->load(['visitShortcode', 'authActiveSubscription'])
 
             );
-
-            //  Return the store repository with the eager loaded visit shortcode and subscription
-            return $this;
 
         //  If we want to return the subscription alone
         }else{
@@ -4170,7 +4164,7 @@ class StoreRepository extends BaseRepository
 
         if(count($storeIds)) {
 
-            /// Re-arrange the stores
+            // Re-arrange the stores
             $this->updateAssignedStoreArrangement($storeIds);
 
         }

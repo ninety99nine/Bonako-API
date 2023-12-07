@@ -11,10 +11,10 @@ class WebController extends Controller
 {
     public function paymentSuccess(Transaction $transaction, Request $request)
     {
-        /// Verify the transaction
+        // Verify the transaction
         $updatedTransaction = DirectPayOnlineService::verifyPayment($transaction, $request);
 
-        /// Show the payment page
+        // Show the payment page
         return view('payment-success', ['transaction' => $updatedTransaction]);
     }
 

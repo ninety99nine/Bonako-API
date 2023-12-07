@@ -24,7 +24,7 @@ class CreateShortcodesTable extends Migration
             $table->timestamp('expires_at')->nullable();
 
             /*  Reservation Information  */
-            $table->foreignId('reserved_for_user_id')->nullable();
+            $table->foreignId('reserved_for_user_id')->constrained()->nullable();
 
             /*  Ownership Information  */
             $table->foreignId('owner_id');

@@ -17,8 +17,8 @@ class CreateUserFriendGroupAssociationTable extends Migration
     {
         Schema::create('user_friend_group_association', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id');
-            $table->foreignId('friend_group_id');
+            $table->foreignId('user_id')->constrained();
+            $table->foreignId('friend_group_id')->constrained();
             $table->enum('role', UserFriendGroupAssociation::ROLES)->default(Arr::last(UserFriendGroupAssociation::ROLES));
             $table->timestamp('last_selected_at')->nullable();
             $table->timestamps();

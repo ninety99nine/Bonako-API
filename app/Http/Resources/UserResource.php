@@ -4,11 +4,16 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\BaseResource;
 use App\Http\Resources\Helpers\ResourceLink;
+use App\Repositories\TransactionRepository;
 
 class UserResource extends BaseResource
 {
     protected $isProfileOwner;
     protected $customExcludeFields = ['password'];
+
+    protected $resourceRelationships = [
+        'latestTransactionAsPayer' => TransactionRepository::class,
+    ];
 
     private function viewingPrivately() {
         return $this->isSuperAdmin || request()->routeIs([
@@ -200,6 +205,13 @@ class UserResource extends BaseResource
             new ResourceLink('calculate.ai.assistant.subscription.amount', route($prefix.'ai.assistant.subscriptions.calculate.amount', $params),'Calculate AI Assistant subscription amount'),
             new ResourceLink('generate.ai.assistant.payment.shortcode', route($prefix.'ai.assistant.payment.shortcode.generate', $params), 'Generate a payment shortcode for AI Assistant'),
 
+            //  SMS Alert
+            new ResourceLink('show.sms.alert', route($prefix.'sms.alert.show', $params),'Show SMS alert'),
+            new ResourceLink('show.sms.alert.transactions', route($prefix.'sms.alert.transactions.show', $params),'Show SMS alert transactions'),
+            new ResourceLink('create.sms.alert.transaction', route($prefix.'sms.alert.transactions.create', $params),'Create SMS alert transaction'),
+            new ResourceLink('calculate.sms.alert.transaction.amount', route($prefix.'sms.alert.transactions.calculate.amount', $params),'Calculate SMS alert transaction amount'),
+            new ResourceLink('generate.sms.alert.payment.shortcode', route($prefix.'sms.alert.payment.shortcode.generate', $params), 'Generate a payment shortcode for SMS alert'),
+
             //  AI Messages
             new ResourceLink('show.ai.messages', route($prefix.'ai.messages.show', $params),'Show AI messages'),
             new ResourceLink('create.ai.messages', route($prefix.'ai.messages.create', $params),'Create AI messages'),
@@ -240,6 +252,5 @@ class UserResource extends BaseResource
             );
 
         }
-
     }
 }

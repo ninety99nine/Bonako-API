@@ -217,7 +217,7 @@ class Product extends BaseModel
      */
     public function variations()
     {
-        /// Always eager load the variables on variations
+        // Always eager load the variables on variations
         return $this->hasMany(Product::class, 'parent_product_id')->with('variables');
     }
 

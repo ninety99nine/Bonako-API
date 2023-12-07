@@ -70,7 +70,7 @@ class UserObserver
 
         }
 
-        /// Send sms to user that their account was created
+        // Send sms to user that their account was created
         SmsService::sendOrangeSms(
             $user->craftAccountCreatedSmsMessageForUser(),
             $user->mobile_number->withExtension,

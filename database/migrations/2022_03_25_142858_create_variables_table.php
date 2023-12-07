@@ -18,7 +18,7 @@ class CreateVariablesTable extends Migration
              $table->id();
             $table->string('name', Variable::NAME_MAX_CHARACTERS);
             $table->string('value', Variable::VALUE_MAX_CHARACTERS);
-            $table->foreignId('product_id');
+            $table->foreignId('product_id')->constrained();
 
             /* Add Indexes */
             $table->index(['name', 'value']);

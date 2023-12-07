@@ -4,13 +4,11 @@ namespace App\Models;
 
 use App\Casts\Money;
 use App\Casts\Currency;
-use App\Casts\JsonToArray;
 use App\Casts\Percentage;
-use App\Casts\TransactionPaymentStatus;
-use App\Casts\Status;
+use App\Casts\JsonToArray;
 use App\Models\Base\BaseModel;
 use App\Traits\TransactionTrait;
-use Carbon\Carbon;
+use App\Casts\TransactionPaymentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Transaction extends BaseModel
@@ -20,9 +18,11 @@ class Transaction extends BaseModel
     const STATUSES = ['Paid', 'Pending Payment', /* 'Refunded', */];
     const CANCELLATION_REASONS = ['Refund', 'Mistake', 'Other'];
     const FILTERS = ['All', ...self::STATUSES];
+    const VERIFIERS = ['System', 'User'];
 
     protected $casts = [
         'amount' => Money::class,
+        'is_verified' => 'boolean',
         'is_cancelled' => 'boolean',
         'dpo_payment_response' => JsonToArray::class,
         'orange_money_payment_response' => JsonToArray::class,
@@ -37,7 +37,7 @@ class Transaction extends BaseModel
     protected $fillable = [
 
         /*  Basic Information  */
-        'payment_status', 'description',
+        'payment_status', 'description', 'proof_of_payment_photo',
 
         /*  Amount Information  */
         'currency', 'amount', 'percentage', 'payment_method_id',
@@ -49,10 +49,10 @@ class Transaction extends BaseModel
         'orange_money_payment_response',
 
         /*  Payer Information  */
-        'payer_user_id',
+        'paid_by_user_id',
 
         /*  Verifier Information  */
-        'verified_by_user_id',
+        'is_verified', 'verified_by', 'verified_by_user_id',
 
         /*  Requester Information  */
         'requested_by_user_id',
@@ -77,7 +77,7 @@ class Transaction extends BaseModel
 
     public function scopeBelongsToAuth($query)
     {
-        return $query->where('payer_user_id', auth()->user()->id);
+        return $query->where('paid_by_user_id', auth()->user()->id);
     }
 
     public function scopeCancelled($query)
@@ -105,25 +105,25 @@ class Transaction extends BaseModel
     /**
      *  Returns the User responsible to pay for this payment transaction.
      */
-    public function payingUser()
+    public function payedByUser()
     {
-        return $this->belongsTo(User::class, 'payer_user_id');
+        return $this->belongsTo(User::class, 'paid_by_user_id');
     }
 
     /**
      *  Returns the associated User that requested this payment transaction.
      *
      *  When a payment is requested, this payment is verified by the system,
-     *  therefore when the requestingUser() is set, then we expect that the
-     *  verifyingUser() must not be set since the verification is done by
+     *  therefore when the requestedByUser() is set, then we expect that the
+     *  verifiedByUser() must not be set since the verification is done by
      *  the system.
      *
-     *  Either the requestingUser() is set or the verifyingUser() is set.
+     *  Either the requestedByUser() is set or the verifiedByUser() is set.
      *  They cannot be both set since they indicate the verifier, whether
      *  the transaction is verified by the user or by the system, if the
      *  transaction is PAID.
      */
-    public function requestingUser()
+    public function requestedByUser()
     {
         return $this->belongsTo(User::class, 'requested_by_user_id');
     }
@@ -132,16 +132,16 @@ class Transaction extends BaseModel
      *  Returns the User that manually verified this payment transaction.
      *
      *  When a payment is verified manually, then the payment is verified by
-     *  the user and not by the system, therefore when the verifyingUser()
-     *  is set, then we expect that the requestingUser() must not be set
+     *  the user and not by the system, therefore when the verifiedByUser()
+     *  is set, then we expect that the requestedByUser() must not be set
      *  since a system verified request is not issued.
      *
-     *  Either the requestingUser() is set or the verifyingUser() is set.
+     *  Either the requestedByUser() is set or the verifiedByUser() is set.
      *  They cannot be both set since they indicate the verifier, whether
      *  the transaction is verified by the user or by the system, if the
      *  transaction is PAID.
      */
-    public function verifyingUser()
+    public function verifiedByUser()
     {
         return $this->belongsTo(User::class, 'verified_by_user_id');
     }
@@ -166,7 +166,11 @@ class Transaction extends BaseModel
      *  ACCESSORS               *
      ***************************/
 
-    protected $appends = ['number', 'is_paid', 'is_pending_payment', 'is_verified_by_user', 'is_verified_by_system'];
+    protected $appends = [
+        'number', 'is_paid', 'is_pending_payment',
+        'is_verified_by_user', 'is_verified_by_system',
+        'is_subject_to_user_verification', 'is_subject_to_system_verification',
+    ];
 
     public function getNumberAttribute()
     {
@@ -194,24 +198,42 @@ class Transaction extends BaseModel
     }
 
     /**
-     *  Check if the transaction payment was verified by the user
+     *  Check if the transaction is subject to user verification
+     *
+     *  @return bool
+     */
+    public function getIsSubjectToUserVerificationAttribute()
+    {
+        return strtolower($this->getRawOriginal('verified_by')) === 'user';
+    }
+
+    /**
+     *  Check if the transaction is subject to system verification
+     *
+     *  @return bool
+     */
+    public function getIsSubjectToSystemVerificationAttribute()
+    {
+        return strtolower($this->getRawOriginal('verified_by')) === 'system';
+    }
+
+    /**
+     *  Check if the transaction payment has been verified by the user
      *
      *  @return bool
      */
     public function getIsVerifiedByUserAttribute()
     {
-        //  If the verified by user id is provided then this transaction was verified by a user
-        return $this->payment_status === 'Paid' && $this->verified_by_user_id !== null;
+        return strtolower($this->getRawOriginal('payment_status')) === 'paid' && strtolower($this->getRawOriginal('verified_by')) === 'user';
     }
 
     /**
-     *  Check if the transaction payment was verified by the system
+     *  Check if the transaction payment has been verified by the system
      *
      *  @return bool
      */
     public function getIsVerifiedBySystemAttribute()
     {
-        //  If the verified by user id is not provided then this transaction was verified by the system
-        return $this->payment_status === 'Paid' && $this->verified_by_user_id === null;
+        return strtolower($this->getRawOriginal('payment_status')) === 'paid' && strtolower($this->getRawOriginal('verified_by')) === 'system';
     }
 }

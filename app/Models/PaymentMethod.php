@@ -15,14 +15,14 @@ class PaymentMethod extends BaseModel
     const FILTERS = ['All', 'Available On Perfect Pay', 'Available On Stores', 'Available On Ussd'];
 
     protected $casts = [
-        'available_on_perfect_pay' => 'boolean',
-        'available_on_stores' => 'boolean',
+        'active' => 'boolean',
+        'amount' => Money::class,
         'available_on_ussd' => 'boolean',
-        'active' => 'boolean'
+        'available_on_stores' => 'boolean',
+        'available_on_perfect_pay' => 'boolean',
     ];
 
     protected $tranformableCasts = [
-        'amount' => Money::class,
         'currency' => Currency::class,
         'percentage' => Percentage::class
     ];

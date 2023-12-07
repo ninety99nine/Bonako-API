@@ -29,7 +29,6 @@ class AiAssistantRepository extends BaseRepository
      *
      *  @param User $user
      *  @return AiAssistantRepository
-     *  @throws ModelNotFoundException
      */
     public function showAiAssistant(User $user)
     {

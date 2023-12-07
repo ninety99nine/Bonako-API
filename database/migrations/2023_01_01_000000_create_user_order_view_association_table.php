@@ -15,8 +15,8 @@ class CreateUserOrderViewAssociationTable extends Migration
     {
         Schema::create('user_order_view_association', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id');
-            $table->foreignId('order_id');
+            $table->foreignId('user_id')->constrained();
+            $table->foreignId('order_id')->constrained();
             $table->unsignedSmallInteger('views')->default(0);
             $table->timestamp('last_seen_at');
             $table->timestamps();

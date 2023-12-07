@@ -199,11 +199,15 @@ class OrderResource extends BaseResource
             new ResourceLink('update.status', route($routeNamePrefix.'status.update', ['store' => $storeId, 'order' => $orderId]), 'The route to update the order status'),
             new ResourceLink('show.viewers', route($routeNamePrefix.'viewers.show', ['store' => $storeId, 'order' => $orderId]), 'The route to update the order status'),
 
+            //  Paying User
+            new ResourceLink('show.order.paying.users', route($routeNamePrefix.'paying.users.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order transactions'),
+
             new ResourceLink('show.transaction.filters', route($routeNamePrefix.'transaction.filters.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order transaction filters'),
             new ResourceLink('show.transactions', route($routeNamePrefix.'transactions.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order transactions'),
             new ResourceLink('show.cart', route($routeNamePrefix.'cart.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order cart'),
             new ResourceLink('show.occasion', route($routeNamePrefix.'occasion.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order occasion'),
             new ResourceLink('show.customer', route($routeNamePrefix.'customer.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order customer'),
+            new ResourceLink('show.users', route($routeNamePrefix.'users.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order users'),
             new ResourceLink('show.delivery.address', route($routeNamePrefix.'delivery.address.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order delivery address'),
             new ResourceLink('show.transactions.count', route($routeNamePrefix.'transactions.count.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order transactions count'),
         ];

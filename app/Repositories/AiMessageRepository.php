@@ -252,7 +252,7 @@ class AiMessageRepository extends BaseRepository
          */
         $user = auth()->user();
 
-        $systemContent = $aiMessageCategory->system_prompt.' ';
+        $systemContent = $aiMessageCategory->system_prompt.'. ';
         $systemContent .= 'You are talking to '.$user->first_name.' who is an entrepreneur. ';
         $systemContent .= 'Here\'s more information about '.$user->first_name.":\n";
         $systemContent .= 'First name: '.$user->first_name."\n";

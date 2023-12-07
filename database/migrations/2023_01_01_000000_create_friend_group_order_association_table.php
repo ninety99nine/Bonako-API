@@ -15,8 +15,8 @@ class CreateFriendGroupOrderAssociationTable extends Migration
     {
         Schema::create('friend_group_order_association', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id');
-            $table->foreignId('friend_group_id');
+            $table->foreignId('order_id')->constrained();
+            $table->foreignId('friend_group_id')->constrained();
             $table->timestamps();
 
             /* Add Indexes */

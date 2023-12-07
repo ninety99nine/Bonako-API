@@ -25,11 +25,11 @@ class Order extends BaseModel
 {
     use HasFactory, OrderTrait;
 
-    const PAYMENT_STATUSES = Transaction::STATUSES;
     const COLLECTION_TYPES = ['Delivery', 'Pickup'];
     const USER_ORDER_FILTERS = ['All', ...self::STATUSES];
     const STORE_ORDER_FILTERS = ['All', ...self::STATUSES];
     const FRIEND_GROUP_ORDER_FILTERS = ['All', ...self::STATUSES];
+    const PAYMENT_STATUSES = ['Paid', 'Pending Payment', 'Partially Paid'];
     const ORDER_FOR_OPTIONS = ['Me', 'Me And Friends', 'Friends Only' /*, 'Business'*/];
     const STATUSES = ['Waiting', 'On Its Way', 'Ready For Pickup', 'Cancelled', 'Completed'];
     const CANCELLATION_REASONS = [
@@ -606,15 +606,21 @@ class Order extends BaseModel
             //  The store must be loaded to determine if we can mark as paid
             if($store == null) return null;
 
-            /**
-             *  @var UserStoreAssociation $userStoreAssociation
-             */
-            $userStoreAssociation = $store->getUserStoreAssociation();
+            $hasPayableAmounts = count($this->payable_amounts) > 0;
 
-            //  Check if the user and store association is provided to determine if we can mark as paid
-            if(!is_null($userStoreAssociation)) {
+            if($hasPayableAmounts) {
 
-                return $userStoreAssociation->is_team_member_who_has_joined;
+                /**
+                 *  @var UserStoreAssociation $userStoreAssociation
+                 */
+                $userStoreAssociation = $store->getUserStoreAssociation();
+
+                //  Check if the user and store association is provided to determine if we can mark as paid
+                if(!is_null($userStoreAssociation)) {
+
+                    return $userStoreAssociation->is_team_member_who_has_joined;
+
+                }
 
             }
 

@@ -74,9 +74,9 @@ class CreateProductLinesTable extends Migration
             $table->json('detected_changes')->nullable();
 
             /*  Ownership Information  */
-            $table->foreignId('cart_id');
-            $table->foreignId('store_id');
-            $table->foreignId('product_id')->nullable();
+            $table->foreignId('cart_id')->constrained();
+            $table->foreignId('store_id')->constrained();
+            $table->foreignId('product_id')->constrained()->nullable();
 
             /*  Timestamps  */
             $table->timestamps();

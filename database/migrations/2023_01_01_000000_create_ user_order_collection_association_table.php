@@ -17,8 +17,8 @@ class CreateUserOrderCollectionAssociationTable extends Migration
     {
         Schema::create('user_order_collection_association', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id');
-            $table->foreignId('user_id');
+            $table->foreignId('order_id')->constrained();
+            $table->foreignId('user_id')->constrained();
             $table->enum('role', UserOrderCollectionAssociation::ROLES)->default(Arr::last(UserOrderCollectionAssociation::ROLES));
             $table->boolean('can_collect')->default(false);
             $table->char('collection_code', 6)->nullable();

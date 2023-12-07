@@ -24,11 +24,10 @@ class CreateSubscriptionPlansTable extends Migration
             $table->string('description')->nullable();
             $table->enum('service', SubscriptionPlan::SERVICES);
             $table->enum('type', SubscriptionPlan::TYPES);
-            $table->string('frequency');
-            $table->unsignedSmallInteger('duration');
             $table->char('currency', 3)->default('BWP');
             $table->float('price')->default(0);
             $table->boolean('active')->default(false);
+            $table->json('metadata');
 
             /*  Timestamps  */
             $table->timestamps();

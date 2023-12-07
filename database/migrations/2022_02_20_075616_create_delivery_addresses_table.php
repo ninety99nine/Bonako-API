@@ -20,8 +20,8 @@ class CreateDeliveryAddressesTable extends Migration
             $table->string('name', DeliveryAddress::NAME_MAX_CHARACTERS);
             $table->string('address_line', DeliveryAddress::ADDRESS_LINE_MAX_CHARACTERS);
             $table->boolean('share_address')->default(1);
-            $table->foreignId('user_id');
-            $table->foreignId('address_id')->nullable();
+            $table->foreignId('user_id')->constrained();
+            $table->foreignId('address_id')->constrained()->nullable();
             $table->timestamps();
 
             /* Add Indexes */

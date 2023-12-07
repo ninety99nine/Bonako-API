@@ -29,6 +29,17 @@ class ShowStoreOrdersRequest extends FormRequest
     public function getValidatorInstance()
     {
         /**
+         *  Convert the "user_order_association" to the correct format if it has been set on the request inputs
+         *
+         *  Example: convert "teamMember" or "Team Member" into "team member"
+         */
+        if($this->has('user_order_association')) {
+            $this->merge([
+                'user_order_association' => $this->separateWordsThenLowercase($this->get('user_order_association'))
+            ]);
+        }
+
+        /**
          *  Convert the "filter" to the correct format if it has been set on the request inputs
          *
          *  Example: convert "waiting" or "Waiting" into "waiting"
@@ -49,9 +60,11 @@ class ShowStoreOrdersRequest extends FormRequest
      */
     public function rules()
     {
+        $userOrderAssociations = collect(Order::USER_ORDER_ASSOCIATIONS)->map(fn($userOrderAssociation) => $this->separateWordsThenLowercase($userOrderAssociation));
         $filters = collect(Order::STORE_ORDER_FILTERS)->map(fn($filter) => strtolower($filter));
 
         return [
+            'user_order_association' => ['required', 'string', Rule::in($userOrderAssociations)],
             'start_at_order_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
             'with_customer' => ['bail', 'sometimes', 'required', 'boolean'],
             'filter' => ['sometimes', 'string', Rule::in($filters)],
@@ -66,6 +79,8 @@ class ShowStoreOrdersRequest extends FormRequest
     public function messages()
     {
         return [
+            'user_order_association.string' => 'Answer "'.collect(Order::USER_ORDER_ASSOCIATIONS)->join('", "', '" or "').' for the user order association',
+            'user_order_association.in' => 'Answer "'.collect(Order::USER_ORDER_ASSOCIATIONS)->join('", "', '" or "').' for the user order association',
             'filter.string' => 'Answer "'.collect(Order::STORE_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
             'filter.in' => 'Answer "'.collect(Order::STORE_ORDER_FILTERS)->join('", "', '" or "').' to filter orders',
         ];

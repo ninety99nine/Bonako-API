@@ -28,7 +28,11 @@ class CreateAiMessagesTable extends Migration
             $table->foreignId('user_id');
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            /* Add Indexes */
+            $table->index('user_id');
+            $table->index('category_id');
+
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('category_id')->references('id')->on('ai_message_categories')->nullOnDelete();
         });
     }

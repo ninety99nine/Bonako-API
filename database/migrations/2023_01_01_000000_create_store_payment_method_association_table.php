@@ -20,8 +20,8 @@ class CreateStorePaymentMethodAssociationTable extends Migration
             $table->string('instruction')->nullable();
             $table->smallInteger('total_enabled')->default(1);
             $table->smallInteger('total_disabled')->default(0);
-            $table->unsignedBigInteger('store_id');
-            $table->unsignedBigInteger('payment_method_id');
+            $table->foreignId('store_id')->constrained();
+            $table->foreignId('payment_method_id')->constrained();
 
             /*  Soft delete  */
             $table->softDeletes();

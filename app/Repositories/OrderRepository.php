@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Enums\CanSaveChanges;
 use App\Enums\UserVerfiedTransaction;
 use App\Models\User;
 use App\Models\Cart;
@@ -56,6 +57,7 @@ use App\Services\DirectPayOnline\DirectPayOnlineService;
 use App\Services\OrangeMoney\OrangeMoneyService;
 use App\Services\QrCode\QrCodeService;
 use App\Services\Sms\SmsService;
+use App\Services\Ussd\UssdService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Notification;
@@ -318,7 +320,7 @@ class OrderRepository extends BaseRepository
     }
 
     /**
-     *  Query the orders by the specified filter
+     *  Query the store orders by the specified filter
      *
      *  @param User $user
      *  @param string $filter - The filter to query the orders
@@ -355,16 +357,16 @@ class OrderRepository extends BaseRepository
                       ->where('user_order_collection_association.user_id', auth()->user()->id);
             });
 
-            //  If the user must be associated as a customer or friend
-            }else if($userOrderAssociation == 'customer or friend') {
+        //  If the user must be associated as a customer or friend
+        }else if($userOrderAssociation == 'customer or friend') {
 
-                //  Query the friend group orders where the user is associated as a friend
-                $orders = $store->orders()->whereHas('users', function ($query) {
-                    $query->where(function ($subquery) {
-                        $subquery->where('user_order_collection_association.role', 'Customer')
-                                ->orWhere('user_order_collection_association.role', 'Friend');
-                    })->where('user_order_collection_association.user_id', auth()->user()->id);
-                });
+            //  Query the friend group orders where the user is associated as a friend
+            $orders = $store->orders()->whereHas('users', function ($query) {
+                $query->where(function ($subquery) {
+                    $subquery->where('user_order_collection_association.role', 'Customer')
+                            ->orWhere('user_order_collection_association.role', 'Friend');
+                })->where('user_order_collection_association.user_id', auth()->user()->id);
+            });
 
         //  If the user must be associated as a team member
         }else if($userOrderAssociation == 'team member') {
@@ -1236,7 +1238,7 @@ class OrderRepository extends BaseRepository
             //  change to Notification::send() instead of Notification::sendNow() so that this is queued
             Notification::sendNow($notifiableUsers, new OrderCreated($order, auth()->user()));
 
-            /// Send sms to customer placing this order
+            // Send sms to customer placing this order
             SmsService::sendOrangeSms(
                 $order->craftNewOrderSmsMessageForCustomer($store),
                 $userAsCustomer->mobile_number->withExtension,
@@ -1245,7 +1247,7 @@ class OrderRepository extends BaseRepository
 
             foreach($teamMembers as $teamMember) {
 
-                /// Send sms to team member who has joined this store
+                // Send sms to team member who has joined this store
                 SmsService::sendOrangeSms(
                     $order->craftNewOrderSmsMessageForSeller($store, $userAsCustomer),
                     $teamMember->mobile_number->withExtension,
@@ -1256,7 +1258,7 @@ class OrderRepository extends BaseRepository
 
             foreach($friends as $friend) {
 
-                /// Send sms to friend tagged on this order
+                // Send sms to friend tagged on this order
                 SmsService::sendOrangeSms(
                     $order->craftNewOrderSmsMessageForFriend($store, $userAsCustomer, $friend, $friends),
                     $friend->mobile_number->withExtension,
@@ -1681,6 +1683,44 @@ class OrderRepository extends BaseRepository
     }
 
     /**
+     *  Show the order users
+     *
+     *  @return UserRepository
+     */
+    public function showUsers()
+    {
+        /**
+         *  @var Order $order
+         */
+        $order = $this->model;
+
+        //  Set the user type
+        $userType = $this->separateWordsThenLowercase(request()->input('user_type'));
+
+        if($userType == 'customer') {
+
+            $users = $order->users()->where('user_order_collection_association.role', 'Customer');
+
+        }else if($userType == 'friend') {
+
+            $users = $order->users()->where('user_order_collection_association.role', 'Friend');
+
+        }else if($userType == 'customer or friend') {
+
+            $users = $order->users()
+                ->where('user_order_collection_association.role', 'Customer')
+                ->orWhere('user_order_collection_association.role', 'Friend');
+
+        }else{
+
+            $users = $order->users();
+
+        }
+
+        return $this->userRepository()->setModel($users)->get();
+    }
+
+    /**
      *  Show the order occasion
      *
      *  @return OrderRepository
@@ -1809,7 +1849,7 @@ class OrderRepository extends BaseRepository
             if($paymentMethod) {
 
                 //  Create a new pending payment transaction
-                $transactionRepository = $this->createTransaction($request, UserVerfiedTransaction::NO);
+                $transactionRepository = $this->transactionRepository()->createOrderTransaction($order, $request, UserVerfiedTransaction::NO);
 
                 /**
                  *  @var Transaction $transaction
@@ -1839,19 +1879,19 @@ class OrderRepository extends BaseRepository
                     $store = $order->store;
 
                     /**
-                     *  @var User $payingUser
+                     *  @var User $payedByUser
                      */
-                    $payingUser = $transaction->payingUser;
+                    $payedByUser = $transaction->payedByUser;
 
                     /**
-                     *  @var User $requestingUser
+                     *  @var User $requestedByUser
                      */
-                    $requestingUser = $transaction->requestingUser;
+                    $requestedByUser = $transaction->requestedByUser;
 
-                    /// Send order payment request sms to the paying user
+                    // Send order payment request sms to the paying user
                     SmsService::sendOrangeSms(
-                        $order->craftOrderPaymentRequestSmsMessage($store, $transaction, $requestingUser, $paymentMethod),
-                        $payingUser->mobile_number->withExtension,
+                        $order->craftOrderPaymentRequestSmsMessage($store, $transaction, $requestedByUser, $paymentMethod),
+                        $payedByUser->mobile_number->withExtension,
                         $store, null, null
                     );
 
@@ -1921,8 +1961,8 @@ class OrderRepository extends BaseRepository
 
         //  Mark this transaction as paid
         $transactionRepository = $this->transactionRepository()->setModel($authTransactionPendingPayment)->update([
-
             'payment_status' => 'Paid',
+            'is_verified' => true,
 
             /**
              *  Update description:
@@ -1949,15 +1989,18 @@ class OrderRepository extends BaseRepository
      *
      *  @return OrderRepository
      */
-    public function markAsUnverifiedPayment(Request $request)
+    public function  markAsUnverifiedPayment(Request $request)
     {
-        //  Create a new paid transaction
-        $transactionRepository = $this->createTransaction($request, UserVerfiedTransaction::YES);
-
         /**
          *  @var Order $order
          */
         $order = $this->model;
+
+        //  Create a new paid transaction
+        $transactionRepository = $this->transactionRepository()->createOrderTransaction($order, $request, UserVerfiedTransaction::YES);
+
+        //  Save the proof of payment photo (If provided)
+        $transactionRepository = $transactionRepository->storeProofOfPaymentPhoto($request, CanSaveChanges::YES);
 
         /**
          *  @var Store $store
@@ -1992,7 +2035,7 @@ class OrderRepository extends BaseRepository
 
         foreach($users->concat($teamMembers) as $user) {
 
-            /// Send order mark as verified payment sms to user
+            // Send order mark as verified payment sms to user
             SmsService::sendOrangeSms(
                 $order->craftOrderMarkAsUnVerifiedPaymentSmsMessage($store, $transaction, $verifiedByUser),
                 $user->mobile_number->withExtension,
@@ -2005,236 +2048,7 @@ class OrderRepository extends BaseRepository
         return $transactionRepository;
     }
 
-    /**
-     *  Create a transaction for this order.
-     *
-     *  @return TransactionRepository
-     */
-    public function createTransaction(Request $request, UserVerfiedTransaction $userVerifiedTransaction)
-    {
-        //  Avoid transactions on a cancelled order
-        $this->avoidInitiatingTransactionsOnCancelledOrder(
-            $userVerifiedTransaction == UserVerfiedTransaction::YES
-                ? 'This order cannot be marked as paid because it has been cancelled'
-                : 'This order cannot request payment because it has been cancelled'
-        );
 
-        /**
-         *  Load the cart on this order
-         *
-         *  @var Order $order
-         */
-        $order = $this->setModel($this->model->loadMissing(['cart']))->model;
-
-        /**
-         *  @var Cart $cart
-         */
-        $cart = $order->cart;
-
-        //  If the order has already been paid in full
-        if( $order->isPaid() ) throw new OrderFullyPaidException;
-
-        //  If the order cannot be paid due to no amount left to pay (possibly a free order)
-        if( $order->amount_outstanding_percentage === 0 ) throw new OrderHasNoAmountOutstandingException;
-
-        //  Check if the amount is provided
-        if( $request->filled('amount') ) {
-
-            //  Get the amount
-            $amount = $request->input('amount');
-
-            //  Check if the amount exceeds the remaining outstanding amount after deducting the pending amount
-            if( $amount > ($outstandingAmountRemaining = $order->amount_outstanding->amount - $order->amount_pending->amount) ) {
-
-                //  Convert to money format
-                $amountSpecified = $order->convertToMoneyFormat($amount, $cart->currency);
-
-                //  Convert to money format
-                $outstandingAmountRemaining = $order->convertToMoneyFormat($outstandingAmountRemaining, $order->currency);
-
-                //  Throw an Exception - Amount exceeded
-                throw ValidationException::withMessages(['amount' => 'The amount specified '.$amountSpecified->amountWithCurrency.' is more than the remaining payable amount '.$outstandingAmountRemaining->amountWithCurrency.' for this order']);
-
-            }
-
-            //  Determine if this is a full payment (non-partial payment)
-            $fullPayment = $amount == $order->amount_outstanding->amount;
-
-            //  Calculate the percentage paid of the total cart grand total
-            $percentage = $fullPayment ? $order->amount_outstanding_percentage : ($amount / $cart->grand_total->amount * 100);
-
-        //  Check if the percentage is provided
-        }elseif( $request->filled('percentage') ) {
-
-            //  Get the percentage
-            $percentage = $request->input('percentage');
-
-            //  Check if the amount exceeds the remaining outstanding percentage after deducting the pending percentage
-            if( $percentage > ($outstandingPercentageRemaining = $order->amount_outstanding_percentage - $order->amount_pending_percentage) ) {
-
-                //  Throw an Exception - Percentage exceeded
-                throw ValidationException::withMessages(['percentage' => 'The percentage specified '.$percentage.'% is more than the remaining payable percentage '.$outstandingPercentageRemaining.'% for this order']);
-
-            }
-
-            //  Determine if this is a full payment (non-partial payment)
-            $fullPayment = $percentage == $order->amount_outstanding_percentage;
-
-            //  Calculate the amount paid of the total cart grand total
-            $amount = $fullPayment ? $order->amount_outstanding : ($percentage / 100 * $cart->grand_total->amount);
-
-        }
-
-        //  Set the transaction description
-        $description = ($fullPayment ? 'Full' : 'Partial') . ' payment for order #'.$order->number . ($userVerifiedTransaction == UserVerfiedTransaction::YES ? ' confirmed by ' : ' requested by ') . auth()->user()->name;
-
-        //  Determine the payer of this amount (If the mobile number is provided then this payer is not the customer)
-        if( $mobileNumber = $request->input('mobile_number') ) {
-
-            //  Get the user matching the given mobile number (This user is the payer)
-            $payerUserId = User::searchMobileNumber($mobileNumber)->first()->id;
-
-        }else{
-
-            //  The payer is the customer
-            $payerUserId = $order->customer_user_id;
-
-        }
-
-        //  Check if this transaction is a system verified transaction
-        if($userVerifiedTransaction == UserVerfiedTransaction::NO) {
-
-            //  Avoid requesting multiple pending payment for the same payer
-            $this->avoidRequestingMultiplePendingPaymentsPerUser($payerUserId);
-
-        }
-
-        /**
-         *  If the transaction is a system verified transaction, then this is a requested transaction
-         *  that will be later confirmed after the payment is successful e.g Paying online using a
-         *  Credit/Debit card. Requested transactions are verified by the system after the payer
-         *  makes payment using a generated payment link or shortcode.
-         */
-        $requestedByUserId = ($userVerifiedTransaction == UserVerfiedTransaction::NO) ? auth()->user()->id : null;
-
-        /**
-         *  If the transaction is a user verified transaction, then this is verified transaction that
-         *  was not verified by the system. Verified transactions are verified by the store management
-         *  after the payer makes payment using other payment methods such as cash, cheque or any
-         *  other payment that cannot be verified by the system.
-         */
-        $verifiedByUserId = ($userVerifiedTransaction == UserVerfiedTransaction::YES) ? auth()->user()->id : null;
-
-        //  If verified by the user
-        if($userVerifiedTransaction == UserVerfiedTransaction::YES) {
-
-            //  Then this transaction is paid
-            $paymentStatus = 'Paid';
-
-        //  If verified by the system
-        }else{
-
-            //  Then this transaction is pending payment to be later verified as paid
-            $paymentStatus = 'Pending Payment';
-
-        }
-
-        //  Set the payment method (if provided)
-        $paymentMethodId = $request->input('payment_method_id');
-
-        //  Create a new transaction
-        $transactionRepository = $this->transactionRepository()->create([
-            'payment_status' => $paymentStatus,
-            'description' => $description,
-
-            'amount' => $amount,
-            'percentage' => $percentage,
-            'currency' => $cart->currency,
-            'payment_method_id' => isset($paymentMethodId) ? $paymentMethodId : null,
-
-            'payer_user_id' => $payerUserId,
-
-            /**
-             *  If the verified_by_user_id is set, then the transaction is verified by
-             *  the store management. If the requested_by_user_id is set then the
-             *  transaction is verified by the system. They cannot have a valu at
-             *  the same time. One must have a value while the other is NULL.
-             *
-             *  If both the requested_by_user_id and the verified_by_user_id are
-             *  set, then it causes confusion as to who verified this transaction
-             */
-            'requested_by_user_id' => $requestedByUserId,
-            'verified_by_user_id' => $verifiedByUserId,
-
-            'owner_id' => $order->id,
-            'owner_type' => $order->getResourceName()
-        ]);
-
-        //  Update the order amount balance
-        $this->updateOrderAmountBalance();
-
-        //  Return this transaction repository
-        return $transactionRepository;
-
-    }
-
-    /**
-     *  Avoid transactions on a cancelled order
-     */
-    public function avoidInitiatingTransactionsOnCancelledOrder($exceptionMessage = null)
-    {
-        /**
-         *  @var Order $order
-         */
-        $order = $this->model;
-
-        //  If the order is cancelled
-        if( $order->isCancelled() ) {
-
-            /**
-             *  Note that the Exception class does not accept NULL values,
-             *  therefore we must implement custom conditional checks to
-             *  determine whether to include a custom exception message
-             *  or fallback to the default message.
-             */
-            if($exceptionMessage) {
-                throw new OrderProhibitsTransactionsWhenCancelledException($exceptionMessage);
-            }else{
-                throw new OrderProhibitsTransactionsWhenCancelledException();
-            }
-
-        }
-
-    }
-
-    /**
-     *  Avoid requesting multiple pending payment for the same payer
-     */
-    public function avoidRequestingMultiplePendingPaymentsPerUser($payerUserId, $exceptionMessage = null)
-    {
-        /**
-         *  @var Order $order
-         */
-        $order = $this->model;
-
-        //  Avoid requesting payment multiple times for the same payer
-        if( $order->transactions()->notCancelled()->where(['payment_status' => 'Pending Payment', 'payer_user_id' => $payerUserId])->exists() ) {
-
-            /**
-             *  Note that the Exception class does not accept NULL values,
-             *  therefore we must implement custom conditional checks to
-             *  determine whether to include a custom exception message
-             *  or fallback to the default message.
-             */
-            if($exceptionMessage) {
-                throw new OrderProhibitsMultiplePendingPaymentByUserException($exceptionMessage);
-            }else{
-                throw new OrderProhibitsMultiplePendingPaymentByUserException();
-            }
-
-        }
-
-    }
 
     public function updateOrderAmountBalance()
     {
@@ -2497,7 +2311,7 @@ class OrderRepository extends BaseRepository
 
         foreach($users->concat($teamMembers) as $user) {
 
-            /// Send order collected sms to user
+            // Send order collected sms to user
             SmsService::sendOrangeSms(
                 $order->craftOrderStatusUpdatedMessage($store, $updatedByUser),
                 $user->mobile_number->withExtension,
@@ -2678,7 +2492,7 @@ class OrderRepository extends BaseRepository
 
             foreach($users->concat($teamMembers) as $user) {
 
-                /// Send order collected sms to user
+                // Send order collected sms to user
                 SmsService::sendOrangeSms(
                     $order->craftOrderCollectedSmsMessage($store, $collectedByUser, $verifiedByUser),
                     $user->mobile_number->withExtension,
@@ -2699,6 +2513,52 @@ class OrderRepository extends BaseRepository
 
 
 
+
+    /**
+     *  Show the order paying users
+     *
+     *  @return UserRepository
+     */
+    public function showOrderPayingUsers()
+    {
+        /**
+         *  @var Order $order
+         */
+        $order = $this->model;
+
+        //  Get the paying user ids
+        $payedByUserIds = $order->transactions()->pluck('paid_by_user_id');
+
+        //  Get the paying users
+        $payedByUsers = User::whereIn('id', $payedByUserIds);
+
+        if(request()->input('with_transactions_count')) {
+
+            $payedByUsers->withCount(['transactionsAsPayer' => function($query) use ($order) {
+                return $query->where('owner_type', 'order')->where('owner_id', $order->id);
+            }]);
+
+        }
+
+        if(request()->input('with_paid_transactions_count')) {
+
+            $payedByUsers->withCount(['paidTransactionsAsPayer' => function($query) use ($order) {
+                return $query->where('owner_type', 'order')->where('owner_id', $order->id);
+            }]);
+
+        }
+
+        if(request()->input('with_latest_transaction')) {
+
+            $payedByUsers->with(['latestTransactionAsPayer' => function($query) use ($order) {
+                return $query->where('owner_type', 'order')->where('owner_id', $order->id)->latest();
+            }]);
+
+        }
+
+        //  Return the UserRepository
+        return $this->userRepository()->setModel($payedByUsers)->get();
+    }
 
 
     /**

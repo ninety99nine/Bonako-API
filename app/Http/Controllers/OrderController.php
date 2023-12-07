@@ -14,6 +14,7 @@ use App\Http\Requests\Models\Order\CancelOrderRequest;
 use App\Http\Requests\Models\Order\UpdateStatusRequest;
 use App\Http\Requests\Models\Order\RequestPaymentRequest;
 use App\Http\Requests\Models\Order\MarkAsUnverifiedPaymentRequest;
+use App\Models\User;
 
 class OrderController extends BaseController
 {
@@ -76,6 +77,11 @@ class OrderController extends BaseController
         return response($this->repository->setModel($order)->showDeliveryAddress()->transform(), Response::HTTP_OK);
     }
 
+    public function showUsers(Store $store, Order $order)
+    {
+        return response($this->repository->setModel($order)->showUsers()->transform(), Response::HTTP_OK);
+    }
+
     public function cancel(CancelOrderRequest $request, Store $store, Order $order)
     {
         return response($this->repository->setModel($order)->cancelOrder($request)->transform(), Response::HTTP_OK);
@@ -135,6 +141,14 @@ class OrderController extends BaseController
     {
         return response($this->repository->setModel($order)->showMarkAsUnverifiedPaymentPaymentMethods($store)->transform(), Response::HTTP_OK);
     }
+
+    public function showOrderPayingUsers(Store $store, Order $order)
+    {
+        return response($this->repository->setModel($order)->showOrderPayingUsers()->transform(), Response::HTTP_OK);
+    }
+
+
+
 
     public function showOrderTransactionFilters(Store $store, Order $order)
     {

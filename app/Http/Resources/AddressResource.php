@@ -44,7 +44,6 @@ class AddressResource extends BaseResource
 
     public function setLinks()
     {
-
         //  Get the user's id
         $userId = $this->chooseUser()->id;
 

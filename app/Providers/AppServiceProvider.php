@@ -26,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
             'user' => 'App\Models\User',
             'order' => 'App\Models\Order',
             'store' => 'App\Models\Store',
+            'sms alert' => 'App\Models\SmsAlert',
             'transaction' => 'App\Models\Transaction',
             'ai assistant' => 'App\Models\AiAssistant',
             'subscription' => 'App\Models\Subscription',

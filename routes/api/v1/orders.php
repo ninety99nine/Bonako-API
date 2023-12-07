@@ -54,6 +54,20 @@ Route::controller(OrderController::class)
     //  Delivery Address
     Route::get('/delivery-address', 'showDeliveryAddress')->name('.delivery.address.show')->whereNumber(['store', 'order']);
 
+    //  Order for users
+    Route::prefix('users')->group(function () {
+
+        Route::get('/', 'showUsers')->name('.users.show')->whereNumber(['store', 'order']);
+
+    });
+
+    //  Paying Users
+    Route::prefix('paying-users')->group(function () {
+
+        Route::get('/', 'showOrderPayingUsers')->name('.paying.users.show')->whereNumber(['store', 'order']);
+
+    });
+
     //  Transactions
     Route::prefix('transactions')->group(function () {
 

@@ -209,6 +209,37 @@ foreach($options as $option) {
 
             });
 
+            //  SMS Alert
+            Route::prefix('sms-alert')->name('.sms.alert')->group(function () {
+
+                Route::get('/', 'showSmsAlert')->name('.show')->whereNumber('user');
+
+                //  Shortcodes
+                Route::post('/generate-payment-shortcode', 'generateSmsAlertPaymentShortcode')->name('.payment.shortcode.generate')->whereNumber('store');
+
+                //  SMS Alert Transactions
+                Route::prefix('transactions')->name('.transactions')->group(function () {
+
+                    Route::get('/', 'showSmsAlertTransactions')->name('.show')->whereNumber('user');
+
+                    //  USSD Server Routes: The following route is restricted to USSD requests (See attached middleware)
+                    Route::post('/', 'createSmsAlertTransaction')->name('.create')->whereNumber('user')->middleware('request.via.ussd');
+                    Route::post('/calculate-amount', 'calculateSmsAlertTransactionAmount')->name('.calculate.amount')->whereNumber('user');
+
+                });
+
+                //  SMS Alert Activity Associations
+                Route::prefix('sms-alert-activity-association')->group(function () {
+
+                    //  SMS Alert Activity Association
+                    Route::prefix('{sms_alert_activity_association}')->name('.activity.association')->group(function () {
+                        Route::put('/', 'updateSmsAlertActivityAssociation')->name('.update')->whereNumber(['user', 'sms_alert_activity_association']);
+                    });
+
+                });
+
+            });
+
             //  Resource Totals
             Route::get('/resource-totals', 'showResourceTotals')->name('.resource.totals.show')->whereNumber('user');
 

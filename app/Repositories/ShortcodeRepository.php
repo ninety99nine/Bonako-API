@@ -9,6 +9,7 @@ use App\Models\InstantCart;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Models\Base\BaseModel;
+use App\Models\SmsAlert;
 use App\Services\Ussd\UssdService;
 use App\Repositories\BaseRepository;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -62,7 +63,7 @@ class ShortcodeRepository extends BaseRepository
                     'name' => 'AI Assistant',
                     'type' => $owner->getResourceName(),
                     'links' => [
-                        'self' => route('store.show', ['store' => $owner->id]),
+                        'self' => route('user.ai.assistant.show', ['user' => $owner->user_id])
                     ]
                 ];
 
@@ -71,6 +72,24 @@ class ShortcodeRepository extends BaseRepository
                     $ownerPayload['links']['showSubscriptionPlans'] = route('subscription.plans.show');
                     $ownerPayload['links']['createSubscriptionPlan'] = route('user.ai.assistant.subscriptions.create', ['user' => $owner->user_id]);
                     $ownerPayload['links']['calculateSubscriptionAmount'] = route('user.ai.assistant.subscriptions.calculate.amount', ['user' => $owner->user_id]);
+                }
+
+            //  If this is an SmsAlert instance
+            }else if($owner instanceof SmsAlert) {
+
+                $ownerPayload = [
+                    'name' => 'SMS Alert',
+                    'type' => $owner->getResourceName(),
+                    'links' => [
+                        'self' => route('user.sms.alert.show', ['user' => $owner->user_id])
+                    ]
+                ];
+
+                if($isPayingShortcode) {
+                    $ownerPayload['links']['showPaymentMethods'] = route('payment.methods.show');
+                    $ownerPayload['links']['showSubscriptionPlans'] = route('subscription.plans.show');
+                    $ownerPayload['links']['createTransaction'] = route('user.sms.alert.transactions.create', ['user' => $owner->user_id]);
+                    $ownerPayload['links']['calculateTransactionAmount'] = route('user.sms.alert.transactions.calculate.amount', ['user' => $owner->user_id]);
                 }
 
             //  If this is an InstantCart instance

@@ -201,7 +201,7 @@ class ProductRepository extends BaseRepository
         //  Update this product
         parent::update($request);
 
-        /// Check if this product is a variation of another product
+        // Check if this product is a variation of another product
         if($this->model->is_variation) {
 
             /**

@@ -374,21 +374,21 @@ trait OrderTrait
      *
      *  @return Order
      */
-    public function craftOrderPaymentRequestSmsMessage(Store $store, Transaction $transaction, User $requestingUser, PaymentMethod $paymentMethod) {
+    public function craftOrderPaymentRequestSmsMessage(Store $store, Transaction $transaction, User $requestedByUser, PaymentMethod $paymentMethod) {
         if($paymentMethod->isDpoCard()) {
 
             if(empty($store->sms_sender_name)) {
-                return $store->name.', Pay for Order #'.$this->number.' using this payment link '.$transaction->dpo_payment_url.'. Valid till '.Carbon::parse($transaction->dpo_payment_url_expires_at)->format('d M Y H:m').'. Requested by '.$requestingUser->name.' ('.$requestingUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+                return $store->name.', Pay for Order #'.$this->number.' using this payment link '.$transaction->dpo_payment_url.'. Valid till '.Carbon::parse($transaction->dpo_payment_url_expires_at)->format('d M Y H:m').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
             }else{
-                return 'Pay for Order #'.$this->number.' using this payment link '.$transaction->dpo_payment_url.'. Valid till '.Carbon::parse($transaction->dpo_payment_url_expires_at)->format('d M Y H:m').'. Requested by '.$requestingUser->name.' ('.$requestingUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+                return 'Pay for Order #'.$this->number.' using this payment link '.$transaction->dpo_payment_url.'. Valid till '.Carbon::parse($transaction->dpo_payment_url_expires_at)->format('d M Y H:m').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
             }
 
         }else if($paymentMethod->isOrangeMoney()) {
 
             if(empty($store->sms_sender_name)) {
-                return $store->name.', You are paying for Order #'.$this->number.' using Orange Money. Requested by '.$requestingUser->name.' ('.$requestingUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+                return $store->name.', You are paying for Order #'.$this->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
             }else{
-                return 'You are paying for Order #'.$this->number.' using Orange Money. Requested by '.$requestingUser->name.' ('.$requestingUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+                return 'You are paying for Order #'.$this->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
             }
 
         }

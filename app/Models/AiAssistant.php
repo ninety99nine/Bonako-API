@@ -50,6 +50,31 @@ class AiAssistant extends BaseModel
     }
 
     /**
+     *  Returns the shortcodes owned by this AI Assistant
+     */
+    public function shortcodes()
+    {
+        return $this->morphMany(Shortcode::class, 'owner');
+    }
+
+    /**
+     *  Returns the shortcode owned by this AI Assistant
+     */
+    public function shortcode()
+    {
+        return $this->morphOne(Shortcode::class, 'owner');
+    }
+
+    /**
+     *  Returns the latest payment shortcode owned by this AI Assistant
+     *  and reserved for the current authenticated user
+     */
+    public function authPaymentShortcode()
+    {
+        return $this->shortcode()->action('Pay')->notExpired()->belongsToAuth()->latest();
+    }
+
+    /**
      *  Returns the subscriptions to this AI Assistant
      */
     public function subscriptions()
@@ -63,6 +88,15 @@ class AiAssistant extends BaseModel
     public function subscription()
     {
         return $this->morphOne(Subscription::class, 'owner')->latest();
+    }
+
+    /**
+     *  Returns the current authenticated user's non-expired
+     *  subscription to this AI Assistant
+     */
+    public function authActiveSubscription()
+    {
+        return $this->morphOne(Subscription::class, 'owner')->notExpired()->belongsToAuth()->latest();
     }
 
     /****************************

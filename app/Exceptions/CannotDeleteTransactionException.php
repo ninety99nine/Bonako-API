@@ -5,9 +5,10 @@ namespace App\Exceptions;
 use Exception;
 use Illuminate\Http\Response;
 
-class SubscriptionPlanDurationRequiredException extends Exception
+class CannotDeleteTransactionException extends Exception
 {
-    protected $message = 'The subscription duration is required';
+    protected $message = 'This transaction cannot be deleted';
+
     /**
      * Render the exception into an HTTP response.
      *
@@ -16,6 +17,6 @@ class SubscriptionPlanDurationRequiredException extends Exception
      */
     public function render()
     {
-        return response(['message' => $this->message], Response::HTTP_BAD_REQUEST);
+        return response(['message' => $this->message], Response::HTTP_FORBIDDEN);
     }
 }

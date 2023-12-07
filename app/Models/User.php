@@ -255,6 +255,41 @@ class User extends BaseAuthenticatable /* Authenticatable */
         return $this->hasMany(AiMessage::class);
     }
 
+    public function smsAlert()
+    {
+        return $this->hasOne(SmsAlert::class);
+    }
+
+    /**
+     *  Returns transactions where the user is associated as a payer
+     *
+     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
+     */
+    public function transactionsAsPayer()
+    {
+        return $this->hasMany(Transaction::class, 'paid_by_user_id');
+    }
+
+    /**
+     *  Returns paid transactions where the user is associated as a payer
+     *
+     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
+     */
+    public function paidTransactionsAsPayer()
+    {
+        return $this->transactionsAsPayer()->where('payment_status', 'Paid');
+    }
+
+    /**
+     *  Returns latest transaction where the user is associated as a payer
+     *
+     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
+     */
+    public function latestTransactionAsPayer()
+    {
+        return $this->hasOne(Transaction::class, 'paid_by_user_id')->latest();
+    }
+
     /****************************
      *  ACCESSORS               *
      ***************************/
