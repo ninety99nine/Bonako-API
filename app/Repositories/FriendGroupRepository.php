@@ -123,6 +123,30 @@ class FriendGroupRepository extends BaseRepository
     }
 
     /**
+     *  Show the user's first created friend group
+     *
+     *  @param User $user
+     *  @return array
+     */
+    public function showUserFirstCreatedFriendGroup(User $user)
+    {
+        //  Query the first friend group ever created by this user
+        $firstFriendGroupCreated = $user->friendGroups()->joinedGroupAsCreator()->oldest();
+
+        //  Eager load the friend group relationships based on request inputs
+        $firstFriendGroupCreated = $this->eagerLoadRelationships($firstFriendGroupCreated);
+
+        //  Get the first friend group ever created by this user
+        $firstFriendGroupCreated = $firstFriendGroupCreated->model->first();
+
+        //  Return the friend group
+        return [
+            'exists' => !is_null($firstFriendGroupCreated),
+            'friendGroup' => $firstFriendGroupCreated ? $this->setModel($firstFriendGroupCreated)->transform() : null
+        ];
+    }
+
+    /**
      *  Show the user friend group filters
      *
      *  @param User $user

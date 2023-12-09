@@ -116,6 +116,7 @@ foreach($options as $option) {
             //  Friends Groups
             Route::prefix('friend-groups')->group(function () {
 
+                Route::get('/first-created-friend-group', 'showFirstCreatedFriendGroup')->name('.first.created.friend.group.show')->whereNumber('user');
                 Route::get('/filters', 'showFriendGroupFilters')->name('.friend.group.filters.show')->whereNumber('user');
 
                 Route::name('.friend.groups')->group(function () {

@@ -195,6 +195,7 @@ class UserResource extends BaseResource
             new ResourceLink('create.friend.groups', route($prefix.'friend.groups.create', $params),'Create friend group'),
             new ResourceLink('delete.many.friend.groups', route($prefix.'friend.groups.delete.many', $params),'Delete many friend groups'),
             new ResourceLink('show.friend.group.filters', route($prefix.'friend.group.filters.show', $params),'Show friend group filters'),
+            new ResourceLink('show.first.created.friend.group', route($prefix.'first.created.friend.group.show', $params),'Show first friend group created'),
             new ResourceLink('show.last.selected.friend.group', route($prefix.'friend.groups.last.selected.show', $params),'Show last selected friend group'),
             new ResourceLink('update.last.selected.friend.groups', route($prefix.'friend.groups.last.selected.update', $params),'Update last selected friend groups'),
 
@@ -225,7 +226,7 @@ class UserResource extends BaseResource
             new ResourceLink('show.reviews', route($prefix.'reviews.show', $params),'Show reviews'),
 
             //  Stores
-            new ResourceLink('show.first.created.store', route($prefix.'first.created.store.show', $params),'Show store filters'),
+            new ResourceLink('show.first.created.store', route($prefix.'first.created.store.show', $params),'Show first store created'),
             new ResourceLink('show.store.filters', route($prefix.'store.filters.show', $params),'Show store filters'),
             new ResourceLink('join.stores', route($prefix.'stores.join', $params),'Join store'),
             new ResourceLink('create.stores', route($prefix.'stores.create', $params),'Create store'),

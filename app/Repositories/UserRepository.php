@@ -745,6 +745,16 @@ class UserRepository extends BaseRepository
 
 
 
+    /**
+     *  Show the user's first friend group
+     *
+     *  @return array
+     */
+    public function showUserFirstCreatedFriendGroup()
+    {
+        return $this->friendGroupRepository()->showUserFirstCreatedFriendGroup($this->getUser());
+    }
+
 
     /**
      *  Show the user friend group filters
@@ -1699,7 +1709,11 @@ class UserRepository extends BaseRepository
         $totalReviews = $this->getUser()->reviews()->count();
         $totalSmsAlertCredits = $this->getUser()->smsAlert->sms_credits;
         $totalNotifications = $this->getUser()->notifications()->count();
-        $totalGroupsJoinedAsMember = $this->getUser()->friendGroups()->count();
+
+        $totalGroupsJoined = $this->getUser()->friendGroups()->count();
+        $totalGroupsJoinedAsCreator = $this->getUser()->friendGroups()->joinedGroupAsCreator()->count();
+        $totalGroupsJoinedAsNonCreator = $this->getUser()->friendGroups()->joinedGroupAsNonCreator()->count();
+
         $totalStoresAsFollower = $this->getUser()->storesAsFollower()->count();
         $totalStoresAsCustomer = $this->getUser()->storesAsCustomer()->count();
         $totalStoresAsRecentVisitor = $this->getUser()->storesAsRecentVisitor()->count();
@@ -1715,7 +1729,11 @@ class UserRepository extends BaseRepository
             'totalSmsAlertCredits' => $totalSmsAlertCredits,
             'totalStoresAsFollower' => $totalStoresAsFollower,
             'totalStoresAsCustomer' => $totalStoresAsCustomer,
-            'totalGroupsJoinedAsMember' => $totalGroupsJoinedAsMember,
+
+            'totalGroupsJoined' => $totalGroupsJoined,
+            'totalGroupsJoinedAsCreator' => $totalGroupsJoinedAsCreator,
+            'totalGroupsJoinedAsNonCreator' => $totalGroupsJoinedAsNonCreator,
+
             'totalStoresJoinedAsCreator' => $totalStoresJoinedAsCreator,
             'totalStoresAsRecentVisitor' => $totalStoresAsRecentVisitor,
             'totalStoresJoinedAsTeamMember' => $totalStoresJoinedAsTeamMember,

@@ -105,6 +105,7 @@ class UpdateStoreRequest extends FormRequest
          *  Reference: https://stackoverflow.com/questions/65008650/how-to-use-put-method-in-laravel-api-with-file-upload
          */
         return [
+            'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
             'name' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::NAME_MIN_CHARACTERS, 'max:'.Store::NAME_MAX_CHARACTERS, Rule::unique('stores')->ignore(request()->store->id)],
             'call_to_action' => ['bail', 'sometimes', 'required', Rule::in(collect($callToActionOptions))],
             'description' => ['bail', 'sometimes', 'string', 'min:'.Store::DESCRIPTION_MIN_CHARACTERS, 'max:'.Store::DESCRIPTION_MAX_CHARACTERS],

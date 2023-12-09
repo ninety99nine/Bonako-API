@@ -97,6 +97,7 @@ class CreateStoreRequest extends FormRequest
         $callToActionOptions = collect(Store::CALL_TO_ACTION_OPTIONS)->map(fn($filter) => strtolower($filter));
 
         return [
+            'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
             'logo' => ['bail', 'nullable', 'mimetypes:image/jpeg,image/png,image/jpg,image/gif,image/bmp', 'max:4096'],
             'cover_photo' => ['bail', 'nullable', 'mimetypes:image/jpeg,image/png,image/jpg,image/gif,image/bmp', 'max:4096'],
             'name' => [

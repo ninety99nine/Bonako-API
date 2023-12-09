@@ -166,7 +166,7 @@ class Store extends BaseModel
     ];
 
     protected $fillable = [
-        'logo', 'cover_photo', 'adverts', 'name', 'call_to_action', 'description', 'mobile_number', 'currency', 'registered_with_bank', 'banking_with', 'registered_with_cipa', 'registered_with_cipa_as',
+        'emoji', 'logo', 'cover_photo', 'adverts', 'name', 'call_to_action', 'description', 'mobile_number', 'currency', 'registered_with_bank', 'banking_with', 'registered_with_cipa', 'registered_with_cipa_as',
         'company_uin', 'number_of_employees', 'verified', 'online', 'offline_message', 'identified_orders',
         'user_id', 'last_subscription_end_at', 'allow_delivery', 'allow_free_delivery',
         'pickup_note', 'delivery_note', 'delivery_fee', 'delivery_flat_fee',

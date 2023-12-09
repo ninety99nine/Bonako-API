@@ -869,7 +869,8 @@ class TransactionRepository extends BaseRepository
     /**
      *  Delete an existing transaction
      *
-     *  @return OrderRepository
+     *  @return TransactionRepository
+     *  @throws CannotDeleteTransactionException
      */
     public function deleteTransaction()
     {
@@ -889,10 +890,13 @@ class TransactionRepository extends BaseRepository
         if($isAnOrderTransaction) {
 
             //  Delete the transaction
-            parent::delete();
+            $transactionRepository = parent::delete();
 
             //  Update the order amount balance
             $this->orderRepository()->setModel($order)->updateOrderAmountBalance();
+
+            //  Return the transaction repository
+            return $transactionRepository;
 
         }else{
 

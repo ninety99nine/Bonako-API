@@ -1095,6 +1095,7 @@ class OrderRepository extends BaseRepository
             'special_note' => $specialNote,
             'currency' => $store->currency,
             'occasion_id' => $occasionId,
+            'payment_status' => 'Unpaid',
         ];
 
         if($isUpdatableOrder) {

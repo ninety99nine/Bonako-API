@@ -29,7 +29,7 @@ class Order extends BaseModel
     const USER_ORDER_FILTERS = ['All', ...self::STATUSES];
     const STORE_ORDER_FILTERS = ['All', ...self::STATUSES];
     const FRIEND_GROUP_ORDER_FILTERS = ['All', ...self::STATUSES];
-    const PAYMENT_STATUSES = ['Paid', 'Pending Payment', 'Partially Paid'];
+    const PAYMENT_STATUSES = ['Paid', 'Pending Payment', 'Partially Paid', 'Unpaid'];
     const ORDER_FOR_OPTIONS = ['Me', 'Me And Friends', 'Friends Only' /*, 'Business'*/];
     const STATUSES = ['Waiting', 'On Its Way', 'Ready For Pickup', 'Cancelled', 'Completed'];
     const CANCELLATION_REASONS = [
@@ -594,89 +594,95 @@ class Order extends BaseModel
 
     public function getCanMarkAsPaidAttribute()
     {
-        if($this->grand_total->amount > 0) {
+        // Ensure grand_total is loaded
+        if ($this->grand_total && $this->grand_total->amount > 0) {
 
-            /**
-             *  Get the store from the request store otherwise from the eager loaded store
-             *
-             *  @var Store $store
-             */
-            $store = request()->store ?? $this->getRelation('store');
+            // Check if the store is loaded
+            if (request()->store || $this->relationLoaded('store')) {
 
-            //  The store must be loaded to determine if we can mark as paid
-            if($store == null) return null;
+                // Attempt to get the store from the request or eager loaded relation
+                $store = request()->store ?? $this->getRelation('store');
 
-            $hasPayableAmounts = count($this->payable_amounts) > 0;
+                // Check if there are payable amounts
+                $hasPayableAmounts = count($this->payable_amounts) > 0;
 
-            if($hasPayableAmounts) {
+                if ($hasPayableAmounts) {
 
-                /**
-                 *  @var UserStoreAssociation $userStoreAssociation
-                 */
-                $userStoreAssociation = $store->getUserStoreAssociation();
+                    // Get the UserStoreAssociation
+                    $userStoreAssociation = $store->getUserStoreAssociation();
 
-                //  Check if the user and store association is provided to determine if we can mark as paid
-                if(!is_null($userStoreAssociation)) {
+                    // Check if the UserStoreAssociation is provided
+                    if ($userStoreAssociation) {
 
-                    return $userStoreAssociation->is_team_member_who_has_joined;
-
+                        // Return the specific condition for marking as paid
+                        return $userStoreAssociation->is_team_member_who_has_joined;
+                    }
                 }
 
-            }
+            } else {
 
+                // Handle the case where the store is not loaded
+                return null;
+
+            }
         }
 
+        // Default case: cannot mark as paid
         return false;
     }
+
 
     public function getCanRequestPaymentAttribute()
     {
         if($this->grand_total->amount > 0) {
 
-            /**
-             *  Get the store from the request store otherwise from the eager loaded store
-             *
-             *  @var Store $store
-             */
-            $store = request()->store ?? $this->getRelation('store');
+            // Check if the store is loaded
+            if (request()->store || $this->relationLoaded('store')) {
 
-            //  The store must be loaded to determine if we can request payment
-            if($store == null) return null;
+                // Attempt to get the store from the request or eager loaded relation
+                $store = request()->store ?? $this->getRelation('store');
 
-            $perfectPayEnabled = $store->perfect_pay_enabled;
-            $dpoPaymentEnabled = $store->dpo_payment_enabled;
-            $hasPayableAmounts = count($this->payable_amounts) > 0;
-            $orangeMoneyPaymentEnabled = $store->orange_money_payment_enabled;
+                $perfectPayEnabled = $store->perfect_pay_enabled;
+                $dpoPaymentEnabled = $store->dpo_payment_enabled;
+                $hasPayableAmounts = count($this->payable_amounts) > 0;
+                $orangeMoneyPaymentEnabled = $store->orange_money_payment_enabled;
 
-            if(($perfectPayEnabled || $dpoPaymentEnabled || $orangeMoneyPaymentEnabled) && $hasPayableAmounts) {
+                if(($perfectPayEnabled || $dpoPaymentEnabled || $orangeMoneyPaymentEnabled) && $hasPayableAmounts) {
 
-                /**
-                 *  @var UserOrderCollectionAssociation $userOrderCollectionAssociation
-                 */
-                $userOrderCollectionAssociation = $this->getUserOrderCollectionAssociation();
+                    /**
+                     *  @var UserOrderCollectionAssociation $userOrderCollectionAssociation
+                     */
+                    $userOrderCollectionAssociation = $this->getUserOrderCollectionAssociation();
 
-                //  Check if the user and order collection association is provided to determine if we can request payment
-                if(!is_null($userOrderCollectionAssociation)) {
+                    //  Check if the user and order collection association is provided to determine if we can request payment
+                    if(!is_null($userOrderCollectionAssociation)) {
 
-                    $isAssociatedAsFriend = $userOrderCollectionAssociation->is_associated_as_friend;
-                    $isAssociatedAsCustomer = $userOrderCollectionAssociation->is_associated_as_customer;
+                        $isAssociatedAsFriend = $userOrderCollectionAssociation->is_associated_as_friend;
+                        $isAssociatedAsCustomer = $userOrderCollectionAssociation->is_associated_as_customer;
 
-                    //  We can request payment if we are associated a the friend or customer listed on this order
-                    return $isAssociatedAsFriend || $isAssociatedAsCustomer;
+                        //  We can request payment if we are associated a the friend or customer listed on this order
+                        return $isAssociatedAsFriend || $isAssociatedAsCustomer;
 
-                }
+                    }
 
-                /**
-                 *  @var UserStoreAssociation $userStoreAssociation
-                 */
-                $userStoreAssociation = $store->getUserStoreAssociation();
+                    /**
+                     *  @var UserStoreAssociation $userStoreAssociation
+                     */
+                    $userStoreAssociation = $store->getUserStoreAssociation();
 
-                //  Check if the user and store association is provided to determine if we can request payment
-                if(!is_null($userStoreAssociation)) {
+                    //  Check if the user and store association is provided to determine if we can request payment
+                    if(!is_null($userStoreAssociation)) {
 
-                    return $userStoreAssociation->is_team_member_who_has_joined;
+                        return $userStoreAssociation->is_team_member_who_has_joined;
+
+                    }
 
                 }
+
+            } else {
+
+                // Handle the case where the store is not loaded
+                return null;
 
             }
 
@@ -689,120 +695,122 @@ class Order extends BaseModel
     {
         $options = [];
 
-        /**
-         *  Get the store from the request store otherwise from the eager loaded store
-         *
-         *  @var Store $store
-         */
-        $store = request()->store ?? $this->getRelation('store');
+        // Check if the store is loaded
+        if (request()->store || $this->relationLoaded('store')) {
 
-        //  The store must be loaded to acquire the payable amounts
-        if($store == null) return null;
+            /**
+             *  Get the store from the request store otherwise from the eager loaded store
+             *
+             *  @var Store $store
+             */
+            $store = request()->store ?? $this->getRelation('store');
 
-        $amountPaidPercentage = $this->getRawOriginal('amount_paid_percentage');
-        $amountPendingPercentage = $this->getRawOriginal('amount_pending_percentage');
-        $amountOutstandingPercentage = $this->getRawOriginal('amount_outstanding_percentage');
+            $amountPaidPercentage = $this->getRawOriginal('amount_paid_percentage');
+            $amountPendingPercentage = $this->getRawOriginal('amount_pending_percentage');
+            $amountOutstandingPercentage = $this->getRawOriginal('amount_outstanding_percentage');
 
-        //  Get the remaining outstanding percentage balance that is still payable
-        $remainingPercentage = $amountOutstandingPercentage - $amountPendingPercentage;
+            //  Get the remaining outstanding percentage balance that is still payable
+            $remainingPercentage = $amountOutstandingPercentage - $amountPendingPercentage;
 
-        if($store && $remainingPercentage > 0) {
+            if($store && $remainingPercentage > 0) {
 
-            $option = fn($name, $type, $percentage) => [
-                'name' => $name,
-                'type' => $type,
-                'percentage' => (int) $percentage,
-                'amount' => $this->convertToMoneyFormat($this->getRawOriginal('grand_total') * $percentage / 100, $this->getRawOriginal('currency'))
-            ];
+                $option = fn($name, $type, $percentage) => [
+                    'name' => $name,
+                    'type' => $type,
+                    'percentage' => (int) $percentage,
+                    'amount' => $this->convertToMoneyFormat($this->getRawOriginal('grand_total') * $percentage / 100, $this->getRawOriginal('currency'))
+                ];
 
-            //  Get deposit options
-            $getDepositPaymentOptions = function($existingOptions) use ($store, $option) {
+                //  Get deposit options
+                $getDepositPaymentOptions = function($existingOptions) use ($store, $option) {
 
-                //  If the store supports deposit payments
-                if($store->allow_deposit_payments) {
-
-                    //  Get the deposit options
-                    $depositOptions = collect($store->deposit_percentages)->map(function($percentage) use ($option) {
-
-                        //  Return the deposit option
-                        return $option("Deposit ($percentage%)", 'deposit', $percentage);
-
-                    })->toArray();
-
-                    //  Add deposit options
-                    array_push($existingOptions, ...$depositOptions);
-
-                }
-
-                return $existingOptions;
-
-            };
-
-            //  Get installment options
-            $getInstallmentPaymentOptions = function($existingOptions) use ($remainingPercentage, $store, $option) {
-
-                //  Add remaining balance payment option
-                $options[] = $option("Remaining Balance ($remainingPercentage%)", 'remaining_balance', $remainingPercentage);
-
-                //  If the store supports installment payments
-                if($store->allow_installment_payments) {
-
-                    //  Get the installment options
-                    $installmentOptions = collect($store->installment_percentages)->reject(function($percentage) use ($remainingPercentage) {
-
-                        //  Reject installment percentages that are higher than or equal to the remaining percentage
-                        return $percentage > $remainingPercentage || $percentage == $remainingPercentage;
-
-                    })->map(function($percentage) use ($option) {
-
-                        //  Return the installment option
-                        return $option("$percentage% Installment", 'installment', $percentage);
-
-                    })->toArray();
-
-                    //  Add installment options
-                    array_push($existingOptions, ...$installmentOptions);
-
-                }
-
-                return $existingOptions;
-            };
-
-            if($amountPaidPercentage < 100) {
-
-                if($amountPaidPercentage == 0) {
-
-                    //  Add full payment option
-                    $options[] = $option('Full Payment', 'full_payment', 100);
-
-                    //  If the store does not support deposit payments
+                    //  If the store supports deposit payments
                     if($store->allow_deposit_payments) {
 
-                        //  Add deposit payment options
-                        $options = $getDepositPaymentOptions($options);
+                        //  Get the deposit options
+                        $depositOptions = collect($store->deposit_percentages)->map(function($percentage) use ($option) {
 
-                    }else{
+                            //  Return the deposit option
+                            return $option("Deposit ($percentage%)", 'deposit', $percentage);
 
-                        //  Add installment payment options
-                        $options = $getInstallmentPaymentOptions($options);
+                        })->toArray();
+
+                        //  Add deposit options
+                        array_push($existingOptions, ...$depositOptions);
 
                     }
 
-                }else{
+                    return $existingOptions;
 
-                    //  If the amount outstanding is the amount pending payment
-                    if($amountPendingPercentage == $amountOutstandingPercentage) {
+                };
 
-                        //  Then we cannot have payment options
-                        return [];
+                //  Get installment options
+                $getInstallmentPaymentOptions = function($existingOptions) use ($remainingPercentage, $store, $option) {
+
+                    //  Add remaining balance payment option
+                    $options[] = $option("Remaining Balance ($remainingPercentage%)", 'remaining_balance', $remainingPercentage);
+
+                    //  If the store supports installment payments
+                    if($store->allow_installment_payments) {
+
+                        //  Get the installment options
+                        $installmentOptions = collect($store->installment_percentages)->reject(function($percentage) use ($remainingPercentage) {
+
+                            //  Reject installment percentages that are higher than or equal to the remaining percentage
+                            return $percentage > $remainingPercentage || $percentage == $remainingPercentage;
+
+                        })->map(function($percentage) use ($option) {
+
+                            //  Return the installment option
+                            return $option("$percentage% Installment", 'installment', $percentage);
+
+                        })->toArray();
+
+                        //  Add installment options
+                        array_push($existingOptions, ...$installmentOptions);
+
+                    }
+
+                    return $existingOptions;
+                };
+
+                if($amountPaidPercentage < 100) {
+
+                    if($amountPaidPercentage == 0) {
+
+                        //  Add full payment option
+                        $options[] = $option('Full Payment', 'full_payment', 100);
+
+                        //  If the store does not support deposit payments
+                        if($store->allow_deposit_payments) {
+
+                            //  Add deposit payment options
+                            $options = $getDepositPaymentOptions($options);
+
+                        }else{
+
+                            //  Add installment payment options
+                            $options = $getInstallmentPaymentOptions($options);
+
+                        }
 
                     }else{
 
-                        //  Add remaining balance option
-                        $options[] = $option("Remaining Balance ($remainingPercentage%)", 'remaining_balance', $remainingPercentage);
+                        //  If the amount outstanding is the amount pending payment
+                        if($amountPendingPercentage == $amountOutstandingPercentage) {
 
-                        //  Add installment payment options
-                        $options = $getInstallmentPaymentOptions($options);
+                            //  Then we cannot have payment options
+                            return [];
+
+                        }else{
+
+                            //  Add remaining balance option
+                            $options[] = $option("Remaining Balance ($remainingPercentage%)", 'remaining_balance', $remainingPercentage);
+
+                            //  Add installment payment options
+                            $options = $getInstallmentPaymentOptions($options);
+
+                        }
 
                     }
 

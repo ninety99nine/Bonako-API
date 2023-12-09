@@ -253,6 +253,12 @@ class UserController extends BaseController
 
 
 
+
+    public function showFirstCreatedFriendGroup(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showUserFirstCreatedFriendGroup(), Response::HTTP_OK);
+    }
+
     public function showFriendGroupFilters(User $user)
     {
         return response($this->repository->setModel($this->chooseUser())->showFriendGroupFilters(), Response::HTTP_OK);
