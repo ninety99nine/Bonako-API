@@ -191,13 +191,16 @@ class UserResource extends BaseResource
             new ResourceLink('show.friend.and.friend.group.filters', route($prefix.'friend.and.friend.group.filters.show', $params),'Show friend and friend group filters'),
 
             //  Friend Groups
-            new ResourceLink('show.friend.groups', route($prefix.'friend.groups.show', $params),'Show friend groups'),
-            new ResourceLink('create.friend.groups', route($prefix.'friend.groups.create', $params),'Create friend group'),
-            new ResourceLink('delete.many.friend.groups', route($prefix.'friend.groups.delete.many', $params),'Delete many friend groups'),
+            new ResourceLink('show.first.created.friend.group', route($prefix.'first.created.friend.group.show', $params),'Show first created friend group'),
+            new ResourceLink('show.last.selected.friend.group', route($prefix.'last.selected.friend.group.show', $params),'Show last selected friend group'),
+            new ResourceLink('update.last.selected.friend.groups', route($prefix.'last.selected.friend.groups.update', $params),'Update last selected friend group'),
+            new ResourceLink('delete.many.friend.groups', route($prefix.'delete.many', $params),'Delete many friend groups'),
+            new ResourceLink('check.invitations.to.join.friend.groups', route($prefix.'friend.groups.check.invitations.to.join.groups', $params),'Check invitations to join groups'),
+            new ResourceLink('accept.all.invitations.to.join.friend.groups', route($prefix.'friend.groups.accept.all.invitations.to.join.groups', $params),'Accept all invitations to join groups'),
+            new ResourceLink('decline.all.invitations.to.join.friend.groups', route($prefix.'friend.groups.decline.all.invitations.to.join.groups', $params),'Decline all invitations to join groups'),
             new ResourceLink('show.friend.group.filters', route($prefix.'friend.group.filters.show', $params),'Show friend group filters'),
-            new ResourceLink('show.first.created.friend.group', route($prefix.'first.created.friend.group.show', $params),'Show first friend group created'),
-            new ResourceLink('show.last.selected.friend.group', route($prefix.'friend.groups.last.selected.show', $params),'Show last selected friend group'),
-            new ResourceLink('update.last.selected.friend.groups', route($prefix.'friend.groups.last.selected.update', $params),'Update last selected friend groups'),
+            new ResourceLink('show.friend.groups', route($prefix.'friend.groups.show', $params),'Show friend groups'),
+            new ResourceLink('create.friend.groups', route($prefix.'friend.groups.create', $params),'Create friend groups'),
 
             //  AI Assistant
             new ResourceLink('show.ai.assistant', route($prefix.'ai.assistant.show', $params),'Show AI Assistant'),

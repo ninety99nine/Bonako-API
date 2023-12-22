@@ -36,6 +36,7 @@ use App\Exceptions\StoreHasTooManyProductsException;
 use App\Exceptions\InvitationAlreadyAcceptedException;
 use App\Exceptions\InvitationAlreadyDeclinedException;
 use App\Exceptions\CannotModifyOwnPermissionsException;
+use App\Exceptions\CannotRemoveYourselfAsStoreCreatorException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Notifications\Users\InvitationToFollowStoreAccepted;
 use App\Exceptions\CannotRemoveYourselfAsTeamMemberException;
@@ -237,7 +238,7 @@ class StoreRepository extends BaseRepository
 
         }
 
-        return $this->eagerLoadStoreRelationships($stores)->get();
+        return $this->eagerLoadRelationships($stores)->get();
     }
 
     /**
@@ -265,7 +266,7 @@ class StoreRepository extends BaseRepository
          */
         request()->merge(['with_user_store_association' => true]);
 
-        return $this->eagerLoadStoreRelationships($stores)->get();
+        return $this->eagerLoadRelationships($stores)->get();
     }
 
     /**
@@ -293,7 +294,7 @@ class StoreRepository extends BaseRepository
         //  Eager load the user and store association on each store
         request()->merge(['with_user_store_association' => true]);
 
-        return $this->eagerLoadStoreRelationships($stores)->get();
+        return $this->eagerLoadRelationships($stores)->get();
     }
 
     /**
@@ -422,7 +423,7 @@ class StoreRepository extends BaseRepository
         $firstStoreCreated = $user->storesAsTeamMember()->joinedTeamAsCreator()->oldest();
 
         //  Eager load the store relationships based on request inputs
-        $firstStoreCreated = $this->eagerLoadStoreRelationships($firstStoreCreated);
+        $firstStoreCreated = $this->eagerLoadRelationships($firstStoreCreated);
 
         //  Get the first store ever created by this user
         $firstStoreCreated = $firstStoreCreated->model->first();
@@ -448,7 +449,7 @@ class StoreRepository extends BaseRepository
         //  Query the stores by the filter (If provided)
         $stores = $this->queryUserStoresByFilter($user, $filter);
 
-        return $this->eagerLoadStoreRelationships($stores)->get();
+        return $this->eagerLoadRelationships($stores)->get();
     }
 
     /**
@@ -583,7 +584,7 @@ class StoreRepository extends BaseRepository
      *  @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Builder $model
      *  @return StoreRepository
      */
-    public function eagerLoadStoreRelationships($model) {
+    public function eagerLoadRelationships($model) {
 
         //  Check if we want to eager load the visit shortcode on each store
         if( request()->input('with_visit_shortcode') ) {
@@ -752,6 +753,36 @@ class StoreRepository extends BaseRepository
 
         }
 
+        //  Check if we want to eager load the friend group and store association
+        if( request()->input('with_friend_group_store_association') ) {
+
+            /**
+             *  Additionally we can eager load the current request's friend group id and store association on
+             *  each store. Note that this is not necessary for stores that are retrieved on the friend group
+             *  and store relationship. In such cases the friend group and store association is loaded by
+             *  default. This helps in cases when we are not acquiring stores through the friend group
+             *  relationship but we still need to access the friend group and store association if it
+             *  exists e.g When acquiring stores of a particular user, we can specify the friend if
+             *  group id so that we can eager load the friend group and store association to know
+             *  that friend group is associated with that store that is also associated with that
+             *  user
+             */
+            $model = $model->with(['friendGroupStoreAssociation' => function($query) {
+
+                if(request()->filled('friend_group_id')) {
+
+                    return $query->where('friend_group_id', request()->input('friend_group_id'));
+
+                }else{
+
+                    throw ValidationException::withMessages(['friend_group_id' => 'The friend group id is required to eager load the friend group store association']);
+
+                }
+
+            }]);
+
+        }
+
         $this->setModel($model);
 
         return $this;
@@ -781,7 +812,7 @@ class StoreRepository extends BaseRepository
         $store = $user->stores()->where('stores.id', $store->id);
 
         //  Eager load the store relationships based on request inputs
-        $store = $this->eagerLoadStoreRelationships($store)->model;
+        $store = $this->eagerLoadRelationships($store)->model;
 
         //  Return the current store repository
         return $this->setModel($store->first());
@@ -2487,7 +2518,7 @@ class StoreRepository extends BaseRepository
             ]);
 
         //  Notify the team members of each store on the user's decision to accept the invitation
-        $this->notifyTeamMembersOnUserInvitationToFollowResponse(InvitationResponse::Accepted, $stores);
+        $this->notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse::Accepted, $stores);
 
         return ['message' => 'Invitations accepted successfully'];
     }
@@ -2522,7 +2553,7 @@ class StoreRepository extends BaseRepository
             ]);
 
         //  Notify the team members of each store on the user's decision to declined the invitation
-        $this->notifyTeamMembersOnUserInvitationToFollowResponse(InvitationResponse::Declined, $stores);
+        $this->notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse::Declined, $stores);
 
         return ['message' => 'Invitations declined successfully'];
     }
@@ -2545,7 +2576,7 @@ class StoreRepository extends BaseRepository
             $this->updateInvitationToFollowStatus('Following');
 
             //  Notify the team members of this store on the user's decision to accept the invitation
-            $this->notifyTeamMembersOnUserInvitationToFollowResponse(InvitationResponse::Accepted);
+            $this->notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse::Accepted);
 
             return ['message' => 'Invitation accepted successfully'];
 
@@ -2584,7 +2615,7 @@ class StoreRepository extends BaseRepository
                 $this->updateInvitationToFollowStatus('Declined');
 
                 //  Notify the team members of this store on the user's decision to decline the invitation
-                $this->notifyTeamMembersOnUserInvitationToFollowResponse(InvitationResponse::Declined);
+                $this->notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse::Declined);
 
                 return ['message' => 'Invitation declined successfully'];
 
@@ -2604,7 +2635,7 @@ class StoreRepository extends BaseRepository
 
         }else{
 
-            throw new InvalidInvitationException();
+            throw new InvalidInvitationException('You have not been invited to this store');
 
         }
     }
@@ -2615,7 +2646,7 @@ class StoreRepository extends BaseRepository
      *  @param InvitationResponse $invitationResponse - Indication of whether the user has accepted or declined the invitation
      *  @param Collection|\App\Models\Store[] $storesInvitedToFollow
      */
-    public function notifyTeamMembersOnUserInvitationToFollowResponse(InvitationResponse $invitationResponse, $storesInvitedToFollow = [])
+    public function notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse $invitationResponse, $storesInvitedToFollow = [])
     {
         /**
          *  @var User $user
@@ -2998,7 +3029,7 @@ class StoreRepository extends BaseRepository
      *  Add a single or multiple users as a follower to this store
      *
      *  @param Collection|\App\Models\User[] $users
-     *  @param string | null $followerStatus e.g Following, Unfollowed, Invited
+     *  @param string|null $followerStatus e.g Following, Unfollowed, Invited
      *  @return void
      */
     public function addFollowers($users, $followerStatus = null)
@@ -3078,8 +3109,9 @@ class StoreRepository extends BaseRepository
                 'store_id' => $store->id,
                 'created_at' => now(),
                 'updated_at' => now(),
-                //  Set the user id to null because the user does not exist yet
-                'user_id' => null,
+
+                //  Set the user id equal to the guest user id because the user does not yet exist.
+                'user_id' => $this->userRepository()->getGuestUserId(),
             ];
         })->toArray();
 
@@ -3091,7 +3123,7 @@ class StoreRepository extends BaseRepository
      *  Update a single or multiple users as a follower to this store
      *
      *  @param Collection|\App\Models\User[] $users
-     *  @param string | null $followerStatus e.g Following, Unfollowed, Invited
+     *  @param string|null $followerStatus e.g Following, Unfollowed, Invited
      *  @return void
      */
     public function updateFollowers($users, $followerStatus = null)
@@ -3410,7 +3442,7 @@ class StoreRepository extends BaseRepository
             ]);
 
         //  Notify the team members of each store on the user's decision to accept the invitation
-        $this->notifyTeamMembersOnUserInvitationToJoinTeamResponse(InvitationResponse::Accepted, $stores);
+        $this->notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse::Accepted, $stores);
 
         return ['message' => 'Invitations accepted successfully'];
     }
@@ -3446,7 +3478,7 @@ class StoreRepository extends BaseRepository
             ]);
 
         //  Notify the team members of each store on the user's decision to decline the invitation
-        $this->notifyTeamMembersOnUserInvitationToJoinTeamResponse(InvitationResponse::Declined, $stores);
+        $this->notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse::Declined, $stores);
 
         return ['message' => 'Invitations declined successfully'];
     }
@@ -3469,7 +3501,7 @@ class StoreRepository extends BaseRepository
             $this->updateInvitationToJoinTeamStatus('Joined');
 
             //  Notify the team members of each store on the user's decision to accept the invitation
-            $this->notifyTeamMembersOnUserInvitationToJoinTeamResponse(InvitationResponse::Accepted);
+            $this->notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse::Accepted);
 
             return ['message' => 'Invitation accepted successfully'];
 
@@ -3508,7 +3540,7 @@ class StoreRepository extends BaseRepository
                 $this->updateInvitationToJoinTeamStatus('Declined');
 
                 //  Notify the team members of each store on the user's decision to decline the invitation
-                $this->notifyTeamMembersOnUserInvitationToJoinTeamResponse(InvitationResponse::Declined);
+                $this->notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse::Declined);
 
                 return ['message' => 'Invitation declined successfully'];
 
@@ -3528,7 +3560,7 @@ class StoreRepository extends BaseRepository
 
         }else{
 
-            throw new InvalidInvitationException();
+            throw new InvalidInvitationException('You have not been invited to this store');
 
         }
     }
@@ -3539,7 +3571,7 @@ class StoreRepository extends BaseRepository
      *  @param InvitationResponse $invitationResponse - Indication of whether the user has accepted or declined the invitation
      *  @param Collection|\App\Models\Store[] $storesInvitedToJoinTeam
      */
-    public function notifyTeamMembersOnUserInvitationToJoinTeamResponse(InvitationResponse $invitationResponse, $storesInvitedToJoinTeam = [])
+    public function notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse $invitationResponse, $storesInvitedToJoinTeam = [])
     {
         /**
          *  @var User $user
@@ -4503,9 +4535,9 @@ class StoreRepository extends BaseRepository
      *  This allows us to assign new users as team members to this store with a given role and permissions
      *
      *  @param Collection|\App\Models\User[] $users
-     *  @param string | null $teamMemberStatus e.g Joined, Left, Invited
+     *  @param string|null $teamMemberStatus e.g Joined, Left, Invited
      *  @param array | null $teamMemberPermissions e.g ['*'] or ['manage orders', 'manage customers', e.t.c]
-     *  @param string | null $teamMemberRole e.g 'Admin'
+     *  @param string|null $teamMemberRole e.g 'Admin'
      *  @return void
      */
     public function addTeamMembers($users, $teamMemberStatus = null, $teamMemberPermissions = [], $teamMemberRole = null)
@@ -4604,7 +4636,7 @@ class StoreRepository extends BaseRepository
      *
      *  @param int | array<int> $mobileNumbers
      *  @param array | null $teamMemberPermissions e.g ['*'] or ['manage orders', 'manage customers', e.t.c]
-     *  @param string | null $teamMemberRole e.g 'Admin'
+     *  @param string|null $teamMemberRole e.g 'Admin'
      *  @return void
      */
     public function addTeamMembersByMobileNumbers($mobileNumbers = [], $teamMemberPermissions = [], $teamMemberRole = null)
@@ -4623,7 +4655,7 @@ class StoreRepository extends BaseRepository
             //  Determine the team member role
             $teamMemberRole = $this->resolveRole($teamMemberRole, $teamMemberPermissions);
 
-            $data = collect($mobileNumbers)->map(function($mobileNumber) use($teamMemberRole, $teamMemberPermissions) {
+            $records = collect($mobileNumbers)->map(function($mobileNumber) use($teamMemberRole, $teamMemberPermissions) {
 
                 //  Generate the team member's join code
                 $teamMemberJoinCode = $this->generateRandomSixDigitCode();
@@ -4638,8 +4670,9 @@ class StoreRepository extends BaseRepository
                     'store_id' => $this->model->id,
                     'created_at' => now(),
                     'updated_at' => now(),
-                    //  Set the user id to null because the user does not exist yet
-                    'user_id' => null,
+
+                    //  Set the user id equal to the guest user id because the user does not yet exist.
+                    'user_id' => $this->userRepository()->getGuestUserId(),
 
                     //  Automatically follow by default
                     'follower_status' => 'Following',
@@ -4647,7 +4680,7 @@ class StoreRepository extends BaseRepository
             })->toArray();
 
             //  Invite the specified users
-            DB::table('user_store_association')->insert($data);
+            DB::table('user_store_association')->insert($records);
 
         }
     }
@@ -4658,7 +4691,7 @@ class StoreRepository extends BaseRepository
      *
      *  @param int | array<int> | \App\Models\User $userIds
      *  @param array | null $teamMemberPermissions e.g ['*'] or ['manage orders', 'manage customers', e.t.c]
-     *  @param string | null $teamMemberRole e.g 'Admin'
+     *  @param string|null $teamMemberRole e.g 'Admin'
      *  @return void
      */
     public function updateTeamMembersByUserIds($userIds = [], $teamMemberPermissions = [], $teamMemberRole = null)
@@ -4806,6 +4839,14 @@ class StoreRepository extends BaseRepository
 
                 }
 
+                //  If this user is a creator
+                if($assignedUser->user_store_association->is_team_member_as_creator) {
+
+                    //  Deny the action of removing yourself as a store creator
+                    throw new CannotRemoveYourselfAsStoreCreatorException();
+
+                }
+
             //  Otherwise if we have more than one user to remove
             }else{
 
@@ -4882,7 +4923,7 @@ class StoreRepository extends BaseRepository
                 //  Foreach assigned user that has been removed
                 foreach($assignedUsers as $removedUser) {
 
-                    //  Send team member removed notification to team members
+                    //  Notify the team members that a team member has been removed
                     //  change to Notification::send() instead of Notification::sendNow() so that this is queued
                     Notification::sendNow(
                         //  Send notifications to the team members who joined

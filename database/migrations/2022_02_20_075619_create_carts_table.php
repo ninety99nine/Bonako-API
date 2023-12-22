@@ -50,11 +50,11 @@ class CreateCartsTable extends Migration
             $table->boolean('is_abandoned')->default(false);
 
             /*  Instant Cart  */
-            $table->foreignId('instant_cart_id')->constrained()->nullable();
+            $table->foreignId('instant_cart_id')->nullable();
 
             /*  Ownership  */
-            $table->foreignId('order_id')->constrained();
-            $table->foreignId('store_id')->constrained();
+            $table->foreignId('order_id');
+            $table->foreignId('store_id');
 
             /*  Timestamps  */
             $table->timestamps();

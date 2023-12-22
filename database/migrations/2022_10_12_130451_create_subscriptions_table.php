@@ -20,8 +20,8 @@ class CreateSubscriptionsTable extends Migration
             /*  Basic Information  */
             $table->timestamp('start_at')->nullable();
             $table->timestamp('end_at')->nullable();
-            $table->foreignId('user_id')->constrained();
-            $table->foreignId('subscription_plan_id')->constrained();
+            $table->foreignId('user_id');
+            $table->foreignId('subscription_plan_id');
 
             /*  Owenership Information  */
             $table->string('owner_type');

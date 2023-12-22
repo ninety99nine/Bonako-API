@@ -5,11 +5,22 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Database\Seeder;
+use App\Repositories\UserRepository;
 use Database\Seeders\Traits\SeederHelper;
 
 class UserSeeder extends Seeder
 {
     use SeederHelper;
+
+    /**
+     *  Return the UserRepository instance
+     *
+     *  @return UserRepository
+     */
+    public function userRepository()
+    {
+        return resolve(UserRepository::class);
+    }
 
     /**
      *  Run the database seeds.
@@ -18,6 +29,9 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
+        //  Create guest user
+        $this->createGuestUser();
+
         //  Create real users
         $this->createJulian();
         $this->createBonolo();
@@ -29,6 +43,10 @@ class UserSeeder extends Seeder
             //  User::factory()->count(8)->create();
 
         }
+    }
+
+    public function createGuestUser() {
+        $this->userRepository()->createGuestUser();
     }
 
     public function createJulian() {
@@ -43,7 +61,6 @@ class UserSeeder extends Seeder
             'password' => bcrypt('qweasd'),
             'remember_token' => Str::random(10),
         ]);
-
     }
 
     public function createBonolo() {

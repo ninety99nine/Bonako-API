@@ -47,11 +47,12 @@ class User extends BaseAuthenticatable /* Authenticatable */
         'mobile_number' => MobileNumber::class,
         'is_super_admin' => 'boolean',
         'last_seen_at' => 'datetime',
+        'is_guest' => 'boolean',
     ];
 
     protected $fillable = [
         'first_name', 'last_name', 'about_me', 'profile_photo', 'password', 'mobile_number', 'mobile_number_verified_at',
-        'accepted_terms_and_conditions', 'last_seen_at', 'registered_by_user_id'
+        'accepted_terms_and_conditions', 'last_seen_at', 'registered_by_user_id', 'is_guest', 'is_super_admin'
     ];
 
     protected $hidden = [

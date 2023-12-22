@@ -12,8 +12,8 @@ class CreateSmsAlertActivityAssociationsTable extends Migration
             $table->id();
             $table->boolean('enabled')->default(true);
             $table->unsignedTinyInteger('total_alerts_sent')->nullable();
-            $table->foreignId('sms_alert_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('sms_alert_activity_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('sms_alert_id')->cascadeOnDelete();
+            $table->foreignId('sms_alert_activity_id')->cascadeOnDelete();
             $table->timestamps();
 
             /* Add Indexes */

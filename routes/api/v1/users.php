@@ -117,14 +117,20 @@ foreach($options as $option) {
             Route::prefix('friend-groups')->group(function () {
 
                 Route::get('/first-created-friend-group', 'showFirstCreatedFriendGroup')->name('.first.created.friend.group.show')->whereNumber('user');
+                Route::get('/last-selected-friend-group', 'showLastSelectedFriendGroup')->name('.last.selected.friend.group.show')->whereNumber('user');
+                Route::put('/last-selected-friend-groups', 'updateLastSelectedFriendGroups')->name('.last.selected.friend.groups.update')->whereNumber('user');
+                Route::delete('/delete-many', 'deleteManyFriendGroups')->name('.delete.many')->whereNumber('user');
+
                 Route::get('/filters', 'showFriendGroupFilters')->name('.friend.group.filters.show')->whereNumber('user');
 
                 Route::name('.friend.groups')->group(function () {
                     Route::get('/', 'showFriendGroups')->name('.show')->whereNumber('user');
                     Route::post('/', 'createFriendGroup')->name('.create')->whereNumber('user');
-                    Route::delete('/', 'deleteManyFriendGroups')->name('.delete.many')->whereNumber('user');
-                    Route::get('/last-selected', 'showLastSelectedFriendGroup')->name('.last.selected.show')->whereNumber('user');
-                    Route::put('/last-selected', 'updateLastSelectedFriendGroups')->name('.last.selected.update')->whereNumber('user');
+
+                    //  Invitations To Friend Groups
+                    Route::get('/check-invitations-to-join-groups', 'checkInvitationsToJoinFriendGroups')->name('.check.invitations.to.join.groups')->whereNumber('user');
+                    Route::put('/accept-all-invitations-to-join-groups', 'acceptAllInvitationsToJoinFriendGroups')->name('.accept.all.invitations.to.join.groups')->whereNumber('user');
+                    Route::put('/decline-all-invitations-to-join-groups', 'declineAllInvitationsToJoinFriendGroups')->name('.decline.all.invitations.to.join.groups')->whereNumber('user');
                 });
 
                 Route::prefix('{friend_group}')->name('.friend.group')->group(function () {
@@ -132,20 +138,46 @@ foreach($options as $option) {
                     Route::get('/', 'showFriendGroup')->name('.show')->whereNumber(['user', 'friend_group']);
                     Route::put('/', 'updateFriendGroup')->name('.update')->whereNumber(['user', 'friend_group']);
                     Route::delete('/', 'deleteFriendGroup')->name('.delete')->whereNumber(['user', 'friend_group']);
-                    Route::get('/members', 'showFriendGroupMembers')->name('.members.show')->whereNumber(['user', 'friend_group']);
-                    Route::delete('/members', 'removeFriendGroupMembers')->name('.members.remove')->whereNumber(['user', 'friend_group']);
 
-                    //  Friends Group Stores
-                    Route::prefix('stores')->name('.stores')->group(function () {
-                        Route::get('/', 'showFriendGroupStores')->name('.show')->whereNumber(['user', 'friend_group']);
-                        Route::post('/', 'addFriendGroupStores')->name('.add')->whereNumber(['user', 'friend_group']);
-                        Route::delete('/', 'removeFriendGroupStores')->name('.remove')->whereNumber(['user', 'friend_group']);
+                    //  Friend Group Members
+                    Route::prefix('members')->group(function () {
+
+                        //  Friend Group Invitations
+                        Route::post('/invite', 'inviteFriendGroupMembers')->name('.members.invite')->whereNumber(['user', 'friend_group']);
+                        Route::delete('/remove', 'removeFriendGroupMembers')->name('.members.remove')->whereNumber(['user', 'friend_group']);
+                        Route::put('/accept-invitation-to-join-group', 'acceptInvitationToJoinFriendGroup')->name('.accept.invitation.to.join.group')->whereNumber(['user', 'friend_group']);
+                        Route::put('/decline-invitation-to-join-group', 'declineInvitationToJoinFriendGroup')->name('.decline.invitation.to.join.group')->whereNumber(['user', 'friend_group']);
+
+                        Route::get('/filters', 'showFriendGroupMemberFilters')->name('.member.filters.show')->whereNumber(['user', 'friend_group']);
+
+                        Route::name('.members')->group(function () {
+                            Route::get('/', 'showFriendGroupMembers')->name('.show')->whereNumber(['user', 'friend_group']);
+                        });
+
                     });
 
-                    //  Friends Group Orders
+                    //  Friend Group Stores
+                    Route::prefix('stores')->group(function () {
+
+                        Route::get('/filters', 'showFriendGroupStoreFilters')->name('.store.filters.show')->whereNumber(['user', 'friend_group']);
+
+                        Route::name('.stores')->group(function () {
+                            Route::get('/', 'showFriendGroupStores')->name('.show')->whereNumber(['user', 'friend_group']);
+                            Route::post('/add', 'addFriendGroupStores')->name('.add')->whereNumber(['user', 'friend_group']);
+                            Route::delete('/remove', 'removeFriendGroupStores')->name('.remove')->whereNumber(['user', 'friend_group']);
+                        });
+
+                    });
+
+                    //  Friend Group Orders
                     Route::prefix('orders')->group(function () {
-                        Route::get('/filters', 'showFriendGroupOrderFilters')->name('.order.filters.show')->whereNumber('user');
-                        Route::get('/', 'showFriendGroupOrders')->name('.orders.show')->whereNumber(['user', 'friend_group']);
+
+                        Route::get('/filters', 'showFriendGroupOrderFilters')->name('.order.filters.show')->whereNumber(['user', 'friend_group']);
+
+                        Route::name('.orders')->group(function () {
+                            Route::get('/', 'showFriendGroupOrders')->name('.show')->whereNumber(['user', 'friend_group']);
+                        });
+
                     });
 
                 });

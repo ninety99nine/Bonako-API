@@ -146,7 +146,7 @@ class StoreObserver
         //  Retrieve the cached team members
         $teamMembers = Cache::get($this->getTeamMembersCacheName($store));
 
-        //  Notify the Super-Admins on this store creation
+        //  Notify the team members on this store deletion
         //  change to Notification::send() instead of Notification::sendNow() so that this is queued
         Notification::send($teamMembers, new StoreDeleted($store->id, $store->name, auth()->user()));
 

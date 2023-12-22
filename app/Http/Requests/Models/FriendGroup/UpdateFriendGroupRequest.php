@@ -51,10 +51,12 @@ class UpdateFriendGroupRequest extends FormRequest
                     }
                 },
             ],
-            'mobile_numbers' => ['sometimes', 'array'],
+            'mobile_numbers' => ['array'],
+            'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
             'shared' => ['bail', 'sometimes', 'required', 'boolean'],
             'can_add_friends' => ['bail', 'sometimes', 'required', 'boolean'],
-            'mobile_numbers.*' => ['bail', 'string', 'distinct', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11', 'exists:users,mobile_number'],
+            'mobile_numbers.*' => ['bail', 'sometimes', 'string', 'distinct', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
+            'description' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.FriendGroup::DESCRIPTION_MIN_CHARACTERS, 'max:'.FriendGroup::DESCRIPTION_MAX_CHARACTERS],
         ];
     }
 

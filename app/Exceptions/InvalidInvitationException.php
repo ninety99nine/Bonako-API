@@ -7,7 +7,7 @@ use Illuminate\Http\Response;
 
 class InvalidInvitationException extends Exception
 {
-    protected $message = 'You have not been invited to this store';
+    protected $message = 'You have not been invited';
 
     /**
      * Render the exception into an HTTP response.

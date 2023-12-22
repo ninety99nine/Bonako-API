@@ -32,8 +32,9 @@ use App\Http\Requests\Models\FriendGroup\DeleteFriendGroupsRequest;
 use App\Http\Requests\Models\User\UpdateLastSelectedFriendsRequest;
 use App\Http\Requests\Models\FriendGroup\ShowFriendGroupMembersRequest;
 use App\Http\Requests\Models\FriendGroup\AddStoresFromFriendGroupRequest;
+use App\Http\Requests\Models\FriendGroup\InviteFriendGroupMembersRequest;
 use App\Http\Requests\Models\FriendGroup\RemoveStoresFromFriendGroupRequest;
-use App\Http\Requests\Models\FriendGroup\RemoveFriendsFromFriendGroupRequest;
+use App\Http\Requests\Models\FriendGroup\RemoveFriendGroupMembersRequest;
 use App\Http\Requests\Models\FriendGroup\UpdateLastSelectedFriendGroupsRequest;
 use App\Http\Requests\Models\Store\CreateStoreRequest;
 use App\Http\Requests\Models\Store\JoinStoreRequest;
@@ -254,11 +255,6 @@ class UserController extends BaseController
 
 
 
-    public function showFirstCreatedFriendGroup(User $user)
-    {
-        return response($this->repository->setModel($this->chooseUser())->showUserFirstCreatedFriendGroup(), Response::HTTP_OK);
-    }
-
     public function showFriendGroupFilters(User $user)
     {
         return response($this->repository->setModel($this->chooseUser())->showFriendGroupFilters(), Response::HTTP_OK);
@@ -269,14 +265,29 @@ class UserController extends BaseController
         return response($this->repository->setModel($this->chooseUser())->showFriendGroups()->transform(), Response::HTTP_OK);
     }
 
-    public function createFriendGroup(CreateFriendGroupRequest $request, User $user)
-    {
-        return response($this->repository->setModel($this->chooseUser())->createFriendGroup($request), Response::HTTP_CREATED);
-    }
-
     public function showFriendGroup(User $user, FriendGroup $friendGroup)
     {
         return response($this->repository->setModel($this->chooseUser())->showFriendGroup($friendGroup)->transform(), Response::HTTP_OK);
+    }
+
+    public function showFirstCreatedFriendGroup(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showFirstCreatedFriendGroup(), Response::HTTP_OK);
+    }
+
+    public function showLastSelectedFriendGroup(User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showLastSelectedFriendGroup(), Response::HTTP_OK);
+    }
+
+    public function updateLastSelectedFriendGroups(UpdateLastSelectedFriendGroupsRequest $request, User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->updateLastSelectedFriendGroups($request), Response::HTTP_OK);
+    }
+
+    public function createFriendGroup(CreateFriendGroupRequest $request, User $user)
+    {
+        return response($this->repository->setModel($this->chooseUser())->createFriendGroup($request), Response::HTTP_CREATED);
     }
 
     public function updateFriendGroup(UpdateFriendGroupRequest $request, User $user, FriendGroup $friendGroup)
@@ -294,42 +305,69 @@ class UserController extends BaseController
         return response($this->repository->setModel($this->chooseUser())->deleteManyFriendGroups($request), Response::HTTP_OK);
     }
 
-    public function showLastSelectedFriendGroup(User $user)
+    public function inviteFriendGroupMembers(InviteFriendGroupMembersRequest $request, User $user, FriendGroup $friendGroup)
     {
-        $response = $this->repository->setModel($this->chooseUser())->showLastSelectedFriendGroup();
-
-        //  Transform the response if it's a non-null response
-        return response($response == null ? null : $response->transform(), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->inviteFriendGroupMembers($friendGroup, $request), Response::HTTP_OK);
     }
 
-    public function updateLastSelectedFriendGroups(UpdateLastSelectedFriendGroupsRequest $request, User $user)
+    public function checkInvitationsToJoinFriendGroups(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateLastSelectedFriendGroups($request), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->checkInvitationsToJoinFriendGroups(), Response::HTTP_OK);
     }
 
-    public function showFriendGroupMembers(ShowFriendGroupMembersRequest $request, User $user, FriendGroup $friendGroup)
+    public function acceptAllInvitationsToJoinFriendGroups(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroupMembers($request, $friendGroup)->transform(), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->acceptAllInvitationsToJoinFriendGroups(), Response::HTTP_OK);
     }
 
-    public function removeFriendGroupMembers(RemoveFriendsFromFriendGroupRequest $request, User $user, FriendGroup $friendGroup)
+    public function declineAllInvitationsToJoinFriendGroups(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->removeFriendGroupMembers($request, $friendGroup), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->declineAllInvitationsToJoinFriendGroups(), Response::HTTP_OK);
     }
 
-    public function showFriendGroupStores(ShowUserStoresRequest $request, User $user, FriendGroup $friendGroup)
+    public function acceptInvitationToJoinFriendGroup(User $user, FriendGroup $friendGroup)
+    {
+        return response($this->repository->setModel($this->chooseUser())->acceptInvitationToJoinFriendGroup($friendGroup), Response::HTTP_OK);
+    }
+
+    public function declineInvitationToJoinFriendGroup(User $user, FriendGroup $friendGroup)
+    {
+        return response($this->repository->setModel($this->chooseUser())->declineInvitationToJoinFriendGroup($friendGroup), Response::HTTP_OK);
+    }
+
+    public function removeFriendGroupMembers(RemoveFriendGroupMembersRequest $request, User $user, FriendGroup $friendGroup)
+    {
+        return response($this->repository->setModel($this->chooseUser())->removeFriendGroupMembers($friendGroup), Response::HTTP_OK);
+    }
+
+    public function showFriendGroupMemberFilters(User $user, FriendGroup $friendGroup)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showFriendGroupMemberFilters($friendGroup), Response::HTTP_OK);
+    }
+
+    public function showFriendGroupMembers(User $user, FriendGroup $friendGroup)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showFriendGroupMembers($friendGroup)->transform(), Response::HTTP_OK);
+    }
+
+    public function showFriendGroupStoreFilters(User $user, FriendGroup $friendGroup)
+    {
+        return response($this->repository->setModel($this->chooseUser())->showFriendGroupStoreFilters($friendGroup), Response::HTTP_OK);
+    }
+
+    public function showFriendGroupStores(User $user, FriendGroup $friendGroup)
     {
         return response($this->repository->setModel($this->chooseUser())->showFriendGroupStores($friendGroup)->transform(), Response::HTTP_OK);
     }
 
     public function addFriendGroupStores(AddStoresFromFriendGroupRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->addFriendGroupStores($request, $friendGroup), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->addFriendGroupStores($friendGroup, $request), Response::HTTP_OK);
     }
 
     public function removeFriendGroupStores(RemoveStoresFromFriendGroupRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->removeFriendGroupStores($request, $friendGroup), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->removeFriendGroupStores($friendGroup, $request), Response::HTTP_OK);
     }
 
     public function showFriendGroupOrderFilters(ShowFriendGroupOrderFiltersRequest $request, User $user, FriendGroup $friendGroup)
@@ -341,6 +379,20 @@ class UserController extends BaseController
     {
         return response($this->repository->setModel($this->chooseUser())->showFriendGroupOrders($friendGroup)->transform(), Response::HTTP_OK);
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

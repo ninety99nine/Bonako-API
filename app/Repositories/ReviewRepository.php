@@ -18,7 +18,7 @@ class ReviewRepository extends BaseRepository
      *  @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Builder $model
      *  @return OrderRepository
      */
-    public function eagerLoadReviewRelationships($model) {
+    public function eagerLoadRelationships($model) {
 
         $relationships = [];
         $countableRelationships = [];
@@ -112,7 +112,7 @@ class ReviewRepository extends BaseRepository
         $reviews = $this->queryStoreReviews($store, $filter);
 
         //  Eager load the review relationships based on request inputs
-        return $this->eagerLoadReviewRelationships($reviews)->get();
+        return $this->eagerLoadRelationships($reviews)->get();
     }
 
     /**
@@ -211,7 +211,7 @@ class ReviewRepository extends BaseRepository
         $reviews = $this->queryUserReviews($user, $filter);
 
         //  Eager load the review relationships based on request inputs
-        return $this->eagerLoadReviewRelationships($reviews)->get();
+        return $this->eagerLoadRelationships($reviews)->get();
     }
 
     /**

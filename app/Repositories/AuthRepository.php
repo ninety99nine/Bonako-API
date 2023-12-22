@@ -267,15 +267,17 @@ class AuthRepository extends BaseRepository
     /**
      *  Check if user account exists
      *
-     *  @return UserResource
+     *  @return array
      */
     public function accountExists()
     {
-        //  Set matching user (if exists)
-        $this->setModel($this->getUserFromMobileNumber());
+        $user = $this->getUserFromMobileNumber();
 
         //  Return user account
-        return $this->transform();
+        return [
+            'exists' => !is_null($user),
+            'accountSummary' => $user ? collect($user)->only(['mobile_number', 'requires_password']) : null
+        ];
     }
 
     /**
@@ -547,14 +549,14 @@ class AuthRepository extends BaseRepository
     /**
      *  Return the user matching the request mobile number
      *
-     *  @return User
+     *  @return User|null
      */
     private function getUserFromMobileNumber()
     {
         $mobileNumber = request()->input('mobile_number');
 
         //  Check if we have a matching user
-        return $this->model->searchMobileNumber($mobileNumber)->firstOrFail();
+        return $this->model->searchMobileNumber($mobileNumber)->first();
     }
 
     /**

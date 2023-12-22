@@ -16,6 +16,8 @@ class FriendGroup extends BaseModel
     use HasFactory, UserFriendGroupAssociationTrait;
 
     const FILTERS = ['Groups', 'Shared Groups'];    //  or ['Created', 'Shared']
+    const MEMBER_FILTERS = ['All', 'Creator', 'Admins', 'Members'];
+    const STORE_FILTERS = ['All', 'Popular'];
 
     protected $casts = [
         'shared' => 'boolean',
@@ -23,7 +25,7 @@ class FriendGroup extends BaseModel
     ];
 
     protected $fillable = [
-        'name', 'shared', 'can_add_friends'
+        'emoji', 'name', 'description', 'shared', 'can_add_friends'
     ];
 
     /**
@@ -31,6 +33,8 @@ class FriendGroup extends BaseModel
      */
     const NAME_MIN_CHARACTERS = 3;
     const NAME_MAX_CHARACTERS = 60;
+    const DESCRIPTION_MIN_CHARACTERS = 3;
+    const DESCRIPTION_MAX_CHARACTERS = 120;
 
     /*
      *  Scope: Return friend groups that are being searched

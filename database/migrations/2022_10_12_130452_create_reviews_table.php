@@ -19,8 +19,8 @@ class CreateReviewsTable extends Migration
             $table->tinyInteger('rating');
             $table->enum('subject', Review::SUBJECTS)->nullable();
             $table->string('comment', Review::COMMENT_MAX_CHARACTERS)->nullable();
-            $table->foreignId('store_id')->constrained();
-            $table->foreignId('user_id')->constrained();
+            $table->foreignId('store_id');
+            $table->foreignId('user_id');
             $table->timestamps();
 
             /* Add Indexes */

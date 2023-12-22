@@ -15,8 +15,8 @@ class CreateUserFriendAssociationTable extends Migration
     {
         Schema::create('user_friend_association', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained();
-            $table->foreignId('friend_user_id')->constrained();
+            $table->foreignId('user_id');
+            $table->foreignId('friend_user_id');
             $table->timestamp('last_selected_at')->nullable();
             $table->timestamps();
 

@@ -457,6 +457,16 @@ class Store extends BaseModel
                     ->as('friend_group_store_association');
     }
 
+    /**
+     *  Returns the friend group and store association
+     *
+     *  @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function friendGroupStoreAssociation()
+    {
+        return $this->hasOne(FriendGroupStoreAssociation::class, 'store_id');
+    }
+
     /****************************
      *  ACCESSORS               *
      ***************************/
@@ -539,11 +549,11 @@ class Store extends BaseModel
 
 
     /**
-     *  Get the user and store association pivot model is provided
+     *  Get the user and store association pivot model if provided
      *
      *  return @var App\Models\Pivots\UserStoreAssociation $userStoreAssociation
      */
-    public function getUserStoreAssociation()
+    public function getUserStoreAssociationAttribute()
     {
         $userStoreAssociation = null;
 
@@ -560,11 +570,11 @@ class Store extends BaseModel
             /**
              *  @var App\Models\Pivots\UserStoreAssociation $userStoreAssociation
              */
-            $userStoreAssociation = $this->user_store_association;
+            $userStoreAssociation = $this->getRelation('user_store_association');
 
         /**
          *  Check if the user and store association pivot model is loaded so that
-         *  we can determine if the user can access this shop. If the relationship
+         *  we can determine if the user can access this store. If the relationship
          *  "authUserStoreAssociation" exists then this store was acquired without
          *  a user and store relationship but the UserStoreAssociation was then
          *  eager loaded on the store e.g
@@ -576,11 +586,56 @@ class Store extends BaseModel
             /**
              *  @var App\Models\Pivots\UserStoreAssociation $userStoreAssociation
              */
-            $userStoreAssociation = $this->authUserStoreAssociation;
+            $userStoreAssociation = $this->getRelation('authUserStoreAssociation');
 
         }
 
         return $userStoreAssociation;
+    }
+
+    /**
+     *  Get the friend group and store association pivot model if provided
+     *
+     *  return @var App\Models\Pivots\FriendGroupStoreAssociation $friendGroupStoreAssociation
+     */
+    public function getFriendGroupStoreAssociationAttribute()
+    {
+        $friendGroupStoreAssociation = null;
+
+        /**
+         *  Check if the friend group and store association pivot model is loaded.
+         *  If the relationship "friend_group_store_association" exists then this
+         *  store was acquired directly from a friend group and store relationship
+         *  e.g
+         *
+         *  $friendGroup->stores()->first();
+         */
+        if( $this->relationLoaded('friend_group_store_association') ) {
+
+            /**
+             *  @var App\Models\Pivots\FriendGroupStoreAssociation $friendGroupStoreAssociation
+             */
+            $friendGroupStoreAssociation = $this->getRelation('friend_group_store_association');
+
+        /**
+         *  Check if the friend group and store association pivot model is loaded.
+         *  If the relationship "friendGroupStoreAssociation" exists then this
+         *  store was acquired without a friend group and store relationship
+         *  but the FriendGroupStoreAssociation was then eager loaded on the
+         *  store e.g
+         *
+         *  FriendGroup::with('friendGroupStoreAssociation')->first();
+         */
+        }elseif( $this->relationLoaded('friendGroupStoreAssociation') ) {
+
+            /**
+             *  @var App\Models\Pivots\FriendGroupStoreAssociation $friendGroupStoreAssociation
+             */
+            $friendGroupStoreAssociation = $this->getRelation('friendGroupStoreAssociation');
+
+        }
+
+        return $friendGroupStoreAssociation;
     }
 
     /**
@@ -591,7 +646,7 @@ class Store extends BaseModel
         $status = false;
         $expiresAt = null;
         $description = null;
-        $userStoreAssociation = $this->getUserStoreAssociation();
+        $userStoreAssociation = $this->user_store_association;
 
         if( !is_null($userStoreAssociation) ) {
 

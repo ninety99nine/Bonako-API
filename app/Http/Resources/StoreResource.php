@@ -40,27 +40,6 @@ class StoreResource extends BaseResource
         }
 
         /**
-         *  When eager loading the store on orders, we also eager the authUserStoreAssociation
-         *  relationship which is the user-store assosiation of the current authenticated user
-         *  with this store. This ensures that we can access the user-store pivot information.
-         *
-         *  This relationship needs to be renamed from "authUserStoreAssociation" to
-         *  "user_store_association" so that we can transform the relationship based
-         *  on the "user_store_association" name.
-         */
-        if($this->resource->relationLoaded('authUserStoreAssociation')) {
-
-            //  Rename the "authUserStoreAssociation" to "user_store_association"
-            $this->resource->setAttribute('user_store_association', $this->resource->authUserStoreAssociation);
-
-            //  Exclude the authUserStoreAssociation relationship from being included with fields
-            $this->customExcludeFields = array_merge(
-                ($this->customExcludeFields ?? []), ['user_store_association']
-            );
-
-        }
-
-        /**
          *  If the store is accessed via a user relationship then we can gain access to the store-user
          *  pivot information. This pivot information is accessed via the "user_store_association"
          *  pivot name. If this property is provided then we can include it with our payload as
@@ -71,6 +50,20 @@ class StoreResource extends BaseResource
             //  Include the user and store association payload
             $this->customIncludeAttributes = array_merge(
                 ($this->customIncludeAttributes ?? []), ['user_store_association']
+            );
+
+        }
+
+        /**
+         *  If the store is accessed via a friend group relationship then we can gain access to the friend-group-store
+         *  pivot information. This pivot information is accessed via the "friend_group_store_association" pivot name.
+         *  If this property is provided then we can include it with our payload as an attribute
+         */
+        if( !empty($this->resource->friend_group_store_association) ) {
+
+            //  Include the friend group and store association payload
+            $this->customIncludeAttributes = array_merge(
+                ($this->customIncludeAttributes ?? []), ['friend_group_store_association']
             );
 
         }

@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
             'user_friend_association', 'user_friend_group_association', 'user_order_view_association',
             'user_store_association', 'sms_messages', 'notifications', 'ai_message_categories',
             'ai_messages', 'sms_alerts', 'sms_alert_activities', 'sms_alert_activity_associations',
-            'sms_alert_activity_stores'
+            'sms_alert_activity_store_associations'
         );
 
         $this->enableForeignKeyChecks();

@@ -16,7 +16,9 @@ class CreateFriendGroupsTable extends Migration
     {
         Schema::create('friend_groups', function (Blueprint $table) {
             $table->id();
+            $table->string('emoji')->nullable();
             $table->string('name', FriendGroup::NAME_MAX_CHARACTERS);
+            $table->string('description', FriendGroup::DESCRIPTION_MAX_CHARACTERS)->nullable();
             $table->boolean('shared')->default(false);
             $table->boolean('can_add_friends')->default(false);
             $table->timestamps();

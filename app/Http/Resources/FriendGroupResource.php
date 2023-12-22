@@ -30,6 +30,20 @@ class FriendGroupResource extends BaseResource
 
         }
 
+        /**
+         *  If the friend group is accessed via a store relationship then we can gain access to the friend-group-store
+         *  pivot information. This pivot information is accessed via the "friend_group_store_association" pivot name.
+         *  If this property is provided then we can include it with our payload as an attribute
+         */
+        if( !empty($this->resource->friend_group_store_association) ) {
+
+            //  Include the friend group and store association payload
+            $this->customIncludeAttributes = array_merge(
+                ($this->customIncludeAttributes ?? []), ['friend_group_store_association']
+            );
+
+        }
+
         return $this->transformedStructure();
 
     }
@@ -68,18 +82,25 @@ class FriendGroupResource extends BaseResource
             new ResourceLink('update.friend.group', route($prefix.'update', $params), 'Update friend group'),
             new ResourceLink('delete.friend.group', route($prefix.'delete', $params), 'Delete friend group'),
 
-            //  Stores
-            new ResourceLink('show.friend.group.stores', route($prefix.'stores.show', $params), 'Show friend group stores'),
-            new ResourceLink('add.friend.group.stores', route($prefix.'stores.add', $params), 'Add friend group stores'),
-            new ResourceLink('remove.friend.group.stores', route($prefix.'stores.remove', $params), 'Remove friend group stores'),
-
-            //  Orders
-            new ResourceLink('show.friend.group.order.filters', route($prefix.'order.filters.show', $params), 'Show friend group orders'),
-            new ResourceLink('show.friend.group.orders', route($prefix.'orders.show', $params), 'Show friend group orders'),
+            //  Invitations
+            new ResourceLink('invite.members', route($prefix.'members.invite', $params), 'Invite members to this friend group'),
+            new ResourceLink('accept.invitation.to.join.friend.group', route($prefix.'accept.invitation.to.join.group', $params), 'Accept invitation to join this friend group'),
+            new ResourceLink('decline.invitation.to.join.friend.group', route($prefix.'decline.invitation.to.join.group', $params), 'Decline invitation to join this friend group'),
+            new ResourceLink('remove.members', route($prefix.'members.remove', $params), 'Remove members from this friend group'),
 
             //  Members
-            new ResourceLink('show.friend.group.members', route($prefix.'members.show', $params), 'Show friend group members'),
-            new ResourceLink('remove.friend.group.members', route($prefix.'members.remove', $params), 'Remove friend group member'),
+            new ResourceLink('show.member.filters', route($prefix.'member.filters.show', $params), 'Show friend group member filters'),
+            new ResourceLink('show.members', route($prefix.'members.show', $params), 'Show friend group members'),
+
+            //  Stores
+            new ResourceLink('show.store.filters', route($prefix.'store.filters.show', $params), 'Show friend group store filters'),
+            new ResourceLink('show.stores', route($prefix.'stores.show', $params), 'Show friend group stores'),
+            new ResourceLink('add.stores', route($prefix.'stores.add', $params), 'Add stores to this friend group'),
+            new ResourceLink('remove.stores', route($prefix.'stores.remove', $params), 'Remove stores from this friend group'),
+
+            //  Orders
+            new ResourceLink('show.order.filters', route($prefix.'order.filters.show', $params), 'Show friend group order filters'),
+            new ResourceLink('show.orders', route($prefix.'orders.show', $params), 'Show friend group orders'),
         ];
     }
 

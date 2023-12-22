@@ -29,6 +29,7 @@ use App\Services\AWS\AWSService;
 use App\Services\Sms\SmsService;
 use Http\Discovery\Exception\NotFoundException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class UserRepository extends BaseRepository
@@ -62,6 +63,52 @@ class UserRepository extends BaseRepository
             throw new Exception('This repository model is not an instance of the User model');
 
         }
+    }
+
+    /**
+     *  Return the Guest User ID
+     *
+     *  @return int
+     */
+    public function getGuestUserId()
+    {
+        return Cache::rememberForever('GUEST_USER_ID', function () {
+            return $this->getGuestUser()->id;
+        });
+    }
+
+    /**
+     *  Return the Guest User instance
+     *
+     *  @return User
+     */
+    public function getGuestUser()
+    {
+        return Cache::rememberForever('GUEST_USER', function () {
+            $guestUser = User::where('is_guest', '1')->first();
+            return $guestUser ? $guestUser : $this->createGuestUser();
+        });
+    }
+
+    /**
+     *  Create the Guest User
+     *
+     *  @return User
+     */
+    public function createGuestUser()
+    {
+        return User::create([
+            'first_name' => 'Guest',
+            'last_name' => NULL,
+            'mobile_number' => NULL,
+            'last_seen_at' => NULL,
+            'mobile_number_verified_at' => NULL,
+            'accepted_terms_and_conditions' => false,
+            'is_super_admin' => false,
+            'is_guest' => true,
+            'password' => NULL,
+            'remember_token' => NULL,
+        ]);
     }
 
     /**
@@ -214,6 +261,26 @@ class UserRepository extends BaseRepository
     public function smsAlertActivityAssociationRepository()
     {
         return resolve(SmsAlertActivityAssociationRepository::class);
+    }
+
+    /**
+     *  Eager load relationships on the given model
+     *
+     *  @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Builder $model
+     *  @return FriendGroupRepository
+     */
+    public function eagerLoadRelationships($model) {
+
+        $relationships = [];
+
+        if( !empty($relationships) ) {
+
+            $model = ($model instanceof FriendGroup) ? $model->load($relationships) : $model->with($relationships);
+
+        }
+
+        return $this->setModel($model);
+
     }
 
     /**
@@ -745,15 +812,11 @@ class UserRepository extends BaseRepository
 
 
 
-    /**
-     *  Show the user's first friend group
-     *
-     *  @return array
-     */
-    public function showUserFirstCreatedFriendGroup()
-    {
-        return $this->friendGroupRepository()->showUserFirstCreatedFriendGroup($this->getUser());
-    }
+
+
+
+
+
 
 
     /**
@@ -763,7 +826,7 @@ class UserRepository extends BaseRepository
      */
     public function showFriendGroupFilters()
     {
-        return $this->friendGroupRepository()->showUserFriendGroupFilters($this->getUser());
+        return $this->friendGroupRepository()->showFriendGroupFilters($this->getUser());
     }
 
     /**
@@ -773,18 +836,7 @@ class UserRepository extends BaseRepository
      */
     public function showFriendGroups()
     {
-        return $this->friendGroupRepository()->showUserFriendGroups($this->getUser());
-    }
-
-    /**
-     *  Create a user friend group
-     *
-     *  @param Request $request
-     *  @return array
-     */
-    public function createFriendGroup(Request $request)
-    {
-        return $this->friendGroupRepository()->createUserFriendGroup($this->getUser(), $request);
+        return $this->friendGroupRepository()->showFriendGroups($this->getUser());
     }
 
     /**
@@ -795,142 +847,258 @@ class UserRepository extends BaseRepository
      */
     public function showFriendGroup(FriendGroup $friendGroup)
     {
-        return $this->friendGroupRepository()->setModel($friendGroup);
+        return $this->friendGroupRepository()->showFriendGroup($friendGroup);
     }
 
     /**
-     *  Update a user friend group
+     *  Show the user's first created friend group
      *
-     *  @param Request $request
-     *  @return FriendGroupRepository
-     */
-    public function updateFriendGroup(Request $request, FriendGroup $friendGroup)
-    {
-        return $this->friendGroupRepository()->setModel($friendGroup)->updateUserFriendGroup($request, $this->getUser());
-    }
-
-    /**
-     *  Delete a friend group
-     *
-     *  @param FriendGroup $friendGroup
      *  @return array
      */
-    public function deleteFriendGroup(FriendGroup $friendGroup)
+    public function showFirstCreatedFriendGroup()
     {
-        return $this->friendGroupRepository()->setModel($friendGroup)->delete();
+        return $this->friendGroupRepository()->showFirstCreatedFriendGroup($this->getUser());
     }
 
     /**
-     *  Delete many friend groups
+     *  Show the user's last selected friend group
      *
-     *  @param Request $request
      *  @return array
-     */
-    public function deleteManyFriendGroups(Request $request)
-    {
-        return $this->friendGroupRepository()->deleteManyUserFriendGroups($request, $this->getUser());
-    }
-
-
-    /**
-     *  Show the last selected friend
-     *
-     *  @return FriendGroupRepository|null
      */
     public function showLastSelectedFriendGroup()
     {
-        return $this->friendGroupRepository()->showLastSelectedUserFriendGroup($this->getUser());
+        return $this->friendGroupRepository()->showLastSelectedFriendGroup($this->getUser());
     }
 
     /**
-     *  Show the last selected friend
+     *  Update the last selected friend groups
      *
      *  @param Request $request
      *  @return array
      */
     public function updateLastSelectedFriendGroups(Request $request)
     {
-        return $this->friendGroupRepository()->updateLastSelectedUserFriendGroups($request, $this->getUser());
+        return $this->friendGroupRepository()->updateLastSelectedFriendGroups($this->getUser(), $request);
+    }
+
+    /**
+     *  Create a new user friend group
+     *
+     *  @param Request $request
+     *  @return array
+     */
+    public function createFriendGroup(Request $request)
+    {
+        return $this->friendGroupRepository()->createFriendGroup($this->getUser(), $request);
+    }
+
+    /**
+     *  Update an existing user friend group
+     *
+     *  @param Request $request
+     *  @return array
+     *  @throws CannotUpdateFriendGroupException
+     */
+    public function updateFriendGroup(Request $request, FriendGroup $friendGroup)
+    {
+        return $this->friendGroupRepository()->setModel($friendGroup)->updateFriendGroup($this->getUser(), $request);
+    }
+
+    /**
+     *  Delete a user friend group
+     *
+     *  @return array
+     *  @throws CannotDeleteFriendGroupException
+     */
+    public function deleteFriendGroup(FriendGroup $friendGroup)
+    {
+        return $this->friendGroupRepository()->setModel($friendGroup)->deleteFriendGroup($this->getUser());
+    }
+
+    /**
+     *  Delete many user friend groups
+     *
+     *  @param Request $request
+     *  @return array
+     */
+    public function deleteManyFriendGroups(Request $request)
+    {
+        return $this->friendGroupRepository()->deleteManyFriendGroups($this->getUser(), $request);
+    }
+
+    /**
+     *  Invite a single or multiple users on this friend group
+     *
+     *  @return array
+     *  @throws CannotInviteFriendGroupMembersException
+     */
+    public function inviteFriendGroupMembers(FriendGroup $friendGroup, Request $request)
+    {
+        return $this->friendGroupRepository()->setModel($friendGroup)->inviteFriendGroupMembers($this->getUser(), $request);
+    }
+
+    /**
+     *  Check invitations to join friend groups
+     *
+     *  @return array
+     */
+    public function checkInvitationsToJoinFriendGroups()
+    {
+        return $this->friendGroupRepository()->checkInvitationsToJoinFriendGroups($this->getUser());
+    }
+
+    /**
+     *  Accept all invitations to join friend groups
+     *
+     *  @return array
+     */
+    public function acceptAllInvitationsToJoinFriendGroups()
+    {
+        return $this->friendGroupRepository()->acceptAllInvitationsToJoinFriendGroups($this->getUser());
+    }
+
+    /**
+     *  Decline all invitations to join friend groups
+     *
+     *  @return array
+     */
+    public function declineAllInvitationsToJoinFriendGroups()
+    {
+        return $this->friendGroupRepository()->declineAllInvitationsToJoinFriendGroups($this->getUser());
+    }
+
+    /**
+     *  Accept invitation to join friend group
+     *
+     *  @return array
+     *  @throws InvitationAlreadyAcceptedException|InvitationAlreadyDeclinedException|InvalidInvitationException
+     */
+    public function acceptInvitationToJoinFriendGroup(FriendGroup $friendGroup)
+    {
+        return $this->friendGroupRepository()->setModel($friendGroup)->acceptInvitationToJoinFriendGroup($this->getUser());
+    }
+
+    /**
+     *  Decline invitation to join friend group
+     *
+     *  @param User $user
+     *  @return array
+     *  @throws InvitationAlreadyAcceptedException|InvitationAlreadyDeclinedException|InvalidInvitationException
+     */
+    public function declineInvitationToJoinFriendGroup(FriendGroup $friendGroup)
+    {
+        return $this->friendGroupRepository()->setModel($friendGroup)->declineInvitationToJoinFriendGroup($this->getUser());
+    }
+
+    /**
+     *  Remove a single or multiple users on this friend group
+     *
+     *  @return array
+     *  @throws CannotRemoveYourselfAsFriendGroupMemberException|CannotRemoveYourselfAsFriendGroupCreatorException
+     */
+    public function removeFriendGroupMembers(FriendGroup $friendGroup)
+    {
+        return $this->friendGroupRepository()->setModel($friendGroup)->removeFriendGroupMembers($this->getUser());
+    }
+
+    /**
+     *  Show the friend group member filters
+     *
+     *  @return array
+     */
+    public function showFriendGroupMemberFilters(FriendGroup $friendGroup)
+    {
+        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupMemberFilters($this->getUser());
     }
 
     /**
      *  Show the friend group members
      *
-     *  @param Request $request
-     *  @param FriendGroup $friendGroup
      *  @return UserRepository
      */
-    public function showFriendGroupMembers(Request $request, FriendGroup $friendGroup)
+    public function showFriendGroupMembers(FriendGroup $friendGroup)
     {
-        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupMembers($request);
+        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupMembers($this->getUser());
     }
 
     /**
-     *  Remove friend group members
+     *  Show the friend group store filters
      *
-     *  @param Request $request
-     *  @param FriendGroup $friendGroup
      *  @return array
      */
-    public function removeFriendGroupMembers(Request $request, FriendGroup $friendGroup)
+    public function showFriendGroupStoreFilters(FriendGroup $friendGroup)
     {
-        return $this->friendGroupRepository()->setModel($friendGroup)->removeFriendGroupMembers($request, $this->getUser());
+        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupStoreFilters($this->getUser());
     }
 
     /**
-     *  Show friend group stores
+     *  Show the friend group stores
      *
-     *  @param FriendGroup $friendGroup
      *  @return StoreRepository
      */
     public function showFriendGroupStores(FriendGroup $friendGroup)
     {
-        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupStores();
+        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupStores($this->getUser());
     }
 
     /**
      *  Add friend group stores
      *
      *  @param Request $request
-     *  @param FriendGroup $friendGroup
      *  @return array
+     *  @throws CannotAddStoresToFriendGroupException
      */
-    public function addFriendGroupStores(Request $request, FriendGroup $friendGroup)
+    public function addFriendGroupStores(FriendGroup $friendGroup, Request $request)
     {
-        return $this->friendGroupRepository()->setModel($friendGroup)->addFriendGroupStores($request, $this->getUser());
+        return $this->friendGroupRepository()->setModel($friendGroup)->addFriendGroupStores($this->getUser(), $request);
     }
 
     /**
      *  Remove friend group stores
      *
      *  @param Request $request
-     *  @param FriendGroup $friendGroup
      *  @return array
+     *  @throws CannotRemoveStoresToFriendGroupException
      */
-    public function removeFriendGroupStores(Request $request, FriendGroup $friendGroup)
+    public function removeFriendGroupStores(FriendGroup $friendGroup, Request $request)
     {
-        return $this->friendGroupRepository()->setModel($friendGroup)->removeFriendGroupStores($request);
+        return $this->friendGroupRepository()->setModel($friendGroup)->removeFriendGroupStores($this->getUser(), $request);
     }
 
     /**
-     *  Show friend group  order filters
+     *  Show the friend group order filters
      *
      *  @return array
      */
     public function showFriendGroupOrderFilters(FriendGroup $friendGroup)
     {
-        return $this->orderRepository()->showFriendGroupOrderFilters($friendGroup);
+        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupOrderFilters();
     }
 
     /**
-     *  Show friend group  orders
+     *  Show the friend group orders
      *
      *  @return OrderRepository
      */
     public function showFriendGroupOrders(FriendGroup $friendGroup)
     {
-        return $this->orderRepository()->showFriendGroupOrders($friendGroup);
+        return $this->friendGroupRepository()->setModel($friendGroup)->showFriendGroupOrders();
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     /**
@@ -1705,18 +1873,23 @@ class UserRepository extends BaseRepository
      */
     public function showResourceTotals()
     {
+        //  Get the SMS Alert information for the user
+        $smsAlert = $this->showSmsAlert()->model;
+
+        $totalSmsAlertCredits = $smsAlert->sms_credits;
         $totalOrders = $this->getUser()->orders()->count();
         $totalReviews = $this->getUser()->reviews()->count();
-        $totalSmsAlertCredits = $this->getUser()->smsAlert->sms_credits;
         $totalNotifications = $this->getUser()->notifications()->count();
 
         $totalGroupsJoined = $this->getUser()->friendGroups()->count();
         $totalGroupsJoinedAsCreator = $this->getUser()->friendGroups()->joinedGroupAsCreator()->count();
         $totalGroupsJoinedAsNonCreator = $this->getUser()->friendGroups()->joinedGroupAsNonCreator()->count();
+        $totalGroupsInvitedToJoinAsGroupMember = $this->getUser()->friendGroups()->invitedToJoinGroup()->count();
 
         $totalStoresAsFollower = $this->getUser()->storesAsFollower()->count();
         $totalStoresAsCustomer = $this->getUser()->storesAsCustomer()->count();
         $totalStoresAsRecentVisitor = $this->getUser()->storesAsRecentVisitor()->count();
+
         $totalStoresJoinedAsTeamMember = $this->getUser()->storesAsTeamMember()->joinedTeam()->count();
         $totalStoresJoinedAsCreator = $this->getUser()->storesAsTeamMember()->joinedTeamAsCreator()->count();
         $totalStoresJoinedAsNonCreator = $this->getUser()->storesAsTeamMember()->joinedTeamAsNonCreator()->count();
@@ -1733,6 +1906,7 @@ class UserRepository extends BaseRepository
             'totalGroupsJoined' => $totalGroupsJoined,
             'totalGroupsJoinedAsCreator' => $totalGroupsJoinedAsCreator,
             'totalGroupsJoinedAsNonCreator' => $totalGroupsJoinedAsNonCreator,
+            'totalGroupsInvitedToJoinAsGroupMember' => $totalGroupsInvitedToJoinAsGroupMember,
 
             'totalStoresJoinedAsCreator' => $totalStoresJoinedAsCreator,
             'totalStoresAsRecentVisitor' => $totalStoresAsRecentVisitor,

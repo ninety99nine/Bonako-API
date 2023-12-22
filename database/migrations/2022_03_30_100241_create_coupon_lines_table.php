@@ -79,9 +79,9 @@ class CreateCouponLinesTable extends Migration
             $table->json('detected_changes')->nullable();
 
             /*  Ownership  */
-            $table->foreignId('cart_id')->constrained();
-            $table->foreignId('store_id')->constrained();
-            $table->foreignId('coupon_id')->constrained()->nullable();
+            $table->foreignId('cart_id');
+            $table->foreignId('store_id');
+            $table->foreignId('coupon_id')->nullable();
 
             /*  Timestamps  */
             $table->timestamps();

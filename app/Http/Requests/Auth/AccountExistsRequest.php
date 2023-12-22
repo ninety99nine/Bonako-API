@@ -28,7 +28,7 @@ class AccountExistsRequest extends FormRequest
     public function rules()
     {
         return [
-            'mobile_number' => ['bail', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11', 'exists:users,mobile_number'],
+            'mobile_number' => ['bail', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
         ];
     }
 
@@ -39,11 +39,8 @@ class AccountExistsRequest extends FormRequest
      */
     public function messages()
     {
-        $mobileNumberWithoutExtension = $this->convertToMobileNumberFormat(request()->input('mobile_number'))->withoutExtension;
-
         return [
             'mobile_number.regex' => 'The mobile number must only contain numbers',
-            'mobile_number.exists' => 'The account using the mobile number '.$mobileNumberWithoutExtension.' does not exist.',
         ];
     }
 

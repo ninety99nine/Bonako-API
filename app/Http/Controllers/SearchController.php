@@ -109,7 +109,7 @@ class SearchController extends Controller
         /**
          *  @var Store $model
          */
-        $model = $storeRepository->eagerLoadStoreRelationships($storeRepository->getModel())->getModel();
+        $model = $storeRepository->eagerLoadRelationships($storeRepository->getModel())->getModel();
 
         // Order by the total orders (First priority to order)
         if(request()->input('with_count_orders')) $model = $model->orderBy('orders_count', 'desc');

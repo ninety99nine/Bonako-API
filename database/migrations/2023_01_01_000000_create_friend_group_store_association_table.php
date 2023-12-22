@@ -15,9 +15,9 @@ class CreateFriendGroupStoreAssociationTable extends Migration
     {
         Schema::create('friend_group_store_association', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('store_id')->constrained();
-            $table->foreignId('friend_group_id')->constrained();
-            $table->foreignId('added_by_user_id')->constrained()->nullable();
+            $table->foreignId('store_id');
+            $table->foreignId('friend_group_id');
+            $table->foreignId('added_by_user_id')->nullable();
             $table->timestamps();
 
             /* Add Indexes */
