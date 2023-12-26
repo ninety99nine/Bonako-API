@@ -350,7 +350,7 @@ class UserRepository extends BaseRepository
      *  @param Request $request
      *  @return UserRepository
      */
-    public function update($request)
+    public function updateUser($request)
     {
         //  If we provided a new password
         if( $request->filled('password') ) {

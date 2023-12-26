@@ -11,7 +11,7 @@ class FriendGroupResource extends BaseResource
     use BaseTrait;
 
     protected $customIncludeFields = [
-        'users_count', 'friends_count', 'stores_count'
+        'users_count', 'friends_count', 'stores_count', 'orders_count'
     ];
 
     public function toArray($request)

@@ -44,6 +44,53 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         /**
+         *  Explicitly define how the friend group route parameter is resolved.
+         *  Reference: https://laravel.com/docs/10.x/routing#customizing-the-resolution-logic
+         *
+         *  We have two ways that a user friend groups can be resolved:
+         *
+         *  /auth/user/friend-groups/{friend_group} : Represents the currently authenticated user
+         *  /users/{user}/friend-groups/{friend_group} : Represents a user specified using the user id
+         *
+         *  Laravel knows how to resolve friend groups of "/users/{user}/friend-groups/{friend_group}",
+         *  however it does not know how to resolve friend groups of "/auth/user/friend-groups/{friend_group}".
+         *  We need to explicity provide logic to help Laravel know how to resolove this kind of friend groups.
+         */
+        Route::bind('friend_group', function (string $friendGroupId) {
+
+            //  Check if this request is performed on an auth user route i.e "/auth/user/..."
+            $requestOnAuthUserRoute = request()->routeIs('auth.user.*');
+
+            if($requestOnAuthUserRoute) {
+
+                /**
+                 *  @var User $user
+                 */
+                $user = auth()->user();
+
+                return $user->friendGroups()->where('friend_groups.id', $friendGroupId)->first();
+
+            }
+
+            //  Check if this request is performed on a user route i.e "/users/{user}/..."
+            $requestOnUserRoute = request()->routeIs('user.*');
+
+            if($requestOnUserRoute) {
+
+                /**
+                 *  @var User $user
+                 */
+                $user = User::findOrFail(request()->user);
+
+                return $user->friendGroups()->where('friend_groups.id', $friendGroupId)->first();
+
+            }
+
+            // If none of the conditions are met, Laravel will handle the binding using the default approach
+
+        });
+
+        /**
          *  Explicitly define how the store route parameter is resolved.
          *  Reference: https://laravel.com/docs/10.x/routing#customizing-the-resolution-logic
          */

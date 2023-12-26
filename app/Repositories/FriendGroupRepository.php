@@ -347,6 +347,12 @@ class FriendGroupRepository extends BaseRepository
 
         }
 
+        //  Query the friend group through the specified user so that
+        //  we can also load the user friend group association
+        $this->setModel(
+            $user->friendGroups()->where('friend_groups.id', $this->model->id)->first()
+        );
+
         return [
             'message' => 'Group created',
             'friend_group' => $this->transform()
@@ -363,9 +369,9 @@ class FriendGroupRepository extends BaseRepository
      */
     public function updateFriendGroup(User $user, Request $request)
     {
-        $userFriendGroupAssociation = $this->getUserFriendGroupAssociation($user);
+        $userFriendGroupAssociation = $this->model->user_friend_group_association;
 
-        if($userFriendGroupAssociation && $userFriendGroupAssociation->is_creator_or_admin) {
+        if($userFriendGroupAssociation->is_creator_or_admin) {
 
             //  Update the existing friend group
             $this->update($request);
@@ -376,6 +382,12 @@ class FriendGroupRepository extends BaseRepository
                 $this->inviteFriendGroupMembers($user);
 
             }
+
+            //  Query the friend group through the specified user so that
+            //  we can also load the user friend group association
+            $this->setModel(
+                $user->friendGroups()->where('friend_groups.id', $this->model->id)->first()
+            );
 
             return [
                 'message' => 'Group updated',
@@ -398,9 +410,9 @@ class FriendGroupRepository extends BaseRepository
      */
     public function deleteFriendGroup(User $user)
     {
-        $userFriendGroupAssociation = $this->getUserFriendGroupAssociation($user);
+        $userFriendGroupAssociation = $this->model->user_friend_group_association;
 
-        if($userFriendGroupAssociation && $userFriendGroupAssociation->is_creator_or_admin) {
+        if($userFriendGroupAssociation->is_creator_or_admin) {
 
             return $this->delete();
 
@@ -474,9 +486,9 @@ class FriendGroupRepository extends BaseRepository
      */
     public function inviteFriendGroupMembers($invitedByUser)
     {
-        $userFriendGroupAssociation = $this->getUserFriendGroupAssociation($invitedByUser);
+        $userFriendGroupAssociation = $this->model->user_friend_group_association;
 
-        if($userFriendGroupAssociation && $userFriendGroupAssociation->is_creator_or_admin) {
+        if($userFriendGroupAssociation->is_creator_or_admin) {
 
             $friendGroup = $this->getFriendGroup();
 
@@ -762,9 +774,9 @@ class FriendGroupRepository extends BaseRepository
      */
     public function acceptInvitationToJoinFriendGroup(User $user)
     {
-        $userFriendGroupAssociation = $this->getUserFriendGroupAssociation($user);
+        $userFriendGroupAssociation = $this->model->user_friend_group_association;
 
-        if($userFriendGroupAssociation) {
+        if($userFriendGroupAssociation->is_creator_or_admin) {
 
             if($userFriendGroupAssociation->is_user_who_is_invited) {
 
@@ -806,7 +818,7 @@ class FriendGroupRepository extends BaseRepository
      */
     public function declineInvitationToJoinFriendGroup(User $user)
     {
-        $userFriendGroupAssociation = $this->getUserFriendGroupAssociation($user);
+        $userFriendGroupAssociation = $this->model->user_friend_group_association;
 
         if($userFriendGroupAssociation) {
 
@@ -1261,9 +1273,9 @@ class FriendGroupRepository extends BaseRepository
      */
     public function addFriendGroupStores(User $user, Request $request)
     {
-        $userFriendGroupAssociation = $this->getUserFriendGroupAssociation($user);
+        $userFriendGroupAssociation = $this->model->user_friend_group_association;
 
-        if($userFriendGroupAssociation && $userFriendGroupAssociation->is_creator_or_admin) {
+        if($userFriendGroupAssociation->is_creator_or_admin) {
 
             // Get the specified store ids
             $storeIds = $request->input('store_ids');
@@ -1315,9 +1327,9 @@ class FriendGroupRepository extends BaseRepository
      */
     public function removeFriendGroupStores(User $user, Request $request)
     {
-        $userFriendGroupAssociation = $this->getUserFriendGroupAssociation($user);
+        $userFriendGroupAssociation = $this->model->user_friend_group_association;
 
-        if($userFriendGroupAssociation && $userFriendGroupAssociation->is_creator_or_admin) {
+        if($userFriendGroupAssociation->is_creator_or_admin) {
 
             //  Get the specified store ids
             $storeIds = $request->input('store_ids');

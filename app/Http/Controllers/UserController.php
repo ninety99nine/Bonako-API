@@ -94,7 +94,7 @@ class UserController extends BaseController
 
     public function update(UpdateUserRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->update($request)->transform(), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->updateUser($request)->transform(), Response::HTTP_OK);
     }
 
     public function confirmDelete(User $user)
@@ -253,7 +253,11 @@ class UserController extends BaseController
 
 
 
-
+    /// NOTE: Refer to the "RouteServiceProvider.php" file to observe hoe the $friendGroup is resolved.
+    /// The logic is designed to support resolving the $friendGroup on the following routes:
+    ///
+    /// auth/user/friend-groups/{friend_group}
+    //  users/user/friend-groups/{friend_group}
 
     public function showFriendGroupFilters(User $user)
     {

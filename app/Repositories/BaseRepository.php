@@ -451,8 +451,7 @@ abstract class BaseRepository
         //  Ignore unsupported fields
         $data = collect($data)->except($this->createIgnoreFields)->all();
 
-        //  Set repository model after creating and retrieving a fresh model instance
-        $this->setModel( $this->model->create($data)->fresh() );
+        $this->setModel( $this->model->create($data)/*->fresh()*/ );
 
         /**
          *  Return the Repository Class instance. This is so that we can chain other
@@ -504,7 +503,6 @@ abstract class BaseRepository
             // If we can update the repository model
             if ($canUpdate) {
 
-                //  Update repository model
                 $updated = $this->model->update($data);
 
             }
@@ -512,9 +510,36 @@ abstract class BaseRepository
             //  If we updated this repository model
             if( $updated ) {
 
-                //  Set repository model
-                $this->setModel( $this->model->fresh() );
+                // Note that update() will first set the updated data attributes
+                // on the current model and then call the save method. This means
+                // that while the database fields are updated, the current model
+                // instance will also contain the latest updates. We therefore
+                // do not need to perform the $this->model->fresh() method:
+                //
+                // This method is no longer required:
+                //
+                // $this->setModel( $this->model->fresh() );
+                //
+                // The problem we faced executing the $this->model->fresh(), was that
+                // whenever we had any many-to-many pivot relationships loaded, for
+                // instance, the user_friend_group_association which is loaded when
+                // a $friendGroup is retrieved using route-model binding such as:
+                //
+                // /auth/user/friend-groups/{friend_group}
+                // /users/{user}/friend-groups/{friend_group}
+                //
+                // This pivot relationship would be lost since the $this->model->fresh()
+                // query is executed without the use of the relationship e.g
+                //
+                // FriendGroup::find($id)                           - This does not load the pivot relationship
+                //
+                // instead of:
+                //
+                // $user->friendGroups()->where('id', $id)->first() - This does load the pivot relationship
+                //
+                // This is a problem since we do want to update
 
+                $this->setModel( $this->model->fresh() );
             }
 
         //  If we are updating a non Model instance (HasMany, belongsToMany, morphMany, e.t.c) e.g $store->shortcodes()
