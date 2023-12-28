@@ -609,7 +609,7 @@ class Order extends BaseModel
                 if ($hasPayableAmounts) {
 
                     // Get the UserStoreAssociation
-                    $userStoreAssociation = $store->getUserStoreAssociation();
+                    $userStoreAssociation = $store->user_store_association;
 
                     // Check if the UserStoreAssociation is provided
                     if ($userStoreAssociation) {
@@ -668,7 +668,7 @@ class Order extends BaseModel
                     /**
                      *  @var UserStoreAssociation $userStoreAssociation
                      */
-                    $userStoreAssociation = $store->getUserStoreAssociation();
+                    $userStoreAssociation = $store->user_store_association;
 
                     //  Check if the user and store association is provided to determine if we can request payment
                     if(!is_null($userStoreAssociation)) {
