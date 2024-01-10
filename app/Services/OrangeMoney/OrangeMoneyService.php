@@ -22,8 +22,8 @@ class OrangeMoneyService
     {
         $relationships = [];
 
-        if($transaction->relationLoaded('payedByUser') == false) {
-            array_push($relationships, 'payedByUser');
+        if($transaction->relationLoaded('paidByUser') == false) {
+            array_push($relationships, 'paidByUser');
         }
 
         if($transaction->relationLoaded('owner') == false) {
@@ -54,8 +54,8 @@ class OrangeMoneyService
         $transactionId = $transaction->id;
         $transactionAmount = $transaction->amount->amount;
 
-        $payedByUser = $transaction->payedByUser;
-        $mobileNumber = $payedByUser->mobile_number->withExtension;
+        $paidByUser = $transaction->paidByUser;
+        $mobileNumber = $paidByUser->mobile_number->withExtension;
 
         try {
 

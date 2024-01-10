@@ -10,6 +10,8 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\MailMessage;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
 class FriendGroupDeleted extends Notification
@@ -18,14 +20,14 @@ class FriendGroupDeleted extends Notification
 
     public int $friendGroupId;
     public User $deletedByUser;
-    public string $friendGroupName;
+    public string $friendGroupNameWithEmoji;
 
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct($friendGroupId, $friendGroupName, User $deletedByUser)
+    public function __construct($friendGroupId, $friendGroupNameWithEmoji, User $deletedByUser)
     {
         /**
          *  We cannot pass the store Model itself since Laravel would attempt to resolve
@@ -38,9 +40,9 @@ class FriendGroupDeleted extends Notification
          *  To remedy this, we can pass only the store details that we need e.g
          *  the store ID and store name.
          */
-        $this->friendGroupId = $friendGroupId;
-        $this->friendGroupName = $friendGroupName;
         $this->deletedByUser = $deletedByUser;
+        $this->friendGroupId = $friendGroupId;
+        $this->friendGroupNameWithEmoji = $friendGroupNameWithEmoji;
     }
 
     /**
@@ -49,9 +51,9 @@ class FriendGroupDeleted extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', OneSignalChannel::class];
     }
 
     /**
@@ -66,7 +68,7 @@ class FriendGroupDeleted extends Notification
         return [
             'friendGroup' => [
                 'id' => $this->friendGroupId,
-                'name' => $this->friendGroupName
+                'name' => $this->friendGroupNameWithEmoji
             ],
             'user' => [
                 'id' => $deletedByUser->id,
@@ -74,5 +76,16 @@ class FriendGroupDeleted extends Notification
                 'firstName' => $deletedByUser->first_name,
             ],
         ];
+    }
+
+    public function toOneSignal(object $notifiable): OneSignalMessage
+    {
+        $deletedByUser = $this->deletedByUser;
+        $subject = $this->friendGroupNameWithEmoji.' Deleted';
+        $body = 'This group has been permanently deleted by '.$deletedByUser->name;
+
+        return OneSignalMessage::create()
+            ->setSubject($subject)
+            ->setBody($body);
     }
 }

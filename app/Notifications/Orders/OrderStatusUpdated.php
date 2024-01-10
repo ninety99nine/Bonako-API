@@ -9,26 +9,34 @@ use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Messages\BroadcastMessage;
+use App\Notifications\Orders\Base\OrderNotification;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
 
-class OrderStatusUpdated extends Notification
+/**
+ * Note that the OrderStatusUpdated is extending our custom OrderNotification
+ * class instead of the Laravel default Notification. This is because
+ * the OrderNotification class contains additional custom methods
+ * specific for order notifications.
+ */
+class OrderStatusUpdated extends OrderNotification
 {
     use Queueable, BaseTrait;
 
     public Order $order;
-    public User $user;
+    public Store $store;
+    public User $updatedByUser;
 
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct(Order $order, User $user)
+    public function __construct(Order $order, User $updatedByUser)
     {
         $this->order = $order;
-        $this->user = $user;
+        $this->store = $this->order->store;
+        $this->updatedByUser = $updatedByUser;
     }
 
     /**
@@ -37,9 +45,9 @@ class OrderStatusUpdated extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', OneSignalChannel::class];
     }
 
     /**
@@ -50,31 +58,10 @@ class OrderStatusUpdated extends Notification
     public function toArray(object $notifiable): array
     {
         $order = $this->order;
-
-        /**
-         *  @var Store $store
-         */
-        $store = $this->order->store;
-
-        //  Check if this order has tagged friends
-        if($order->order_for_total_friends) {
-
-            /**
-             *  @var Collection<User> $friends
-             */
-            $friendIds = $this->order->friends->pluck('id');
-
-        }else{
-
-            $friendIds = [];
-
-        }
-
-        //  Check if this notifiable user is the customer of this order
-        $isAssociatedAsCustomer = $order->customer_user_id == $notifiable->id;
-
-        //  Check if this notifiable user is tagged as a friend of this order
-        $isAssociatedAsFriend = collect($friendIds)->contains($notifiable->id);
+        $store = $this->store;
+        $updatedByUser = $this->updatedByUser;
+        $isAssociatedAsFriend = $this->checkIfAssociatedAsFriend($order, $notifiable);
+        $isAssociatedAsCustomer = $this->checkIfAssociatedAsCustomer($order, $notifiable);
 
         return [
             'store' => [
@@ -86,24 +73,32 @@ class OrderStatusUpdated extends Notification
                 'number' => $order->number,
                 'status' => $order->status,
                 'summary' => $order->summary,
-                'orderFor' => $order->order_for,
-                'amount' => $order->grand_total,
                 'isAssociatedAsFriend' => $isAssociatedAsFriend,
-                'isAssociatedAsCustomer' => $isAssociatedAsCustomer,
-                'orderForTotalUsers' => $order->order_for_total_users,
-                'orderForTotalFriends' => $order->order_for_total_friends,
-                'customer' => [
-                    'name' => $order->customer_name,
-                    'id' => $order->customer_user_id,
-                    'lastName' => $order->customer_last_name,
-                    'firstName' => $order->customer_first_name,
-                ],
-                'changedByUser' => [
-                    'id' => $this->user->id,
-                    'name' => $this->user->name,
-                    'firstName' => $this->user->first_name
-                ],
-            ]
+                'isAssociatedAsCustomer' => $isAssociatedAsCustomer
+            ],
+            'customer' => [
+                'name' => $order->customer_name,
+                'id' => $order->customer_user_id,
+                'firstName' => $order->customer_first_name,
+            ],
+            'updatedByUser' => [
+                'id' => $updatedByUser->id,
+                'name' => $updatedByUser->name,
+                'firstName' => $updatedByUser->first_name
+            ],
         ];
+    }
+
+    public function toOneSignal(object $notifiable): OneSignalMessage
+    {
+        $order = $this->order;
+        $store = $this->store;
+        $subject = 'Order status updated';
+        $updatedByUser = $this->updatedByUser;
+        $body = $order->craftOrderStatusUpdatedMessage($store, $updatedByUser);
+
+        return OneSignalMessage::create()
+            ->setSubject($subject)
+            ->setBody($body);
     }
 }

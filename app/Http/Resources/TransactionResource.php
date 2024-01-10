@@ -15,7 +15,7 @@ class TransactionResource extends BaseResource
         'paymentMethod' => PaymentMethodRepository::class,
         'requestedByUser' => UserRepository::class,
         'verifiedByUser' => UserRepository::class,
-        'payedByUser' => UserRepository::class,
+        'paidByUser' => UserRepository::class,
     ];
 
     public function setLinks()

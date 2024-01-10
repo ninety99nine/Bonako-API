@@ -36,7 +36,7 @@ class InvitationToJoinStoreTeamCreated extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(object $notifiable): array
     {
         return ['database', 'broadcast'];
     }

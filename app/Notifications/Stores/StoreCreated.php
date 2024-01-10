@@ -9,6 +9,8 @@ use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\SlackMessage;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
 
 class StoreCreated extends Notification
 {
@@ -34,9 +36,9 @@ class StoreCreated extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(object $notifiable): array
     {
-        return ['database', 'broadcast', 'slack'];
+        return ['database', 'broadcast', 'slack', OneSignalChannel::class];
     }
 
     /**
@@ -61,6 +63,17 @@ class StoreCreated extends Notification
                 'mobileNumber' => $createdByUser->mobile_number
             ],
         ];
+    }
+
+    public function toOneSignal(object $notifiable): OneSignalMessage
+    {
+        $store = $this->store;
+        $body = 'Your store was created successfully';
+        $subject = empty($store->emoji) ? $store->name : $store->emoji.' '.$store->name;
+
+        return OneSignalMessage::create()
+            ->setSubject($subject)
+            ->setBody($body);
     }
 
     /**

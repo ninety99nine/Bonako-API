@@ -2,15 +2,17 @@
 
 namespace App\Notifications\FriendGroups;
 
-use App\Models\FriendGroup;
 use App\Models\User;
 use App\Models\Store;
+use App\Models\FriendGroup;
 use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\MailMessage;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
 class FriendGroupStoreAdded extends Notification
@@ -39,9 +41,9 @@ class FriendGroupStoreAdded extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', OneSignalChannel::class];
     }
 
     /**
@@ -70,5 +72,23 @@ class FriendGroupStoreAdded extends Notification
                 'firstName' => $addedByUser->first_name
             ],
         ];
+    }
+
+    public function toOneSignal(object $notifiable): OneSignalMessage
+    {
+        $store = $this->store;
+        $friendGroup = $this->friendGroup;
+        $addedByUser = $this->addedByUser;
+        $subject = 'Store added to group';
+
+        $body = $addedByUser->first_name.' added '.$store->name_with_emoji.' to '.$friendGroup->name_with_emoji;
+
+        /**
+         *  Image from: https://giphy.com
+         */
+        return OneSignalMessage::create()
+            ->setAndroidBigPicture('https://media.giphy.com/media/jErnybNlfE1lm/giphy.gif')
+            ->setSubject($subject)
+            ->setBody($body);
     }
 }

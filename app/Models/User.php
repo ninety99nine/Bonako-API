@@ -39,7 +39,7 @@ class User extends BaseAuthenticatable /* Authenticatable */
     const PASSWORD_MIN_CHARACTERS = 6;
     const ABOUT_ME_MAX_CHARACTERS = 200;
     const ABOUT_ME_MIN_CHARACTERS = 3;
-    const NOTIFICATION_FILTERS = ['All', 'Read', 'Unread', 'Invitations', 'Orders', 'Friend Groups'];
+    const NOTIFICATION_FILTERS = ['All', 'Read', 'Unread', 'Orders', 'Followers', 'Invitations', 'Friend Groups'];
 
     protected $casts = [
         'accepted_terms_and_conditions' => 'boolean',
@@ -58,6 +58,33 @@ class User extends BaseAuthenticatable /* Authenticatable */
     protected $hidden = [
         'password', 'remember_token',
     ];
+
+
+    /**
+     * Route notifications for the OneSignal channel.
+     *
+     * Reference: https://github.com/laravel-notification-channels/onesignal
+     */
+    public function routeNotificationForOneSignal(Notification $notification): mixed
+    {
+        return ['include_external_user_ids' => ["$this->id"]];
+    }
+
+    /**
+     * Route notifications for the Slack channel.
+     */
+    public function routeNotificationForSlack(Notification $notification): mixed
+    {
+        if($notification instanceof OrderCreated || $notification instanceof OrderUpdated) {
+
+            return env('ORDERS_SLACK_WEBHOOK_URL');
+
+        }elseif($notification instanceof StoreCreated) {
+
+            return env('STORES_SLACK_WEBHOOK_URL');
+
+        }
+    }
 
     /**
      *  The channels the user receives notification broadcasts on.
@@ -317,21 +344,5 @@ class User extends BaseAuthenticatable /* Authenticatable */
     public function getRequiresMobileNumberVerificationAttribute()
     {
         return empty($this->mobile_number_verified_at);
-    }
-
-    /**
-     * Route notifications for the Slack channel.
-     */
-    public function routeNotificationForSlack(Notification $notification): mixed
-    {
-        if($notification instanceof OrderCreated || $notification instanceof OrderUpdated) {
-
-            return env('ORDERS_SLACK_WEBHOOK_URL');
-
-        }elseif($notification instanceof StoreCreated) {
-
-            return env('STORES_SLACK_WEBHOOK_URL');
-
-        }
     }
 }

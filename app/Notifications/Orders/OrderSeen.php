@@ -9,26 +9,34 @@ use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Messages\BroadcastMessage;
+use App\Notifications\Orders\Base\OrderNotification;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
 
-class OrderSeen extends Notification
+/**
+ * Note that the OrderSeen is extending our custom OrderNotification
+ * class instead of the Laravel default Notification. This is because
+ * the OrderNotification class contains additional custom methods
+ * specific for order notifications.
+ */
+class OrderSeen extends OrderNotification
 {
     use Queueable, BaseTrait;
 
     public Order $order;
-    public User $user;
+    public Store $store;
+    public User $seenByUser;
 
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct(Order $order, User $user)
+    public function __construct(Order $order, User $seenByUser)
     {
         $this->order = $order;
-        $this->user = $user;
+        $this->seenByUser = $seenByUser;
+        $this->store = $this->order->store;
     }
 
     /**
@@ -37,9 +45,9 @@ class OrderSeen extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', OneSignalChannel::class];
     }
 
     /**
@@ -50,31 +58,10 @@ class OrderSeen extends Notification
     public function toArray(object $notifiable): array
     {
         $order = $this->order;
-
-        /**
-         *  @var Store $store
-         */
-        $store = $this->order->store;
-
-        //  Check if this order has tagged friends
-        if($order->order_for_total_friends) {
-
-            /**
-             *  @var Collection<User> $friends
-             */
-            $friendIds = $this->order->friends->pluck('id');
-
-        }else{
-
-            $friendIds = [];
-
-        }
-
-        //  Check if this notifiable user is the customer of this order
-        $isAssociatedAsCustomer = $order->customer_user_id == $notifiable->id;
-
-        //  Check if this notifiable user is tagged as a friend of this order
-        $isAssociatedAsFriend = collect($friendIds)->contains($notifiable->id);
+        $store = $this->store;
+        $seenByUser = $this->seenByUser;
+        $isAssociatedAsFriend = $this->checkIfAssociatedAsFriend($order, $notifiable);
+        $isAssociatedAsCustomer = $this->checkIfAssociatedAsCustomer($order, $notifiable);
 
         return [
             'store' => [
@@ -85,24 +72,32 @@ class OrderSeen extends Notification
                 'id' => $order->id,
                 'number' => $order->number,
                 'summary' => $order->summary,
-                'orderFor' => $order->order_for,
-                'amount' => $order->grand_total,
                 'isAssociatedAsFriend' => $isAssociatedAsFriend,
                 'isAssociatedAsCustomer' => $isAssociatedAsCustomer,
-                'orderForTotalUsers' => $order->order_for_total_users,
-                'orderForTotalFriends' => $order->order_for_total_friends,
-                'customer' => [
-                    'name' => $order->customer_name,
-                    'id' => $order->customer_user_id,
-                    'lastName' => $order->customer_last_name,
-                    'firstName' => $order->customer_first_name,
-                ],
-                'seenByUser' => [
-                    'id' => $this->user->id,
-                    'name' => $this->user->name,
-                    'firstName' => $this->user->first_name
-                ],
-            ]
+            ],
+            'customer' => [
+                'name' => $order->customer_name,
+                'id' => $order->customer_user_id,
+                'firstName' => $order->customer_first_name,
+            ],
+            'seenByUser' => [
+                'id' => $seenByUser->id,
+                'name' => $seenByUser->name,
+                'firstName' => $seenByUser->first_name
+            ],
         ];
+    }
+
+    public function toOneSignal(object $notifiable): OneSignalMessage
+    {
+        $order = $this->order;
+        $store = $this->store;
+        $subject = 'Order seen';
+        $seenByUser = $this->seenByUser;
+        $body = $order->craftOrderSeenMessage($store, $seenByUser);
+
+        return OneSignalMessage::create()
+            ->setSubject($subject)
+            ->setBody($body);
     }
 }

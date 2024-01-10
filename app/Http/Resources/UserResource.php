@@ -11,6 +11,10 @@ class UserResource extends BaseResource
     protected $isProfileOwner;
     protected $customExcludeFields = ['password'];
 
+    protected $customIncludeFields = [
+        'transactions_as_payer_count', 'paid_transactions_as_payer_count'
+    ];
+
     protected $resourceRelationships = [
         'latestTransactionAsPayer' => TransactionRepository::class,
     ];

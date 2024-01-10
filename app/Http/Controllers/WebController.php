@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 
 class WebController extends Controller
 {
+    public function welcome()
+    {
+        return view('welcome');
+    }
+
     public function paymentSuccess(Transaction $transaction, Request $request)
     {
         // Verify the transaction

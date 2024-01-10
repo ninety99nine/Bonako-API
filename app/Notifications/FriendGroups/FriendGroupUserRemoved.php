@@ -10,6 +10,8 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\MailMessage;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
 class FriendGroupUserRemoved extends Notification
@@ -38,9 +40,9 @@ class FriendGroupUserRemoved extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', OneSignalChannel::class];
     }
 
     /**
@@ -70,5 +72,18 @@ class FriendGroupUserRemoved extends Notification
                 'firstName' => $removedUser->first_name
             ],
         ];
+    }
+
+    public function toOneSignal(object $notifiable): OneSignalMessage
+    {
+        $removedUser = $this->removedUser;
+        $friendGroup = $this->friendGroup;
+        $subject = 'Friend added to group';
+        $removedByUser = $this->removedByUser;
+        $body = $removedByUser->first_name.' removed '.$removedUser->first_name.' from '.$friendGroup->name_with_emoji;
+
+        return OneSignalMessage::create()
+            ->setSubject($subject)
+            ->setBody($body);
     }
 }

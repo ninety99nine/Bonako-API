@@ -23,6 +23,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Notifications\DatabaseNotification;
 use App\Exceptions\DeleteOfSuperAdminRestrictedException;
 use App\Models\AiAssistant;
+use App\Models\Order;
+use App\Models\Review;
 use App\Models\SmsAlertActivityAssociation;
 use App\Models\SubscriptionPlan;
 use App\Services\AWS\AWSService;
@@ -1201,6 +1203,13 @@ class UserRepository extends BaseRepository
                 'App\Notifications\Orders\OrderStatusUpdated'
             ]);
 
+        }elseif($filter == 'followers') {
+
+            return $notifications->whereIn('type', [
+                'App\Notifications\Users\FollowingStore',
+                'App\Notifications\Users\UnfollowedStore'
+            ]);
+
         }elseif($filter == 'friend groups') {
 
             return $notifications->whereIn('type', [
@@ -1877,11 +1886,19 @@ class UserRepository extends BaseRepository
         $smsAlert = $this->showSmsAlert()->model;
 
         $totalSmsAlertCredits = $smsAlert->sms_credits;
-        $totalOrders = $this->getUser()->orders()->count();
         $totalReviews = $this->getUser()->reviews()->count();
+        $totalReviewsAsTeamMember = Review::whereHas('store.teamMembers', function ($query) {
+            $query->joinedTeam()->where('user_store_association.user_id', $this->getUser()->id);
+        })->count();
         $totalNotifications = $this->getUser()->notifications()->count();
+        $totalOrdersAsCustomer = $this->getUser()->ordersAsCustomer()->count();
+        $totalUnreadNotifications = $this->getUser()->notifications()->unread()->count();
+        $totalOrdersAsTeamMember = Order::whereHas('store.teamMembers', function ($query) {
+            $query->joinedTeam();
+        })->count();
+        $totalOrdersAsCustomerOrFriend = $this->getUser()->ordersAsCustomerOrFriend()->count();
 
-        $totalGroupsJoined = $this->getUser()->friendGroups()->count();
+        $totalGroupsJoined = $this->getUser()->friendGroups()->joinedGroup()->count();
         $totalGroupsJoinedAsCreator = $this->getUser()->friendGroups()->joinedGroupAsCreator()->count();
         $totalGroupsJoinedAsNonCreator = $this->getUser()->friendGroups()->joinedGroupAsNonCreator()->count();
         $totalGroupsInvitedToJoinAsGroupMember = $this->getUser()->friendGroups()->invitedToJoinGroup()->count();
@@ -1896,12 +1913,16 @@ class UserRepository extends BaseRepository
         $totalStoresInvitedToJoinAsTeamMember = $this->getUser()->storesAsTeamMember()->invitedToJoinTeam()->count();
 
         return [
-            'totalOrders' => $totalOrders,
             'totalReviews' => $totalReviews,
             'totalNotifications' => $totalNotifications,
             'totalSmsAlertCredits' => $totalSmsAlertCredits,
+            'totalOrdersAsCustomer' => $totalOrdersAsCustomer,
             'totalStoresAsFollower' => $totalStoresAsFollower,
             'totalStoresAsCustomer' => $totalStoresAsCustomer,
+            'totalOrdersAsTeamMember' => $totalOrdersAsTeamMember,
+            'totalUnreadNotifications' => $totalUnreadNotifications,
+            'totalReviewsAsTeamMember' => $totalReviewsAsTeamMember,
+            'totalOrdersAsCustomerOrFriend' => $totalOrdersAsCustomerOrFriend,
 
             'totalGroupsJoined' => $totalGroupsJoined,
             'totalGroupsJoinedAsCreator' => $totalGroupsJoinedAsCreator,

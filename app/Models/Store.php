@@ -471,9 +471,16 @@ class Store extends BaseModel
      *  ACCESSORS               *
      ***************************/
 
-     protected $appends = [
-        'shopper_access', 'team_member_access',
-     ];
+    protected $appends = [
+        'name_with_emoji', 'shopper_access', 'team_member_access',
+    ];
+
+    public function nameWithEmoji(): Attribute
+    {
+        return new Attribute(
+            get: fn() => empty($this->emoji) ? $this->name : $this->emoji.' '.$this->name
+        );
+    }
 
     /**
      *  Attribute to check if Orange Money payment is enabled for this store

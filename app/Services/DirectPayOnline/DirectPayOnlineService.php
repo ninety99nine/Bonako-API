@@ -9,11 +9,11 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Str;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
-use App\Repositories\OrderRepository;
-use App\Notifications\Orders\OrderPaid;
-use Illuminate\Support\Facades\Notification;
-use App\Exceptions\DPOCompanyTokenNotProvidedException;
 use App\Services\Sms\SmsService;
+use App\Repositories\OrderRepository;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\Orders\OrderPaidUsingDPO;
+use App\Exceptions\DPOCompanyTokenNotProvidedException;
 
 class DirectPayOnlineService
 {
@@ -39,8 +39,8 @@ class DirectPayOnlineService
     {
         $relationships = [];
 
-        if($transaction->relationLoaded('payedByUser') == false) {
-            array_push($relationships, 'payedByUser');
+        if($transaction->relationLoaded('paidByUser') == false) {
+            array_push($relationships, 'paidByUser');
         }
 
         if($transaction->relationLoaded('owner') == false) {
@@ -77,10 +77,10 @@ class DirectPayOnlineService
         $transactionCurrency = $transaction->currency;
         $transactionAmount = $transaction->amount->amount;
 
-        $payedByUser = $transaction->payedByUser;
-        $lastName = $payedByUser->last_name ?? null;
-        $firstName = $payedByUser->first_name ?? null;
-        $mobileNumber = $payedByUser->mobile_number ?? null;
+        $paidByUser = $transaction->paidByUser;
+        $lastName = $paidByUser->last_name ?? null;
+        $firstName = $paidByUser->first_name ?? null;
+        $mobileNumber = $paidByUser->mobile_number ?? null;
 
         $metaData = 'Store ID: '.$store->id.'\n'.
                     'Store Name: '.$store->name.'\n'.
@@ -333,17 +333,6 @@ class DirectPayOnlineService
                 //  Refresh the transaction
                 $transaction = $transaction->fresh();
 
-                //  Send order payment notification to the customer, friends and team members
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
-                    //  Send notifications to the team members who joined
-                    collect($store->teamMembers()->joinedTeam()->get())->merge(
-                        //  As well as the custoemr and friends who were tagged on this order
-                        $order->users()->get()
-                    ),
-                    new OrderPaid($order, $transaction)
-                );
-
                 /**
                  *  Get the users associated with this order as a customer or friend
                  *
@@ -357,6 +346,17 @@ class DirectPayOnlineService
                  *  @var Collection<User> $teamMembers
                  */
                 $teamMembers = $store->teamMembers()->whereNotIn('users.id', $users->pluck('id'))->joinedTeam()->get();
+
+                //  Send order payment notification to the customer, friends and team members
+                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
+                Notification::sendNow(
+                    //  Send notifications to the team members who joined
+                    collect($teamMembers)->merge(
+                        //  As well as the customer and friends who were tagged on this order
+                        $users
+                    ),
+                    new OrderPaidUsingDPO($order, $store, $transaction)
+                );
 
                 foreach($users->concat($teamMembers) as $user) {
 

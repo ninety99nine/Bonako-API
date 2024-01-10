@@ -170,7 +170,7 @@ class SubscriptionPlanSeeder extends Seeder
             [
                 'name' => 'P0.50 per sms alert',
                 'description' => 'P0.50 per SMS Alert',
-                'service' => 'Store Access',
+                'service' => 'SMS Alerts',
                 'type' => 'Subscription',
                 'currency' => 'BWP',
                 'price' => 2.00,

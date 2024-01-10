@@ -50,7 +50,7 @@ class FriendGroupObserver
 
         //  Notify the group members on this friend group deletion
         //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::send($users, new FriendGroupDeleted($friendGroup->id, $friendGroup->name, auth()->user()));
+        Notification::send($users, new FriendGroupDeleted($friendGroup->id, $friendGroup->name_with_emoji, auth()->user()));
 
         // Remove the cached users
         Cache::forget($this->getUsersCacheName($friendGroup));

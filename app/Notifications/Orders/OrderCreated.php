@@ -2,26 +2,32 @@
 
 namespace App\Notifications\Orders;
 
-use App\Models\Cart;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\Store;
+use App\Models\Occasion;
 use Illuminate\Bus\Queueable;
-use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\SlackMessage;
-use Illuminate\Notifications\Slack\BlockKit\Blocks\ContextBlock;
-use Illuminate\Notifications\Slack\BlockKit\Blocks\SectionBlock;
-use Illuminate\Notifications\Slack\BlockKit\Composites\ConfirmObject;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
+use App\Notifications\Orders\Base\OrderNotification;
 
-class OrderCreated extends Notification
+/**
+ * Note that the OrderCreated is extending our custom OrderNotification
+ * class instead of the Laravel default Notification. This is because
+ * the OrderNotification class contains additional custom methods
+ * specific for order notifications.
+ */
+class OrderCreated extends OrderNotification
 {
-    use Queueable, BaseTrait;
+    use Queueable;
 
+    public Store $store;
     public Order $order;
-    public Cart $cart;
+    public User $customer;
+    public ?Occasion $occasion;
 
     /**
      * Create a new notification instance.
@@ -30,8 +36,10 @@ class OrderCreated extends Notification
      */
     public function __construct(Order $order)
     {
-        $this->order = $order->load('cart');
-        $this->cart = $this->order->cart;
+        $this->order = $order->load(['customer', 'store', 'occasion']);
+        $this->customer = $this->order->customer;
+        $this->occasion = $this->order->occasion;
+        $this->store = $this->order->store;
     }
 
     /**
@@ -40,9 +48,9 @@ class OrderCreated extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(User $notifiable): array
     {
-        return ['database', 'broadcast', 'slack'];
+        return ['database', 'broadcast', 'slack', OneSignalChannel::class];
     }
 
     /**
@@ -50,44 +58,14 @@ class OrderCreated extends Notification
      *
      * @return array<string, mixed>
      */
-    public function toArray(object $notifiable): array
+    public function toArray(User $notifiable): array
     {
         $order = $this->order;
-
-        /**
-         *  @var Store $store
-         */
-        $store = $this->order->store;
-
-        //  Check if this order has an occasion
-        if(!is_null($order->occasion_id)) {
-
-            /**
-             *  @var Occasion $occasion
-             */
-            $occasion = $order->occasion;
-
-        }
-
-        //  Check if this order has tagged friends
-        if($order->order_for_total_friends) {
-
-            /**
-             *  @var Collection<User> $friends
-             */
-            $friendIds = $this->order->friends->pluck('id');
-
-        }else{
-
-            $friendIds = [];
-
-        }
-
-        //  Check if this notifiable user is the customer of this order
-        $isAssociatedAsCustomer = $order->customer_user_id == $notifiable->id;
-
-        //  Check if this notifiable user is tagged as a friend of this order
-        $isAssociatedAsFriend = collect($friendIds)->contains($notifiable->id);
+        $store = $this->store;
+        $customer = $this->customer;
+        $occasion = $this->occasion;
+        $isAssociatedAsFriend = $this->checkIfAssociatedAsFriend($order, $notifiable);
+        $isAssociatedAsCustomer = $this->checkIfAssociatedAsCustomer($order, $notifiable);
 
         return [
             'store' => [
@@ -98,18 +76,15 @@ class OrderCreated extends Notification
                 'id' => $order->id,
                 'number' => $order->number,
                 'summary' => $order->summary,
-                'orderFor' => $order->order_for,
                 'amount' => $order->amount_outstanding,
                 'isAssociatedAsFriend' => $isAssociatedAsFriend,
                 'isAssociatedAsCustomer' => $isAssociatedAsCustomer,
-                'orderForTotalUsers' => $order->order_for_total_users,
-                'customer' => [
-                    'name' => $order->customer_name,
-                    'id' => $order->customer_user_id,
-                    'lastName' => $order->customer_last_name,
-                    'firstName' => $order->customer_first_name,
-                ],
                 'orderForTotalFriends' => $order->order_for_total_friends,
+            ],
+            'customer' => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'firstName' => $customer->first_name,
             ],
             'occasion' => isset($occasion) ? [
                 'name' => $occasion->name
@@ -120,7 +95,7 @@ class OrderCreated extends Notification
     /**
      * Get the Slack representation of the notification.
      */
-    public function toSlack(object $notifiable): SlackMessage
+    public function toSlack(User $notifiable): SlackMessage
     {
         return (new SlackMessage)->content($this->order->summary)->attachment(function ($attachment) {
 
@@ -132,5 +107,31 @@ class OrderCreated extends Notification
             ]);
 
         });
+    }
+
+    public function toOneSignal(User $notifiable): OneSignalMessage
+    {
+        $order = $this->order;
+        $store = $this->store;
+        $subject = 'New order';
+        $customer = $this->customer;
+
+        if($this->checkIfAssociatedAsCustomer($order, $notifiable)) {
+
+            $body = $order->craftNewOrderSmsMessageForCustomer($store);
+
+        }else if($this->checkIfAssociatedAsFriend($order, $notifiable)) {
+
+            $body = $order->craftNewOrderSmsMessageForFriend($notifiable);
+
+        }else{
+
+            $body = $order->craftNewOrderSmsMessageForSeller($store, $customer);
+
+        }
+
+        return OneSignalMessage::create()
+            ->setSubject($subject)
+            ->setBody($body);
     }
 }

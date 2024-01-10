@@ -148,7 +148,7 @@ class StoreObserver
 
         //  Notify the team members on this store deletion
         //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::send($teamMembers, new StoreDeleted($store->id, $store->name, auth()->user()));
+        Notification::send($teamMembers, new StoreDeleted($store->id, $store->name_with_emoji, auth()->user()));
 
         // Remove the cached team members
         Cache::forget($this->getTeamMembersCacheName($store));

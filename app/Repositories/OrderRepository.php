@@ -48,6 +48,8 @@ use App\Models\Pivots\UserStoreAssociation;
 use App\Models\Product;
 use App\Models\Store;
 use App\Notifications\Orders\OrderCreated;
+use App\Notifications\Orders\OrderMarkedAsPaid;
+use App\Notifications\Orders\OrderPaymentRequest;
 use App\Notifications\Orders\OrderSeen;
 use App\Notifications\Orders\OrderStatusUpdated;
 use App\Notifications\Orders\OrderUpdated;
@@ -1257,11 +1259,21 @@ class OrderRepository extends BaseRepository
 
             }
 
+            /**
+             *  To minimize the number of queries made by the craftNewOrderSmsMessageForFriend() method,
+             *  we will set the relationships that we already have available for better performance.
+             */
+            $order->setRelations([
+                'store' => $store,
+                'friends' => $friends,
+                'customer' => $userAsCustomer,
+            ]);
+
             foreach($friends as $friend) {
 
                 // Send sms to friend tagged on this order
                 SmsService::sendOrangeSms(
-                    $order->craftNewOrderSmsMessageForFriend($store, $userAsCustomer, $friend, $friends),
+                    $order->craftNewOrderSmsMessageForFriend($friend),
                     $friend->mobile_number->withExtension,
                     $store, null, null
                 );
@@ -1880,19 +1892,26 @@ class OrderRepository extends BaseRepository
                     $store = $order->store;
 
                     /**
-                     *  @var User $payedByUser
+                     *  @var User $paidByUser
                      */
-                    $payedByUser = $transaction->payedByUser;
+                    $paidByUser = $transaction->paidByUser;
 
                     /**
                      *  @var User $requestedByUser
                      */
                     $requestedByUser = $transaction->requestedByUser;
 
+                    //  Send order payment request notification to the payer
+                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
+                    Notification::sendNow(
+                        $paidByUser,
+                        new OrderPaymentRequest($order, $store, $transaction, $requestedByUser, $paymentMethod)
+                    );
+
                     // Send order payment request sms to the paying user
                     SmsService::sendOrangeSms(
                         $order->craftOrderPaymentRequestSmsMessage($store, $transaction, $requestedByUser, $paymentMethod),
-                        $payedByUser->mobile_number->withExtension,
+                        $paidByUser->mobile_number->withExtension,
                         $store, null, null
                     );
 
@@ -1990,7 +2009,7 @@ class OrderRepository extends BaseRepository
      *
      *  @return OrderRepository
      */
-    public function  markAsUnverifiedPayment(Request $request)
+    public function markAsUnverifiedPayment(Request $request)
     {
         /**
          *  @var Order $order
@@ -2034,11 +2053,22 @@ class OrderRepository extends BaseRepository
          */
         $verifiedByUser = auth()->user();
 
+        //  Send order marked as paid notification to the customer, friends and team members
+        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
+        Notification::sendNow(
+            //  Send notifications to the team members who joined
+            collect($teamMembers)->merge(
+                //  As well as the customer and friends who were tagged on this order
+                $users
+            ),
+            new OrderMarkedAsPaid($order, $store, $transaction, $verifiedByUser)
+        );
+
         foreach($users->concat($teamMembers) as $user) {
 
             // Send order mark as verified payment sms to user
             SmsService::sendOrangeSms(
-                $order->craftOrderMarkAsUnVerifiedPaymentSmsMessage($store, $transaction, $verifiedByUser),
+                $order->craftOrderMarkedAsPaidtSmsMessage($store, $transaction, $verifiedByUser),
                 $user->mobile_number->withExtension,
                 $store, null, null
             );
@@ -2528,14 +2558,14 @@ class OrderRepository extends BaseRepository
         $order = $this->model;
 
         //  Get the paying user ids
-        $payedByUserIds = $order->transactions()->pluck('paid_by_user_id');
+        $paidByUserIds = $order->transactions()->pluck('paid_by_user_id');
 
         //  Get the paying users
-        $payedByUsers = User::whereIn('id', $payedByUserIds);
+        $paidByUsers = User::whereIn('id', $paidByUserIds);
 
         if(request()->input('with_transactions_count')) {
 
-            $payedByUsers->withCount(['transactionsAsPayer' => function($query) use ($order) {
+            $paidByUsers->withCount(['transactionsAsPayer' => function($query) use ($order) {
                 return $query->where('owner_type', 'order')->where('owner_id', $order->id);
             }]);
 
@@ -2543,7 +2573,7 @@ class OrderRepository extends BaseRepository
 
         if(request()->input('with_paid_transactions_count')) {
 
-            $payedByUsers->withCount(['paidTransactionsAsPayer' => function($query) use ($order) {
+            $paidByUsers->withCount(['paidTransactionsAsPayer' => function($query) use ($order) {
                 return $query->where('owner_type', 'order')->where('owner_id', $order->id);
             }]);
 
@@ -2551,14 +2581,14 @@ class OrderRepository extends BaseRepository
 
         if(request()->input('with_latest_transaction')) {
 
-            $payedByUsers->with(['latestTransactionAsPayer' => function($query) use ($order) {
+            $paidByUsers->with(['latestTransactionAsPayer' => function($query) use ($order) {
                 return $query->where('owner_type', 'order')->where('owner_id', $order->id)->latest();
             }]);
 
         }
 
         //  Return the UserRepository
-        return $this->userRepository()->setModel($payedByUsers)->get();
+        return $this->userRepository()->setModel($paidByUsers)->get();
     }
 
 

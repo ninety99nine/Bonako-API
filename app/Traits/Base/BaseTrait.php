@@ -4,6 +4,7 @@ namespace App\Traits\Base;
 
 use stdClass;
 use Carbon\Carbon;
+use App\Models\User;
 use Illuminate\Support\Str;
 
 trait BaseTrait

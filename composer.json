@@ -9,6 +9,7 @@
         "bensampo/laravel-enum": "^6.6",
         "bugsnag/bugsnag-laravel": "^2.6",
         "guzzlehttp/guzzle": "^7.2",
+        "laravel-notification-channels/onesignal": "^2.5",
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.2",
         "laravel/slack-notification-channel": "^3.0",
@@ -17,7 +18,9 @@
         "openai-php/laravel": "^0.7.0",
         "pusher/pusher-php-server": "^7.2",
         "rajentrivedi/tokenizer-x": "^1.0",
-        "simplesoftwareio/simple-qrcode": "~4"
+        "simplesoftwareio/simple-qrcode": "~4",
+        "symfony/http-client": "^6.4",
+        "symfony/mailgun-mailer": "^6.4"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

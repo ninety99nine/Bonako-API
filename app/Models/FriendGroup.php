@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Base\BaseModel;
 use App\Traits\UserFriendGroupAssociationTrait;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Models\Pivots\UserFriendGroupAssociation;
 use App\Models\Pivots\FriendGroupOrderAssociation;
 use App\Models\Pivots\FriendGroupStoreAssociation;
@@ -91,5 +92,14 @@ class FriendGroup extends BaseModel
      *  ACCESSORS               *
      ***************************/
 
-    protected $appends = [];
+    protected $appends = [
+        'name_with_emoji'
+    ];
+
+    public function nameWithEmoji(): Attribute
+    {
+        return new Attribute(
+            get: fn() => empty($this->emoji) ? $this->name : $this->emoji.' '.$this->name
+        );
+    }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebController;
 use App\Models\Order;
@@ -7,6 +8,7 @@ use App\Models\Store;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Sms\SmsService;
+use Illuminate\Support\Facades\View;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,7 +20,6 @@ use App\Services\Sms\SmsService;
 | contains the "web" middleware group. Now create something great!
 |
 */
-
 Route::get('/test-sms', function () {
 
     try {
@@ -52,15 +53,25 @@ Route::get('/php-info', function () {
     return phpinfo();
 });
 
-//  Redirect to terms and conditions
-Route::redirect('/terms', 'https://forms.fillout.com/t/hNffdJnchyus', 301)->name('terms.and.conditions.show');
-
 Route::controller(WebController::class)->group(function(){
+    Route::get('/', 'welcome')->name('welcome.page');
     Route::get('/{transaction}/payment-success', 'paymentSuccess')->name('payment.success.page');
     Route::get('/perfect-pay-advertisement', 'perfectPayAdvertisement')->name('perfect.pay.advertisement.page');
 });
+
+//  Redirect to terms and conditions
+Route::redirect('/terms', 'https://forms.fillout.com/t/hNffdJnchyus', 301)->name('terms.and.conditions.show');
 
 /*
 Route::get('/create', [ExampleController::class, 'form'])->name('form-show');
 Route::post('/create', [ExampleController::class, 'store'])->name('form-create');
 */
+
+
+//  Incase we don't match any route
+Route::fallback(function() {
+
+    //  Return our 404 Not Found page
+    return View('errors.404');
+
+});

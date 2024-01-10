@@ -64,7 +64,7 @@ class TransactionRepository extends BaseRepository
         if( request()->input('with_paying_user') ) {
 
             //  Additionally we can eager load the paying user on this transaction
-            array_push($relationships, 'payedByUser');
+            array_push($relationships, 'paidByUser');
 
         }
 

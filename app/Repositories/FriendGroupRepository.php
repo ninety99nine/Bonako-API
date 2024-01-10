@@ -29,6 +29,9 @@ use App\Notifications\Users\InvitationToJoinFriendGroupDeclined;
 use App\Notifications\Users\InvitationToJoinFriendGroupAccepted;
 use App\Exceptions\CannotRemoveYourselfAsFriendGroupMemberException;
 use App\Exceptions\CannotRemoveYourselfAsFriendGroupCreatorException;
+use App\Notifications\FriendGroups\FriendGroupCreated;
+use App\Notifications\FriendGroups\FriendGroupStoreAdded;
+use App\Notifications\FriendGroups\FriendGroupStoreRemoved;
 
 class FriendGroupRepository extends BaseRepository
 {
@@ -351,6 +354,13 @@ class FriendGroupRepository extends BaseRepository
         //  we can also load the user friend group association
         $this->setModel(
             $user->friendGroups()->where('friend_groups.id', $this->model->id)->first()
+        );
+
+        //  Notify the group creator that this group has been created
+        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
+        Notification::sendNow(
+            $this->chooseUser(),
+            new FriendGroupCreated($this->getFriendGroup(), $this->chooseUser())
         );
 
         return [
@@ -1293,8 +1303,29 @@ class FriendGroupRepository extends BaseRepository
             // Attach the specified stores to this friend group without detaching existing ones
             $attachedStores = $this->getFriendGroup()->stores()->syncWithoutDetaching($pivotData);
 
+            // Get the attached store ids
+            $attachedStoreIds = $attachedStores['attached'];
+
             // Get the total attached stores
-            $totalAddedStores = count($attachedStores['attached']);
+            $totalAddedStores = count($attachedStoreIds);
+
+            // Get the attached stores
+            $stores = Store::whereIn('id', $attachedStoreIds)->get();
+
+            //  Get the users who joined this friend group
+            $usersWhoJoined = $this->getFriendGroup()->users()->joinedGroup()->get();
+
+            //  Foreach store
+            foreach($stores as $store) {
+
+                //  Notify the friend group users that the store has been added
+                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
+                Notification::sendNow(
+                    $usersWhoJoined,
+                    new FriendGroupStoreAdded($this->getFriendGroup(), $store, $user)
+                );
+
+            }
 
             if ($totalAddedStores > 0) {
 
@@ -1335,10 +1366,12 @@ class FriendGroupRepository extends BaseRepository
             $storeIds = $request->input('store_ids');
 
             //  Count the total stores matching the specified store ids
-            $totalStores = DB::table('friend_group_store_association')
+            $matchingStoreIds = DB::table('friend_group_store_association')
                                 ->where('friend_group_id', $this->getFriendGroup()->id)
                                 ->whereIn('store_id', $storeIds)
-                                ->count();
+                                ->pluck('store_id');
+
+            $totalStores = count($matchingStoreIds);
 
             //  If we have matching stores
             if( $totalStores ) {
@@ -1348,6 +1381,24 @@ class FriendGroupRepository extends BaseRepository
                     ->where('friend_group_id', $this->getFriendGroup()->id)
                     ->whereIn('store_id', $storeIds)
                     ->delete();
+
+                // Get the dettached stores
+                $stores = Store::whereIn('id', $matchingStoreIds)->get();
+
+                //  Get the users who joined this friend group
+                $usersWhoJoined = $this->getFriendGroup()->users()->joinedGroup()->get();
+
+                //  Foreach store
+                foreach($stores as $store) {
+
+                    //  Notify the friend group users that the store has been removed
+                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
+                    Notification::sendNow(
+                        $usersWhoJoined,
+                        new FriendGroupStoreRemoved($this->getFriendGroup(), $store, $user)
+                    );
+
+                }
 
                 return [
                     'message' => $totalStores . ($totalStores == 1 ? ' store': ' stores') . ' removed'

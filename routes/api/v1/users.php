@@ -76,8 +76,8 @@ foreach($options as $option) {
                 });
 
                 Route::prefix('{notification}')->name('.notification')->group(function () {
-                    Route::get('/', 'showNotification')->name('.show')->whereNumber(['user', 'notification']);
-                    Route::post('/', 'markNotificationAsRead')->name('.mark.as.read')->whereNumber(['user', 'notification']);
+                    Route::get('/', 'showNotification')->name('.show')->whereNumber(['user']);
+                    Route::post('/', 'markNotificationAsRead')->name('.mark.as.read')->whereNumber(['user']);
                 });
 
             });

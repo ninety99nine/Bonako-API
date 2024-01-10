@@ -105,7 +105,7 @@ class Transaction extends BaseModel
     /**
      *  Returns the User responsible to pay for this payment transaction.
      */
-    public function payedByUser()
+    public function paidByUser()
     {
         return $this->belongsTo(User::class, 'paid_by_user_id');
     }

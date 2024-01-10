@@ -10,6 +10,8 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\MailMessage;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
 class StoreDeleted extends Notification
@@ -17,15 +19,15 @@ class StoreDeleted extends Notification
     use Queueable, BaseTrait;
 
     public int $storeId;
-    public string $storeName;
     public User $deletedByUser;
+    public string $storeNameWithEmoji;
 
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct($storeId, $storeName, User $deletedByUser)
+    public function __construct($storeId, $storeNameWithEmoji, User $deletedByUser)
     {
         /**
          *  We cannot pass the store Model itself since Laravel would attempt to resolve
@@ -39,8 +41,8 @@ class StoreDeleted extends Notification
          *  the store ID and store name.
          */
         $this->storeId = $storeId;
-        $this->storeName = $storeName;
         $this->deletedByUser = $deletedByUser;
+        $this->storeNameWithEmoji = $storeNameWithEmoji;
     }
 
     /**
@@ -49,9 +51,9 @@ class StoreDeleted extends Notification
      * @param  mixed  $notifiable
      * @return array
      */
-    public function via($notifiable)
+    public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', OneSignalChannel::class];
     }
 
     /**
@@ -66,7 +68,7 @@ class StoreDeleted extends Notification
         return [
             'store' => [
                 'id' => $this->storeId,
-                'name' => $this->storeName
+                'name' => $this->storeNameWithEmoji
             ],
             'user' => [
                 'id' => $deletedByUser->id,
@@ -74,5 +76,16 @@ class StoreDeleted extends Notification
                 'firstName' => $deletedByUser->first_name,
             ],
         ];
+    }
+
+    public function toOneSignal(object $notifiable): OneSignalMessage
+    {
+        $deletedByUser = $this->deletedByUser;
+        $subject = $this->storeNameWithEmoji.' Deleted';
+        $body = 'This store has been permanently deleted by '.$deletedByUser->name;
+
+        return OneSignalMessage::create()
+            ->setSubject($subject)
+            ->setBody($body);
     }
 }

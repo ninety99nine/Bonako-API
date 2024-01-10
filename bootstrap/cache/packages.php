@@ -6,6 +6,24 @@
       0 => 'BenSampo\\Enum\\EnumServiceProvider',
     ),
   ),
+  'berkayk/onesignal-laravel' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Berkayk\\OneSignal\\OneSignalServiceProvider',
+    ),
+    'aliases' => 
+    array (
+      'OneSignal' => 'Berkayk\\OneSignal\\OneSignalFacade',
+    ),
+  ),
+  'laravel-notification-channels/onesignal' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'NotificationChannels\\OneSignal\\OneSignalServiceProvider',
+    ),
+  ),
   'laravel/sail' => 
   array (
     'providers' => 
