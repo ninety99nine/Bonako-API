@@ -1243,7 +1243,7 @@ class OrderRepository extends BaseRepository
 
             // Send sms to customer placing this order
             SmsService::sendOrangeSms(
-                $order->craftNewOrderSmsMessageForCustomer($store),
+                $order->craftNewOrderForCustomerMessage($store),
                 $userAsCustomer->mobile_number->withExtension,
                 $store, null, null
             );
@@ -1252,7 +1252,7 @@ class OrderRepository extends BaseRepository
 
                 // Send sms to team member who has joined this store
                 SmsService::sendOrangeSms(
-                    $order->craftNewOrderSmsMessageForSeller($store, $userAsCustomer),
+                    $order->craftNewOrderForSellerMessage($store, $userAsCustomer),
                     $teamMember->mobile_number->withExtension,
                     $store, null, null
                 );
@@ -1260,7 +1260,7 @@ class OrderRepository extends BaseRepository
             }
 
             /**
-             *  To minimize the number of queries made by the craftNewOrderSmsMessageForFriend() method,
+             *  To minimize the number of queries made by the craftNewOrderForFriendMessage() method,
              *  we will set the relationships that we already have available for better performance.
              */
             $order->setRelations([
@@ -1273,7 +1273,7 @@ class OrderRepository extends BaseRepository
 
                 // Send sms to friend tagged on this order
                 SmsService::sendOrangeSms(
-                    $order->craftNewOrderSmsMessageForFriend($friend),
+                    $order->craftNewOrderForFriendMessage($friend),
                     $friend->mobile_number->withExtension,
                     $store, null, null
                 );
@@ -1910,7 +1910,7 @@ class OrderRepository extends BaseRepository
 
                     // Send order payment request sms to the paying user
                     SmsService::sendOrangeSms(
-                        $order->craftOrderPaymentRequestSmsMessage($store, $transaction, $requestedByUser, $paymentMethod),
+                        $order->craftOrderPaymentRequestMessage($store, $transaction, $requestedByUser, $paymentMethod),
                         $paidByUser->mobile_number->withExtension,
                         $store, null, null
                     );
@@ -2068,7 +2068,7 @@ class OrderRepository extends BaseRepository
 
             // Send order mark as verified payment sms to user
             SmsService::sendOrangeSms(
-                $order->craftOrderMarkedAsPaidtSmsMessage($store, $transaction, $verifiedByUser),
+                $order->craftOrderMarkedAsPaidtMessage($store, $transaction, $verifiedByUser),
                 $user->mobile_number->withExtension,
                 $store, null, null
             );
@@ -2525,7 +2525,7 @@ class OrderRepository extends BaseRepository
 
                 // Send order collected sms to user
                 SmsService::sendOrangeSms(
-                    $order->craftOrderCollectedSmsMessage($store, $collectedByUser, $verifiedByUser),
+                    $order->craftOrderCollectedMessage($store, $collectedByUser, $verifiedByUser),
                     $user->mobile_number->withExtension,
                     $store, null, null
                 );

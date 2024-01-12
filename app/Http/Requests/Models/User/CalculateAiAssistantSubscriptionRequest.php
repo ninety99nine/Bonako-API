@@ -29,7 +29,7 @@ class CalculateAiAssistantSubscriptionRequest extends FormRequest
     {
         return [
             'subscription_plan_id' => ['bail', 'required', 'integer', 'min:1', Rule::exists('subscription_plans', 'id')],
-            'duration' => ['bail', 'required', 'integer', 'min:1', 'max:365']
+            'duration' => ['bail', 'sometimes', 'required', 'integer', 'min:1', 'max:365']
         ];
     }
 

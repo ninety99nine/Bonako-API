@@ -29,7 +29,7 @@ class CalculateSmsAlertTransactionAmount extends FormRequest
     {
         return [
             'subscription_plan_id' => ['bail', 'required', 'integer', 'min:1', Rule::exists('subscription_plans', 'id')],
-            'credits' => ['bail', 'required', 'integer', 'min:1', 'max:1000']
+            'sms_credits' => ['bail', 'sometimes', 'required', 'integer', 'min:1', 'max:10000'],
         ];
     }
 

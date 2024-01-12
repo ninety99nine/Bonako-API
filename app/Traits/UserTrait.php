@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Pivots\UserStoreAssociation;
+use App\Models\Transaction;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 trait UserTrait
@@ -285,10 +287,19 @@ trait UserTrait
     /**
      *  Craft the new order sms messsage to send to the customer
      *
-     *  @return Order
+     *  @return string
      */
     public function craftAccountCreatedSmsMessageForUser() {
         return 'Hi '.$this->first_name.', your '.config('app.name').' account was created successfully! Enjoy 😉';
+    }
+
+    /**
+     *  Craft the sms alerts payment success sms messsage
+     *
+     *  @return string
+     */
+    public function craftSmsAlertsPaidSuccessfullyMessage(int $smsCredits, Transaction $transaction) {
+        return $transaction->amount->amountWithCurrency.' paid successfully for ' . $smsCredits . ($smsCredits == 1 ? ' sms alert' : ' sms alerts').'. You now have '. $this->sms_credits . ($this->sms_credits == 1 ? ' sms alert' : ' sms alerts');
     }
 
 }

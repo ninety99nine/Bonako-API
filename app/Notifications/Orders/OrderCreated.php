@@ -118,15 +118,15 @@ class OrderCreated extends OrderNotification
 
         if($this->checkIfAssociatedAsCustomer($order, $notifiable)) {
 
-            $body = $order->craftNewOrderSmsMessageForCustomer($store);
+            $body = $order->craftNewOrderForCustomerMessage($store);
 
         }else if($this->checkIfAssociatedAsFriend($order, $notifiable)) {
 
-            $body = $order->craftNewOrderSmsMessageForFriend($notifiable);
+            $body = $order->craftNewOrderForFriendMessage($notifiable);
 
         }else{
 
-            $body = $order->craftNewOrderSmsMessageForSeller($store, $customer);
+            $body = $order->craftNewOrderForSellerMessage($store, $customer);
 
         }
 

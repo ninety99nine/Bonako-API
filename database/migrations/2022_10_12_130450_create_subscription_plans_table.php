@@ -26,6 +26,7 @@ class CreateSubscriptionPlansTable extends Migration
             $table->enum('type', SubscriptionPlan::TYPES);
             $table->char('currency', 3)->default('BWP');
             $table->float('price')->default(0);
+            $table->unsignedTinyInteger('position')->nullable();
             $table->boolean('active')->default(false);
             $table->json('metadata');
 

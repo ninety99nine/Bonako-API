@@ -29,7 +29,7 @@ class CreateSmsAlertTransactionRequest extends FormRequest
     {
         return [
             'embed' => ['bail', 'sometimes', 'required', 'boolean'],
-            'credits' => ['bail', 'required', 'integer', 'min:1', 'max:1000'],
+            'sms_credits' => ['bail', 'sometimes', 'required', 'integer', 'min:1', 'max:10000'],
             'payment_method_id' => ['bail', 'sometimes', 'required', 'numeric', 'min:1', 'exists:payment_methods,id'],
             'subscription_plan_id' => ['bail', 'required', 'integer', 'min:1', Rule::exists('subscription_plans', 'id')]
         ];

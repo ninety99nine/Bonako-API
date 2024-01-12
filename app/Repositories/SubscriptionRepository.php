@@ -11,6 +11,7 @@ use App\Models\SubscriptionPlan;
 use App\Repositories\BaseRepository;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\Subscriptions\SubscriptionCreated;
+use Illuminate\Database\Eloquent\Model;
 
 class SubscriptionRepository extends BaseRepository
 {
@@ -25,6 +26,16 @@ class SubscriptionRepository extends BaseRepository
     }
 
     /**
+     *  Return the SubscriptionPlanRepository instance
+     *
+     *  @return SubscriptionPlanRepository
+     */
+    public function subscriptionPlanRepository()
+    {
+        return resolve(SubscriptionPlanRepository::class);
+    }
+
+    /**
      *  Create a subscription
      *
      *  @param Model $model - The resource being subscribed for
@@ -32,7 +43,7 @@ class SubscriptionRepository extends BaseRepository
      *  @param Subscription $latestSubscription - The latest subscription
      *  @return SubscriptionRepository
      */
-    public function create($model, Request $request = null, Subscription $latestSubscription = null)
+    public function createSubscription(Model $model, Request $request = null, Subscription $latestSubscription = null)
     {
         //  If the subscription exists
         if($latestSubscription) {
@@ -56,11 +67,11 @@ class SubscriptionRepository extends BaseRepository
         //  Get the Subscription Plan frequency
         $frequency = $subscriptionPlan->metadata['frequency'];
 
-        //  Calculate the subscription amount
-        $amount = $this->calculateSubscriptionAmount($request, $subscriptionPlan);
+        //  Calculate the subscription plan amount
+        $amount = $this->subscriptionPlanRepository()->setModel($subscriptionPlan)->calculateSubscriptionPlanAmountAgainstSubscriptionDuration($request);
 
-        //  Calculate the subscription duration
-        $duration = $this->calculateSubscriptionDuration($request, $subscriptionPlan);
+        //  Get the subscription plan duration
+        $duration = $this->subscriptionPlanRepository()->setModel($subscriptionPlan)->getSubscriptionPlanDuration($request);
 
         //  Calculate the end datetime
         $endAt = $this->calculateSubscriptionEndAt($startAt, $duration, $frequency);
@@ -90,7 +101,7 @@ class SubscriptionRepository extends BaseRepository
         $subscriptionFor = $subscription->owner;
 
         //  Create a transaction of the given resource and the subscription plan
-        $transactionRepository = $this->transactionRepository()->createSubscriptionTransaction($model, $subscription, $subscriptionPlan, $amount, $request);
+        $transactionRepository = $this->transactionRepository()->createTransaction($subscription, $subscriptionPlan, $request);
 
         /**
          *  Get the transaction
@@ -118,38 +129,6 @@ class SubscriptionRepository extends BaseRepository
 
         //  Return the subscription repository
         return $subscriptionRepository;
-    }
-
-    /**
-     *  Calculate subscription amount
-     *
-     *  @param Request $request
-     *  @param SubscriptionPlan $subscriptionPlan
-     *  @return int
-     */
-    public function calculateSubscriptionAmount(Request $request, SubscriptionPlan $subscriptionPlan)
-    {
-        if(strtolower($subscriptionPlan->metadata['duration_type']) == 'variable duration') {
-            return $this->calculateSubscriptionDuration($request, $subscriptionPlan) * $subscriptionPlan->price->amount;
-        }else{
-            return $subscriptionPlan->price->amount;
-        }
-    }
-
-    /**
-     *  Calculate subscription duration
-     *
-     *  @param Request $request
-     *  @param SubscriptionPlan $subscriptionPlan
-     *  @return int
-     */
-    public function calculateSubscriptionDuration(Request $request, SubscriptionPlan $subscriptionPlan)
-    {
-        if(strtolower($subscriptionPlan->metadata['duration_type']) == 'variable duration') {
-            return $request->input('duration');
-        }else{
-            return $subscriptionPlan->metadata['duration'];
-        }
     }
 
     /**

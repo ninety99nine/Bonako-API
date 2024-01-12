@@ -115,7 +115,7 @@ class OrderPaymentRequest extends OrderNotification
         $subject = 'Order payment request';
         $paymentMethod = $this->paymentMethod;
         $requestedByUser = $this->requestedByUser;
-        $body = $order->craftOrderPaymentRequestSmsMessage($store, $transaction, $requestedByUser, $paymentMethod);
+        $body = $order->craftOrderPaymentRequestMessage($store, $transaction, $requestedByUser, $paymentMethod);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

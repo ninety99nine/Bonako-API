@@ -17,10 +17,13 @@ use Illuminate\Http\Request;
 use App\Traits\Base\BaseTrait;
 use App\Repositories\BaseRepository;
 use App\Exceptions\TransactionCannotBeUnCancelledException;
+use App\Models\AiAssistant;
 use App\Models\SmsAlert;
+use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\AWS\AWSService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 class TransactionRepository extends BaseRepository
@@ -47,6 +50,16 @@ class TransactionRepository extends BaseRepository
     public function shortcodeRepository()
     {
         return resolve(ShortcodeRepository::class);
+    }
+
+    /**
+     *  Return the SubscriptionPlanRepository instance
+     *
+     *  @return SubscriptionPlanRepository
+     */
+    public function subscriptionPlanRepository()
+    {
+        return resolve(SubscriptionPlanRepository::class);
     }
 
     /**
@@ -349,8 +362,6 @@ class TransactionRepository extends BaseRepository
 
     }
 
-
-
     /**
      *  Show the order transaction filters
      *
@@ -445,46 +456,61 @@ class TransactionRepository extends BaseRepository
         return $transactions;
     }
 
-
-
     /**
-     *  Create a subscription transaction
+     *  Create a store subscription transaction
      *
-     *  @param Model $model The resource being subscribed for
+     *  @param Model $model - The resource this transaction is for
      *  @param Subscription $subscription The subscription created
      *  @param SubscriptionPlan $subscriptionPlan The subscription plan used
      *  @param Request $request The HTTP request
      *
      *  @return TransactionRepository
      */
-    public function createSubscriptionTransaction($model, $subscription, $subscriptionPlan, $amount, $request)
+    public function createTransaction(Model $model, SubscriptionPlan $subscriptionPlan, $request)
     {
         $currency = $subscriptionPlan->currency;
         $paymentMethodId = $request->input('payment_method_id');
 
         //  If this is a store subscription
-        if($model instanceof Store) {
+        if(($subscription = $model) instanceof Subscription) {
 
-            /**
-             *  This description reads as follows:
-             *
-             *  Before -> 3 day subscription for store access priced at P10.00
-             *  After  -> 3 day subscription to access Heavenly Fruits priced at P10.00
-             */
-            $description = Str::replace('for store access', 'to access '.ucwords($model->name), $subscriptionPlan->description);
+            //  Get the subscription plan duration
+            $duration = $this->subscriptionPlanRepository()->setModel($subscriptionPlan)->getSubscriptionPlanDuration($request);
 
-        }else{
+            //  Calculate the subscription plan amount against the duration
+            $amount = $this->convertToMoneyFormat($this->subscriptionPlanRepository()->setModel($subscriptionPlan)->calculateSubscriptionPlanAmountAgainstSubscriptionDuration($request), 'BWP');
 
-            $description = 'Subscription payment';
+            if(($store = $subscription->owner) instanceof Store) {
+
+                //  Subscription to access Heavenly Fruits for 15 days priced at P30.00
+                $description = 'Subscription to access ' . $store->name . ' for ' . $duration . ($duration == 1 ? ' day' : ' days') . ' priced at ' . $amount->amountWithCurrency;
+
+            }else if($subscription->owner instanceof AiAssistant) {
+
+                //  Subscription to access AI Assistant for 15 days priced at P30.00
+                $description = 'Subscription to access AI Assistant for ' . $duration . ($duration == 1 ? ' day' : ' days') . ' priced at ' . $amount->amountWithCurrency;
+
+            }
+
+        }else if(($subscription = $model) instanceof SmsAlert) {
+
+            //  Get the subscription plan sms credits
+            $smsCredits = $this->subscriptionPlanRepository()->setModel($subscriptionPlan)->getSubscriptionPlanSmsCredits($request);
+
+            //  Calculate the subscription plan amount against the sms credits
+            $amount = $this->convertToMoneyFormat($this->subscriptionPlanRepository()->setModel($subscriptionPlan)->calculateSubscriptionPlanAmountAgainstSmsCredits($request), 'BWP');
+
+            //  Payment for 10 sms alerts priced at P5.00
+            $description = 'Payment for ' . $smsCredits . ($smsCredits == 1 ? ' sms alert' : ' sms alerts') . ' priced at ' . $amount->amountWithCurrency;
 
         }
 
         //  Create a new transaction
         return $this->create([
-            'status' => 'Paid',
-            'amount' => $amount,
             'percentage' => 100,
             'currency' => $currency,
+            'payment_status' => 'Paid',
+            'amount' => $amount->amount,
             'description' => $description,
 
             /**
@@ -502,61 +528,10 @@ class TransactionRepository extends BaseRepository
             'paid_by_user_id' => $this->chooseUser()->id,
             'requested_by_user_id' => auth()->user()->id,
 
-            'owner_id' => $subscription->id,
-            'owner_type' => $subscription->getResourceName()
+            'owner_id' => $model->id,
+            'owner_type' => $model->getResourceName()
         ]);
 
-    }
-
-    /**
-     *  Create an SMS Alert transaction
-     *
-     *  @param SmsAlert $smsAlert The SMS Alert
-     *  @param SubscriptionPlan $subscriptionPlan The subscription plan
-     *  @param Request $request The HTTP request
-     *
-     *  @return TransactionRepository
-     */
-    public function createSmsAlertTransaction(SmsAlert $smsAlert, SubscriptionPlan $subscriptionPlan, $request)
-    {
-        //  Get the Subscription Plan amount
-        $amount = $subscriptionPlan->amount;
-
-        //  Get the Subscription Plan description
-        $description = $subscriptionPlan->description;
-
-        //  Get the payment method id
-        $paymentMethodId = $request->input('payment_method_id');
-
-        //  Create a transaction
-        $transactionRepository = $this->create([
-            'status' => 'Paid',
-            'amount' => $amount,
-            'currency' => 'BWP',
-            'percentage' => 100,
-            'description' => $description,
-            'payment_method_id' => $paymentMethodId,
-            'paid_by_user_id' => $this->chooseUser()->id,
-
-            /**
-             *  The requested_by_user_id is set to indicate that the transaction
-             *  is verified by the system but the transaction being requested by
-             *  the specified user. While the requested_by_user_id is set, the
-             *  verified_by_user_id must be NULL. They cannot both have values
-             *  at the same time.
-             *
-             *  If both the requested_by_user_id and the verified_by_user_id are
-             *  set, then it causes confusion as to who verified this transaction
-             */
-            'verified_by_user_id' => null,
-            'requested_by_user_id' => auth()->user()->id,
-
-            'owner_id' => $smsAlert->id,
-            'owner_type' => $smsAlert->getResourceName()
-        ]);
-
-        //  Return the transaction repository
-        return $transactionRepository;
     }
 
     /**
@@ -716,20 +691,13 @@ class TransactionRepository extends BaseRepository
         //  If the transaction has an active payment shortcode
         if( $activePaymentShortcode ) {
 
-            /**
-             *  Expire the transaction active payment shortcode.
-             *  This will detach the shortcode since we
-             *  only query non-expired shortcodes as
-             *  payment shortcodes.
-             */
+            //  Expire the store payment shortcode.
             $this->shortcodeRepository()->setModel($activePaymentShortcode)->expireShortcode();
 
         }
 
         return $this;
     }
-
-
 
     /**
      *  Show the transaction proof of payment photo

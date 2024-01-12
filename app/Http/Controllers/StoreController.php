@@ -158,7 +158,7 @@ class StoreController extends BaseController
 
     public function createStoreAccessFakeSubscription(CreateStoreSubscriptionRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->createStoreAccessSubscription($request)->transform(), Response::HTTP_OK);
+        return response($this->repository->setModel($store)->createStoreAccessSubscription($request)->transform(), Response::HTTP_CREATED);
     }
 
     public function calculateStoreAccessSubscriptionAmount(CalculateStoreSubscriptionRequest $request, Store $store)

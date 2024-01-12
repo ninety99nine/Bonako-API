@@ -103,7 +103,7 @@ class OrderPaidUsingDPO extends OrderNotification
         $order = $this->order;
         $transaction = $this->transaction;
         $subject = 'Order payment success';
-        $body = $order->craftOrderPaidSmsMessage($store, $transaction);
+        $body = $order->craftOrderPaidMessage($store, $transaction);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

@@ -463,7 +463,7 @@ class UserController extends BaseController
 
     public function createAiAssistantSubscription(CreateAiAssistantSubscriptionRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createAiAssistantSubscription($request)->transform(), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->createAiAssistantSubscription($request)->transform(), Response::HTTP_CREATED);
     }
 
     public function calculateAiAccessSubscriptionAmount(CalculateAiAssistantSubscriptionRequest $request, User $user)
@@ -533,7 +533,7 @@ class UserController extends BaseController
 
     public function createSmsAlertTransaction(CreateSmsAlertTransactionRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createSmsAlertTransaction($request)->transform(), Response::HTTP_OK);
+        return response($this->repository->setModel($this->chooseUser())->createSmsAlertTransaction($request)->transform(), Response::HTTP_CREATED);
     }
 
     public function calculateSmsAlertTransactionAmount(CalculateSmsAlertTransactionAmount $request, User $user)

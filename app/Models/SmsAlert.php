@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\SmsAlertTrait;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class SmsAlert extends BaseModel
 {
-    use HasFactory;
+    use HasFactory, SmsAlertTrait;
 
     protected $with = ['smsAlertActivityAssociations'];
 

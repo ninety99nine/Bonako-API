@@ -32,7 +32,7 @@ Route::get('/test-sms', function () {
         $store = (new Store)->first();
         $transaction = (new Transaction)->whereNotNull('dpo_payment_url')->first();
 
-        $content = $order->craftNewOrderSmsMessageForFriend($store, $customer, $friend, $friends);
+        $content = $order->craftNewOrderForFriendMessage($store, $customer, $friend, $friends);
         $recipientMobileNumber = $customer->mobile_number->withExtension;
         */
 

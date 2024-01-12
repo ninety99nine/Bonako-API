@@ -29,6 +29,7 @@ class CreateStoreSubscriptionRequest extends FormRequest
     {
         return [
             'embed' => ['bail', 'sometimes', 'required', 'boolean'],
+            'duration' => ['bail', 'sometimes', 'required', 'integer', 'min:1', 'max:365'],
             'payment_method_id' => ['bail', 'sometimes', 'required', 'numeric', 'min:1', 'exists:payment_methods,id'],
             'subscription_plan_id' => ['bail', 'required', 'integer', 'min:1', Rule::exists('subscription_plans', 'id')]
         ];

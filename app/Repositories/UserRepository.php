@@ -256,6 +256,16 @@ class UserRepository extends BaseRepository
     }
 
     /**
+     *  Return the SubscriptionPlanRepository instance
+     *
+     *  @return SubscriptionPlanRepository
+     */
+    public function subscriptionPlanRepository()
+    {
+        return resolve(SubscriptionPlanRepository::class);
+    }
+
+    /**
      *  Return the SmsAlertActivityAssociationRepository instance
      *
      *  @return SmsAlertActivityAssociationRepository
@@ -1543,8 +1553,8 @@ class UserRepository extends BaseRepository
         //  Get the Subscription Plan
         $subscriptionPlan = SubscriptionPlan::find($subscriptionPlanId);
 
-        //  Calculate the user access subscription amount
-        $amount = $this->subscriptionRepository()->calculateSubscriptionAmount($request, $subscriptionPlan);
+        //  Calculate the subscription plan amount
+        $amount = $this->subscriptionPlanRepository()->setModel($subscriptionPlan)->calculateSubscriptionPlanAmountAgainstSubscriptionDuration($request);
 
         return [
             'calculation' => $this->convertToMoneyFormat($amount, 'BWP')
@@ -1570,7 +1580,10 @@ class UserRepository extends BaseRepository
         $latestSubscription = $aiAssistant->subscriptions()->where('user_id', $user->id)->latest()->first();
 
         //  Create a subscription
-        $subscriptionRepository = $this->subscriptionRepository()->create($aiAssistant, $request, $latestSubscription);
+        $subscriptionRepository = $this->subscriptionRepository()->createSubscription($aiAssistant, $request, $latestSubscription);
+
+        //  Expire the active payment shortcode
+        $this->shortcodeRepository()->setModel($aiAssistant->shortcodes()->payable())->expireShortcode();
 
         //  Get the subscription
         $subscription = $subscriptionRepository->model;
@@ -1794,20 +1807,23 @@ class UserRepository extends BaseRepository
         $subscriptionPlan = SubscriptionPlan::find($subscriptionPlanId);
 
         //  Create a transaction
-        $transactionRepository = $this->transactionRepository()->createSmsAlertTransaction($smsAlert, $subscriptionPlan, $request);
+        $transactionRepository = $this->transactionRepository()->createTransaction($smsAlert, $subscriptionPlan, $request);
+
+        //  Expire the active payment shortcode
+        $this->shortcodeRepository()->setModel($smsAlert->shortcodes())->expireShortcode();
+
+        //  Get the Subscription Plan sms credits
+        $smsCredits = $this->subscriptionPlanRepository()->setModel($subscriptionPlan)->getSubscriptionPlanSmsCredits($request);
+
+        //  Update the SMS Alert sms credits
+        $smsAlert->update(['sms_credits' => ($smsAlert->sms_credits + $smsCredits)]);
 
         //  Get the transaction
         $transaction = $transactionRepository->model;
 
-        //  Get the Subscription Plan credits
-        $credits = $subscriptionPlan->metadata['credits'];
-
-        //  Update the SMS Alert credits
-        $smsAlert->update(['sms_credits' => ($smsAlert->sms_credits + $credits)]);
-
         // Send sms to user that their transaction was paid successfully
         SmsService::sendOrangeSms(
-            $smsAlert->craftSuccessfulPaymentSmsMessage($this->getUser(), $transaction),
+            $smsAlert->craftSmsAlertsPaidSuccessfullyMessage($smsCredits, $transaction),
             $this->getUser()->mobile_number->withExtension,
             null, null, null
         );
@@ -1843,8 +1859,8 @@ class UserRepository extends BaseRepository
      */
     public function calculateSmsAlertTransactionAmount(Request $request)
     {
-        //  Get the credits required
-        $credits = $request->input('credits');
+        //  Get the sms credits required
+        $smsCredits = $request->input('sms_credits');
 
         //  Get the Subscription Plan ID
         $subscriptionPlanId = $request->input('subscription_plan_id');
@@ -1853,7 +1869,7 @@ class UserRepository extends BaseRepository
         $subscriptionPlan = SubscriptionPlan::find($subscriptionPlanId);
 
         //  Calculate the transaction amount
-        $amount = $subscriptionPlan->price->amount * $credits;
+        $amount = $subscriptionPlan->price->amount * $smsCredits;
 
         return [
             'calculation' => $this->convertToMoneyFormat($amount, 'BWP')

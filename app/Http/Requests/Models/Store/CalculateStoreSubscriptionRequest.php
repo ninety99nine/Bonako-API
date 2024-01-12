@@ -28,7 +28,8 @@ class CalculateStoreSubscriptionRequest extends FormRequest
     public function rules()
     {
         return [
-            'subscription_plan_id' => ['bail', 'required', 'integer', 'min:1', Rule::exists('subscription_plans', 'id')]
+            'subscription_plan_id' => ['bail', 'required', 'integer', 'min:1', Rule::exists('subscription_plans', 'id')],
+            'duration' => ['bail', 'sometimes', 'required', 'integer', 'min:1', 'max:365']
         ];
     }
 

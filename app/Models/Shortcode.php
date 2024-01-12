@@ -44,6 +44,16 @@ class Shortcode extends BaseModel
         return $query->where('action', ucfirst($action));
     }
 
+    public function scopePayable($query)
+    {
+        return $query->where('action', 'Pay');
+    }
+
+    public function scopeVisitable($query)
+    {
+        return $query->where('action', 'Visit');
+    }
+
     public function scopeExpired($query)
     {
         return $query->where('expires_at', '<', Carbon::now());

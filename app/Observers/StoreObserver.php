@@ -140,7 +140,7 @@ class StoreObserver
          */
         $store->subscriptions()->delete();
 
-        //  Expire shortcodes
+        //  Expire active shortcodes
         $this->shortcodeRepository()->setModel($store->shortcodes())->expireShortcode();
 
         //  Retrieve the cached team members

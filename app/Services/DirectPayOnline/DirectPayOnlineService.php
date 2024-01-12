@@ -362,7 +362,7 @@ class DirectPayOnlineService
 
                     // Send order mark as verified payment sms to user
                     SmsService::sendOrangeSms(
-                        $order->craftOrderMarkAsVerifiedPaymentSmsMessage($store, $transaction),
+                        $order->craftOrderMarkAsVerifiedPaymentMessage($store, $transaction),
                         $user->mobile_number->withExtension,
                         $store, null, null
                     );

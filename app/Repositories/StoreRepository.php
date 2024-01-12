@@ -171,6 +171,16 @@ class StoreRepository extends BaseRepository
     }
 
     /**
+     *  Return the SubscriptionPlanRepository instance
+     *
+     *  @return SubscriptionPlanRepository
+     */
+    public function subscriptionPlanRepository()
+    {
+        return resolve(SubscriptionPlanRepository::class);
+    }
+
+    /**
      *  Show the store filters
      *
      *  @return array
@@ -962,10 +972,7 @@ class StoreRepository extends BaseRepository
         if( $visitShortcode = $store->visitShortcode ) {
 
             //  Get the store visit shortcode repository
-            $shortcodeRepository = $this->shortcodeRepository()->setModel($visitShortcode);
-
-            //  Return the store visit shortcode repository
-            return $shortcodeRepository;
+            return $this->shortcodeRepository()->setModel($visitShortcode);
 
         }
 
@@ -1059,12 +1066,7 @@ class StoreRepository extends BaseRepository
         //  If the current auth user active store payment shortcode exists
         if( $authPaymentShortcode ) {
 
-            /**
-             *  Expire the store payment shortcode.
-             *  This will detach the shortcode since we
-             *  only query non-expired shortcodes as
-             *  payment shortcodes.
-             */
+            //  Expire the store payment shortcode.
             $this->shortcodeRepository()->setModel($authPaymentShortcode)->expireShortcode();
 
         }
@@ -1086,8 +1088,8 @@ class StoreRepository extends BaseRepository
         //  Get the Subscription Plan
         $subscriptionPlan = SubscriptionPlan::find($subscriptionPlanId);
 
-        //  Calculate the store access subscription amount
-        $amount = $this->subscriptionRepository()->calculateSubscriptionAmount($request, $subscriptionPlan);
+        //  Calculate the subscription plan amount
+        $amount = $this->subscriptionPlanRepository()->setModel($subscriptionPlan)->calculateSubscriptionPlanAmountAgainstSubscriptionDuration($request);
 
         return [
             'calculation' => $this->convertToMoneyFormat($amount, $this->model->currency)
@@ -1119,7 +1121,7 @@ class StoreRepository extends BaseRepository
         $latestSubscription = $store->subscriptions()->where('user_id', $user->id)->latest()->first();
 
         //  Create a subscription
-        $subscriptionRepository = $this->subscriptionRepository()->create($store, $request, $latestSubscription);
+        $subscriptionRepository = $this->subscriptionRepository()->createSubscription($store, $request, $latestSubscription);
 
         //  Get the subscription
         $subscription = $subscriptionRepository->model;
