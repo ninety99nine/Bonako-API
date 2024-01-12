@@ -232,6 +232,7 @@ foreach($options as $option) {
                 Route::name('.ai.messages')->group(function () {
                     Route::get('/', 'showAiMessages')->name('.show')->whereNumber('user');
                     Route::post('/', 'createAiMessage')->name('.create')->whereNumber('user');
+                    Route::post('/stream', 'createAiMessageWhileStreaming')->name('.create.while.streaming')->whereNumber('user');
                 });
 
                 Route::prefix('{ai_message}')->name('.ai.message')->group(function () {

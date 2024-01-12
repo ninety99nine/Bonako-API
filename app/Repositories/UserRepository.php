@@ -1687,7 +1687,18 @@ class UserRepository extends BaseRepository
      */
     public function createAiMessage(Request $request)
     {
-        return $this->aiMessageRepository()->createUserAiMessage($this->getUser(), $request);
+        return $this->aiMessageRepository()->createUserAiMessage($this->getUser(), $request, false);
+    }
+
+    /**
+     *  Create an AI message while streaming
+     *
+     *  @param Request $request
+     *  @return AiMessageRepository|null
+     */
+    public function createAiMessageWhileStreaming(Request $request)
+    {
+        return $this->aiMessageRepository()->createUserAiMessage($this->getUser(), $request, true);
     }
 
     /**

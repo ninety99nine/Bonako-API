@@ -223,6 +223,7 @@ class UserResource extends BaseResource
             //  AI Messages
             new ResourceLink('show.ai.messages', route($prefix.'ai.messages.show', $params),'Show AI messages'),
             new ResourceLink('create.ai.messages', route($prefix.'ai.messages.create', $params),'Create AI messages'),
+            new ResourceLink('create.ai.messages.while.streaming', route($prefix.'ai.messages.create.while.streaming', $params),'Create AI messages while streaming'),
 
             //  Orders
             new ResourceLink('show.order.filters', route($prefix.'order.filters.show', $params),'Show order filters'),

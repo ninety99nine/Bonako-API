@@ -50,15 +50,13 @@ class AiMessageRepository extends BaseRepository
      *
      *  @param User $user
      *  @param Request $request
+     *  @param boolean $stream - True/False whether we want to allow streaming
      *  @return AiMessageRepository|null
      */
-    public function createUserAiMessage(User $user, Request $request)
+    public function createUserAiMessage(User $user, Request $request, $stream)
     {
         //  Get datetime of the request
         $requestAt = now();
-
-        //  Set the stream
-        $stream = $request->input('stream');
 
         //  Set the category id
         $categoryId = $request->input('category_id');
@@ -333,7 +331,6 @@ class AiMessageRepository extends BaseRepository
 
         return [
             "model" => $model,
-            "stream" => $stream,    // This tells OpenAi that we want to allow streaming
             'messages' => $messages,
             "max_tokens" => (int) $maxTokens,
             "temperature" => (float) $temperature,

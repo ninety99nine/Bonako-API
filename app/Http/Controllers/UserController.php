@@ -478,23 +478,13 @@ class UserController extends BaseController
 
     public function createAiMessage(CreateAiMessageRequest $request, User $user)
     {
-        $result = $this->repository->setModel($this->chooseUser())->createAiMessage($request);
+        return response($this->repository->setModel($this->chooseUser())->createAiMessage($request)->transform(), Response::HTTP_CREATED);
+    }
 
-        /**
-         *  Provided that this is a non-stream request, we can return a response.
-         *  This is because a stream response will return the data automatically
-         *  and periodically using echo statements. There is no need for us to
-         *  deliberately return anything. Therefore if the $result is an
-         *  instance of AiMessageRepository, then we know that this is
-         *  not a streamed response and we have an AI Message that we
-         *  can return that has the entire content assistant message.
-         */
-        if($result instanceof AiMessageRepository) {
-
-            $result = $result->transform();
-            return response($result, Response::HTTP_CREATED);
-
-        }
+    public function createAiMessageWhileStreaming(CreateAiMessageRequest $request, User $user)
+    {
+        //  Note: We do not need to return anything since we are streaming this request
+        $this->repository->setModel($this->chooseUser())->createAiMessageWhileStreaming($request);
     }
 
     public function showAiMessage(User $user, AiMessage $friendGroup)
