@@ -44,6 +44,7 @@ use App\Models\DeliveryAddress;
 use App\Models\FriendGroup;
 use App\Models\MobileVerification;
 use App\Models\Pivots\UserOrderCollectionAssociation;
+use App\Models\Pivots\UserOrderViewAssociation;
 use App\Models\Pivots\UserStoreAssociation;
 use App\Models\Product;
 use App\Models\Store;
@@ -2660,17 +2661,26 @@ class OrderRepository extends BaseRepository
          */
         $order = $this->model;
 
+        // Get the order id
+        $orderId = $order->id;
+
         // Get the user id
         $userId = auth()->user()->id;
 
-        // Get the viewer if exists
-        $viewer = $order->usersThatViewed()->where('user_id', $userId)->first();
+        // Get the user order view association if exists
+        $userOrderViewAssociation = UserOrderViewAssociation::where('order_id', $orderId)->where('user_id', $userId)->first();
 
-        if( $viewer ) {
+        //  Increase views if it's been atleast one hour since the last time this order was seen
+        $increaseViews = !empty($userOrderViewAssociation) && Carbon::parse($userOrderViewAssociation->last_seen_at)->diffInHours(now()) >= 1;
+
+        if( $userOrderViewAssociation ) {
+
+            //  Calculate the total views of this order by this user
+            $totalViews = $increaseViews ? ($userOrderViewAssociation->views + 1) : $userOrderViewAssociation->views;
 
             //  Update existing viewership
             $order->usersThatViewed()->updateExistingPivot($userId, [
-                'views' => $viewer->user_order_view_association->views + 1,
+                'views' => $totalViews,
                 'last_seen_at' => now()
             ]);
 
@@ -2684,43 +2694,41 @@ class OrderRepository extends BaseRepository
 
         }
 
-        //  Calculate the total views on this order by the team
-        $totalViews = $order->total_views_by_team + 1;
-
         //  If the order's first view datetime was already captured
         if($order->first_viewed_by_team_at) {
 
+            //  Calculate the total views of this order by the team
+            $totalViewsByTeam = $increaseViews ? ($order->total_views_by_team + 1) : $order->total_views_by_team;
+
             //  Update the order's last view datetime
             parent::update([
+                'total_views_by_team' => $totalViewsByTeam,
                 'last_viewed_by_team_at' => now(),
-                'total_views_by_team' => $totalViews
             ]);
 
         //  If the order's first view datetime was not captured
         }else{
 
+            //  Calculate the total views of this order by the team
+            $totalViewsByTeam = $order->total_views_by_team + 1;
+
             //  Update the order's first and last view datetime
             parent::update([
+                'total_views_by_team' => $totalViewsByTeam,
                 'first_viewed_by_team_at' => now(),
                 'last_viewed_by_team_at' => now(),
-                'total_views_by_team' => $totalViews
             ]);
 
         }
 
-        //  If this user has never viewed this order before
-        if( !$viewer ) {
+        //  If this is the first time that this order is seen
+        if( $totalViewsByTeam == 1 ) {
 
             //  Send order seen notification to customer and friends (if any)
             //  change to Notification::send() instead of Notification::sendNow() so that this is queued
             Notification::sendNow(
-                /**
-                 *  Send notifications to the customer
-                 *
-                 *  Since the customer is acquired via a belongsTo relationship,
-                 *  order->customer returns a collection with only one user.
-                 */
-                collect($order->customer)->merge(
+                //  Send notifications to the customer
+                collect([$order->customer])->merge(
                     //  As well as the friends (if any) who were tagged on this order
                     $order->order_for_total_friends == 0 ? [] : $order->friends
                 ),
