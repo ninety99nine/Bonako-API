@@ -7,10 +7,12 @@ use App\Models\User;
 use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\Ussd\UssdService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Log;
 
 class RouteServiceProvider extends ServiceProvider
 {
@@ -29,10 +31,6 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimiting();
-
-        RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
-        });
 
         $this->routes(function () {
             Route::middleware('api')
@@ -194,13 +192,20 @@ class RouteServiceProvider extends ServiceProvider
     protected function configureRateLimiting()
     {
         RateLimiter::for('api', function (Request $request) {
-            /**
-             *  Julian B Tabona
-             *
-             *  I'm changing the rate limit from "120" to "240" (double)
-             *  so that we can do more requests on the various platforms
-             */
-            return Limit::perMinute(240)->by(optional($request->user())->id ?: $request->ip());
+
+            //  If the request is coming from the USSD server
+            if( UssdService::verifyIfRequestFromUssdServer() ) {
+
+                // Allow more requests from the USSD platform
+                return Limit::perMinute(600)->by(optional($request->user())->id ?: $request->ip());
+
+            }else{
+
+                // Allow less requests from any other platform
+                return Limit::perMinute(300)->by(optional($request->user())->id ?: $request->ip());
+
+            }
+
         });
     }
 }
