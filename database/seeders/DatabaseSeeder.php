@@ -38,7 +38,7 @@ class DatabaseSeeder extends Seeder
          */
         $this->call(SubscriptionPlanSeeder::class);
         $this->call(PaymentMethodSeeder::class);
-        $this->call(UserSeeder::class);
+        //$this->call(UserSeeder::class);
         //$this->call(StoreSeeder::class);
         //$this->call(FriendGroupSeeder::class);
         //$this->call(FriendSeeder::class);
