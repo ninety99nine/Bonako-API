@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Base\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\SubscriptionPlan;
 use App\Services\MobileNumber\MobileNumberService;
 use App\Services\Ussd\UssdService;
 use Illuminate\Support\Facades\Auth;
@@ -59,7 +60,12 @@ class HomeController extends Controller
             'show.payment.methods' => route('payment.methods.show'),
             'show.payment.method.filters' => route('payment.method.filters.show'),
             'show.shortcode.owner' => route('shortcode.owner.show'),
+
             'show.subscription.plans' => route('subscription.plans.show'),
+            'show.store.subscription.plans' => route('subscription.plans.show', ['service' => SubscriptionPlan::STORE_SERVICE_NAME, 'active' => '1']),
+            'show.sms.alert.subscription.plans' => route('subscription.plans.show', ['service' => SubscriptionPlan::SMS_ALERT_SERVICE_NAME, 'active' => '1']),
+            'show.ai.assistant.subscription.plans' => route('subscription.plans.show', ['service' => SubscriptionPlan::AI_ASSISTANT_SERVICE_NAME, 'active' => '1']),
+
             'search.user.by.mobile.number' => route('users.search.by.mobile.number'),
 
             'show.terms.and.conditions' => route('terms.and.conditions.show'),  //  redirect

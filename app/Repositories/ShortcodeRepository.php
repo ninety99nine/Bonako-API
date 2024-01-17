@@ -2,15 +2,14 @@
 
 namespace App\Repositories;
 
-use App\Models\AiAssistant;
 use Carbon\Carbon;
 use App\Models\Store;
+use App\Models\SmsAlert;
+use App\Models\AiAssistant;
 use App\Models\InstantCart;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Models\Base\BaseModel;
-use App\Models\SmsAlert;
-use App\Models\SubscriptionPlan;
 use App\Services\Ussd\UssdService;
 use App\Repositories\BaseRepository;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -51,10 +50,8 @@ class ShortcodeRepository extends BaseRepository
                 ];
 
                 if($isPayingShortcode) {
-                    $ownerPayload['links']['showPaymentMethods'] = route('payment.methods.show');
-                    $ownerPayload['links']['processPayment'] = route('store.subscriptions.create', ['store' => $owner->id]);
-                    $ownerPayload['links']['calculateAmount'] = route('store.subscriptions.calculate.amount', ['store' => $owner->id]);
-                    $ownerPayload['links']['showSubscriptionPlans'] = route('subscription.plans.show', ['service' => SubscriptionPlan::STORE_SERVICE_NAME, 'active' => '1']);
+                    $ownerPayload['links']['createStoreAccessSubscription'] = route('store.subscriptions.create', ['store' => $owner->id]);
+                    $ownerPayload['links']['calculateStoreAccessSubscriptionAmount'] = route('store.subscriptions.calculate.amount', ['store' => $owner->id]);
                 }
 
             //  If this is an AiAssistant instance
@@ -69,10 +66,8 @@ class ShortcodeRepository extends BaseRepository
                 ];
 
                 if($isPayingShortcode) {
-                    $ownerPayload['links']['showPaymentMethods'] = route('payment.methods.show');
-                    $ownerPayload['links']['processPayment'] = route('user.ai.assistant.subscriptions.create', ['user' => $owner->user_id]);
-                    $ownerPayload['links']['calculateAmount'] = route('user.ai.assistant.subscriptions.calculate.amount', ['user' => $owner->user_id]);
-                    $ownerPayload['links']['showSubscriptionPlans'] = route('subscription.plans.show', ['service' => SubscriptionPlan::AI_ASSISTANT_SERVICE_NAME, 'active' => '1']);
+                    $ownerPayload['links']['createAiAssistantSubscription'] = route('user.ai.assistant.subscriptions.create', ['user' => $owner->user_id]);
+                    $ownerPayload['links']['calculateAiAccessSubscriptionAmount'] = route('user.ai.assistant.subscriptions.calculate.amount', ['user' => $owner->user_id]);
                 }
 
             //  If this is an SmsAlert instance
@@ -87,10 +82,8 @@ class ShortcodeRepository extends BaseRepository
                 ];
 
                 if($isPayingShortcode) {
-                    $ownerPayload['links']['showPaymentMethods'] = route('payment.methods.show');
-                    $ownerPayload['links']['processPayment'] = route('user.sms.alert.transactions.create', ['user' => $owner->user_id]);
-                    $ownerPayload['links']['calculateAmount'] = route('user.sms.alert.transactions.calculate.amount', ['user' => $owner->user_id]);
-                    $ownerPayload['links']['showSubscriptionPlans'] = route('subscription.plans.show', ['service' => SubscriptionPlan::SMS_ALERT_SERVICE_NAME, 'active' => '1']);
+                    $ownerPayload['links']['createSmsAlertTransaction'] = route('user.sms.alert.transactions.create', ['user' => $owner->user_id]);
+                    $ownerPayload['links']['calculateSmsAlertTransactionAmount'] = route('user.sms.alert.transactions.calculate.amount', ['user' => $owner->user_id]);
                 }
 
             //  If this is an InstantCart instance
