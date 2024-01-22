@@ -65,6 +65,14 @@ class StoreCreated extends Notification
         ];
     }
 
+    /**
+     * Get the Slack representation of the notification.
+     */
+    public function toSlack(object $notifiable): SlackMessage
+    {
+        return (new SlackMessage())->success()->content($this->store->name);
+    }
+
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
         $store = $this->store;
@@ -74,13 +82,5 @@ class StoreCreated extends Notification
         return OneSignalMessage::create()
             ->setSubject($subject)
             ->setBody($body);
-    }
-
-    /**
-     * Get the Slack representation of the notification.
-     */
-    public function toSlack(object $notifiable): SlackMessage
-    {
-        return (new SlackMessage())->success()->content($this->store->name);
     }
 }

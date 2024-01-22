@@ -160,10 +160,6 @@ class StoreResource extends BaseResource
             new ResourceLink('create.store.access.subscriptions', route($routeNamePrefix.'subscriptions.create', ['store' => $this->resource->id]), 'Create store access subscription'),
             new ResourceLink('calculate.store.access.subscription.amount', route($routeNamePrefix.'subscriptions.calculate.amount', ['store' => $this->resource->id]), 'Calculate store access subscription'),
 
-            /*  Remove the route below because it was created for testing purposes - Use the route above for production instead */
-            new ResourceLink('create.fake.subscriptions', route($routeNamePrefix.'subscriptions.fake.create', ['store' => $this->resource->id]), 'Create a fake subscription'),
-            new ResourceLink('calculate.subscription.amount', route($routeNamePrefix.'subscriptions.calculate.amount', ['store' => $this->resource->id]), 'Calculate subscription amount'),
-
             //  Friend Groups
             new ResourceLink('add.to.friend.groups', route($routeNamePrefix.'friend.groups.add', ['store' => $this->resource->id]), 'Add store to friend groups'),
             new ResourceLink('remove.from.friend.groups', route($routeNamePrefix.'friend.groups.remove', ['store' => $this->resource->id]), 'Remove store from friend group'),

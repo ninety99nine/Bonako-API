@@ -95,7 +95,7 @@ class OrderCreated extends OrderNotification
     /**
      * Get the Slack representation of the notification.
      */
-    public function toSlack(User $notifiable): SlackMessage
+    public function toSlack(object $notifiable): SlackMessage
     {
         return (new SlackMessage)->content($this->order->summary)->attachment(function ($attachment) {
 
