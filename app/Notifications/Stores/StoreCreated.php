@@ -8,7 +8,7 @@ use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\SlackMessage;
+use Illuminate\Notifications\Slack\SlackMessage;
 use NotificationChannels\OneSignal\OneSignalChannel;
 use NotificationChannels\OneSignal\OneSignalMessage;
 
@@ -68,9 +68,9 @@ class StoreCreated extends Notification
     /**
      * Get the Slack representation of the notification.
      */
-    public function toSlack(object $notifiable): SlackMessage
+    public function toSlack(User $notifiable): SlackMessage
     {
-        return (new SlackMessage())->success()->content($this->store->name);
+        return (new SlackMessage)->headerBlock('Store Created')->text($this->store->name);
     }
 
     public function toOneSignal(object $notifiable): OneSignalMessage
