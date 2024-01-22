@@ -10,7 +10,7 @@ use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Slack\SlackMessage;
+use Illuminate\Notifications\Messages\SlackMessage;
 use App\Notifications\Orders\Base\OrderNotification;
 use NotificationChannels\OneSignal\OneSignalChannel;
 use NotificationChannels\OneSignal\OneSignalMessage;
@@ -105,7 +105,16 @@ class OrderUpdated extends OrderNotification
      */
     public function toSlack(User $notifiable): SlackMessage
     {
-        return (new SlackMessage)->headerBlock('Order Updated')->text($this->order->summary);
+        return (new SlackMessage)->content($this->order->summary)->attachment(function ($attachment) {
+
+            $totalUsers = $this->order->order_for_total_users;
+
+            $attachment->fields([
+                'Customer' => $this->order->customer_name,
+                'For' => $totalUsers == 1 ? $totalUsers.' person' : $totalUsers.' people',
+            ]);
+
+        });
     }
 
     public function toOneSignal(object $notifiable): OneSignalMessage
