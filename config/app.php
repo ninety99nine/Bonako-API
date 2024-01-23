@@ -35,6 +35,14 @@ return [
     'OPENAI_API_KEY' => env('OPENAI_API_KEY'),
     'OPENAI_API_URL' => env('OPENAI_API_URL'),
 
+    'STORES_SLACK_WEBHOOK_URL' => env('STORES_SLACK_WEBHOOK_URL'),
+    'ORDERS_SLACK_WEBHOOK_URL' => env('ORDERS_SLACK_WEBHOOK_URL'),
+
+    'AWS_DEFAULT_REGION' => env('AWS_DEFAULT_REGION'),
+    'AWS_BUCKET' => env('AWS_BUCKET'),
+
+
+
     /*
     |--------------------------------------------------------------------------
     | Application Name

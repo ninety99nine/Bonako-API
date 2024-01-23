@@ -77,11 +77,11 @@ class User extends BaseAuthenticatable /* Authenticatable */
     {
         if($notification instanceof OrderCreated || $notification instanceof OrderUpdated) {
 
-            return env('ORDERS_SLACK_WEBHOOK_URL');
+            return config('app.ORDERS_SLACK_WEBHOOK_URL');
 
         }elseif($notification instanceof StoreCreated) {
 
-            return env('STORES_SLACK_WEBHOOK_URL');
+            return config('app.STORES_SLACK_WEBHOOK_URL');
 
         }
     }

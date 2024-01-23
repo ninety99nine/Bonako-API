@@ -89,12 +89,12 @@ class AWSService
      */
     public static function pathToUrl($path)
     {
-        if( empty(env('AWS_DEFAULT_REGION')) ) {
+        if( empty(config('app.AWS_DEFAULT_REGION')) ) {
 
             //  Throw an exception
             throw new \Exception('The AWS default region must be provided');
 
-        }else if ( empty(env('AWS_BUCKET')) ) {
+        }else if ( empty(config('app.AWS_BUCKET')) ) {
 
             //  Throw an exception
             throw new \Exception('The AWS bucket must be provided');
@@ -115,7 +115,7 @@ class AWSService
              */
 
             //  Return the Amazon file URL
-            return 'https://s3.'.env('AWS_DEFAULT_REGION').'.amazonaws.com/'.env('AWS_BUCKET').'/'.$path;
+            return 'https://s3.'.config('app.AWS_DEFAULT_REGION').'.amazonaws.com/'.config('app.AWS_BUCKET').'/'.$path;
 
         }
     }
@@ -128,7 +128,7 @@ class AWSService
      */
     public static function urlToPath($url)
     {
-        if ( empty(env('AWS_BUCKET')) ) {
+        if ( empty(config('app.AWS_BUCKET')) ) {
 
             //  Throw an exception
             throw new \Exception('The AWS bucket must be provided');
@@ -147,7 +147,7 @@ class AWSService
              *
              *  In this example, the AWS_BUCKET is "bonako"
              */
-            return Arr::last(explode(env('AWS_BUCKET').'/', $url));
+            return Arr::last(explode(config('app.AWS_BUCKET').'/', $url));
 
         }
     }
