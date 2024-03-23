@@ -31,7 +31,7 @@ trait BaseTrait
         return $obj;
     }
 
-    public function convertToCurrencyFormat($currencyCode = null)
+    public function convertToCurrencyFormat($currencyCode = 'BWP')
     {
         $symbol = '';
         $currencyCode = $currencyCode ? (is_object($currencyCode) ? $currencyCode->code : $currencyCode) : $this->currency;
@@ -190,6 +190,93 @@ trait BaseTrait
         return strtolower(Str::snake($value, ' '));
     }
 
+    public function getCurrentPage()
+    {
+        $page = (int) request()->input('page');
+        return $page > 0 ? $page : '1';
+    }
+
+    /**
+     *  This method will extract the operator and the date
+     *  from the given value assuming that the value is
+     *  formatted as follows:
+     *
+     *  $value = [operator]-[timestamp]
+     *
+     *  e.g
+     *
+     *  $value = gte-1709157600
+     *
+     *  We must return the appropriate operator symbol and
+     *  the Carbon Date Instance of the parsed timestamp
+     *
+     *  ['>=', Carbon Date Instance]
+     */
+    public function extractOperatorAndDate($input)
+    {
+        //  Extract operator and timestamp
+        [$operator, $timestamp] = explode('-', $input);
+
+        //  Extract the operator symbol
+        $operator = $this->extractOperatorSymbol($operator);
+
+        //  Parse timestamp using Carbon
+        $date = Carbon::createFromTimestamp($timestamp);
+
+        //  Return operator and parsed date
+        return [$operator, $date];
+    }
+
+    /**
+     *  This method will extract the operator and the date
+     *  from the given value assuming that the value is
+     *  formatted as follows:
+     *
+     *  $value = [operator]-[amount]
+     *
+     *  e.g
+     *
+     *  $value = gte-2.50
+     *
+     *  We must return the appropriate operator symbol and
+     *  the amount
+     *
+     *  ['>=', 2.50]
+     */
+    public function extractOperatorAndValue($input)
+    {
+        //  Extract operator and value
+        [$operator, $value] = explode('-', $input);
+
+        //  Extract the operator symbol
+        $operator = $this->extractOperatorSymbol($operator);
+
+        //  Return operator and value
+        return [$operator, $value];
+    }
+
+    public function extractOperatorSymbol($operator)
+    {
+        // Map filter operation abbreviations to comparison operator
+        $operatorMap = [
+            'gte' => '>=',
+            'lte' => '<=',
+            'gt'  => '>',
+            'lt'  => '<',
+            'eq'  => '=',
+        ];
+
+        // Map to corresponding comparison operator or default to '='
+        return $operatorMap[$operator] ?? '=';
+    }
+
+    /**
+     *  Check if the give value is matches any truthy value
+     */
+    public function isTruthy($value) {
+        return in_array($value, [true, 'true', '1'], true);
+    }
+
     /**
      *  Choose the appropriate user to return based on the information provided.
      *  If this request is performed on the "/users/{user}" then the $user param
@@ -210,6 +297,6 @@ trait BaseTrait
      *  @return User
      */
     private function chooseUser() {
-        return request()->user ? request()->user : auth()->user();
+        return request()->user ? request()->user : request()->auth_user;
     }
 }

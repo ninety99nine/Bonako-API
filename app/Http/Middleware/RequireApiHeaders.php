@@ -4,30 +4,52 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use App\Exceptions\InvalidApiHeaderException;
+use Illuminate\Http\Response;
 
 class RequireApiHeaders
 {
+    public const ACCEPT_JSON_ERROR_MESSAGE = 'Include the [Accept: application/json] as part of your request header before consuming this API';
+    public const CONTENT_TYPE_JSON_ERROR_MESSAGE = 'Include the [Content-Type: application/json] as part of your request header before consuming this API';
+
     /**
      * Handle an incoming request.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+     * @param  \Closure  $next
+     * @return mixed
      */
     public function handle(Request $request, Closure $next)
     {
-        //  Check if the request accepts json
-        if( $request->acceptsJson() == false ) {
-            throw new InvalidApiHeaderException('Include the [Accept: application/json] as part of your request header before consuming this API');
+        if (!$this->acceptsJson($request)) {
+            return response()->json(['error' => self::ACCEPT_JSON_ERROR_MESSAGE], Response::HTTP_BAD_REQUEST);
         }
 
-        //  Check if the request content-type is json or form
-        if( !in_array($request->getContentType(), ['json', 'form']) ) {
-            throw new InvalidApiHeaderException('Include the [Content-Type: application/json] as part of your request header before consuming this API');
+        if (!$this->isJson($request)) {
+            return response()->json(['error' => self::CONTENT_TYPE_JSON_ERROR_MESSAGE], Response::HTTP_BAD_REQUEST);
         }
 
-        //  Continue
         return $next($request);
+    }
+
+    /**
+     * Check if the request accepts JSON.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return bool
+     */
+    private function acceptsJson(Request $request): bool
+    {
+        return $request->acceptsJson();
+    }
+
+    /**
+     * Check if the request is JSON.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return bool
+     */
+    private function isJson(Request $request): bool
+    {
+        return $request->isJson();
     }
 }

@@ -2,64 +2,60 @@
 
 namespace App\Repositories;
 
+use App\Enums\CacheName;
 use Carbon\Carbon;
 use App\Models\Cart;
 use App\Models\User;
 use App\Models\Store;
-use App\Models\Order;
 use App\Models\Review;
 use App\Models\Coupon;
 use App\Models\Product;
-use App\Models\Address;
 use App\Models\Shortcode;
+use App\Enums\RefreshModel;
 use Illuminate\Support\Str;
-use Illuminate\Support\Arr;
 use Illuminate\Http\Request;
 use App\Enums\CanSaveChanges;
-use App\Enums\InvitationResponse;
-use App\Events\Testing;
+use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
-use App\Models\DeliveryAddress;
+use App\Services\Sms\SmsService;
+use App\Models\SubscriptionPlan;
 use App\Services\AWS\AWSService;
+use App\Enums\InvitationResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use App\Repositories\BaseRepository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use App\Notifications\Stores\StoreCreated;
+use App\Notifications\Users\FollowingStore;
 use App\Models\Pivots\UserStoreAssociation;
+use App\Notifications\Users\UnfollowedStore;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Database\Eloquent\Collection;
 use App\Repositories\PaymentMethodRepository;
 use Illuminate\Validation\ValidationException;
-use App\Exceptions\CartRequiresProductsException;
+use App\Exceptions\InvalidInvitationException;
+use App\Notifications\Users\RemoveStoreTeamMember;
 use App\Exceptions\StoreRoleDoesNotExistException;
 use App\Services\ShoppingCart\ShoppingCartService;
+use App\Exceptions\StoreHasTooManyCouponsException;
+use App\Models\Pivots\StorePaymentMethodAssociation;
 use App\Exceptions\StoreHasTooManyProductsException;
 use App\Exceptions\InvitationAlreadyAcceptedException;
 use App\Exceptions\InvitationAlreadyDeclinedException;
 use App\Exceptions\CannotModifyOwnPermissionsException;
-use App\Exceptions\CannotRemoveYourselfAsStoreCreatorException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Notifications\Users\InvitationToFollowStoreAccepted;
-use App\Exceptions\CannotRemoveYourselfAsTeamMemberException;
-use App\Exceptions\InvalidInvitationException;
-use App\Exceptions\StoreHasTooManyCouponsException;
-use App\Models\FriendGroup;
-use App\Models\PaymentMethod;
-use App\Models\Pivots\StorePaymentMethodAssociation;
-use App\Models\SubscriptionPlan;
-use App\Notifications\Orders\OrderCreated;
-use App\Notifications\Users\FollowingStore;
 use App\Notifications\FriendGroups\FriendGroupStoreAdded;
 use App\Notifications\FriendGroups\FriendGroupStoreRemoved;
 use App\Notifications\Users\InvitationToFollowStoreCreated;
 use App\Notifications\Users\InvitationToFollowStoreDeclined;
-use App\Notifications\Users\InvitationToJoinStoreTeamAccepted;
+use App\Notifications\Users\InvitationToFollowStoreAccepted;
 use App\Notifications\Users\InvitationToJoinStoreTeamCreated;
+use App\Exceptions\CannotRemoveYourselfAsTeamMemberException;
+use App\Notifications\Users\InvitationToJoinStoreTeamAccepted;
 use App\Notifications\Users\InvitationToJoinStoreTeamDeclined;
-use App\Notifications\Users\RemoveStoreTeamMember;
-use App\Notifications\Users\UnfollowedStore;
-use App\Services\Sms\SmsService;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Database\Eloquent\Collection;
+use App\Exceptions\CannotRemoveYourselfAsStoreCreatorException;
+use App\Helpers\CacheManager;
+use App\Jobs\SendSms;
 
 class StoreRepository extends BaseRepository
 {
@@ -179,6 +175,8 @@ class StoreRepository extends BaseRepository
     {
         return resolve(SubscriptionPlanRepository::class);
     }
+
+
 
     /**
      *  Show the store filters
@@ -577,10 +575,20 @@ class StoreRepository extends BaseRepository
 
             })->orderByPivot('last_seen_at', 'DESC');
 
-        }else{
+        }else if( $filter === 'associated' ) {
 
             //  Query stores where this user has been assigned as anything
             $stores = $user->stores()->orderByPivot('last_seen_at', 'DESC');
+
+        }else if( $filter === 'active subscription' ) {
+
+            //  Query stores that have an active subscription
+            $stores = Store::hasActiveSubscription()->orderBy('created_at', 'DESC');
+
+        }else{
+
+            //  Query stores
+            $stores = Store::orderBy('created_at', 'DESC');
 
         }
 
@@ -670,7 +678,7 @@ class StoreRepository extends BaseRepository
             //  Additionally we can eager load the total orders on these stores as well
             $model = $model->withCount(['orders as my_orders_count' => function ($query) {
                 $query->whereHas('users', function ($subQuery) {
-                    $subQuery->where('users.id', auth()->user()->id);
+                    $subQuery->where('users.id', request()->auth_user->id);
                 });
             }]);
 
@@ -682,7 +690,7 @@ class StoreRepository extends BaseRepository
             //  Additionally we can eager load the total orders on these stores as well
             $model = $model->withCount(['orders as my_orders_as_customer_count' => function ($query) {
                 $query->whereHas('users', function ($subQuery) {
-                    $subQuery->where('users.id', auth()->user()->id)
+                    $subQuery->where('users.id', request()->auth_user->id)
                         ->where('user_order_collection_association.role', 'Customer');
                 });
             }]);
@@ -695,7 +703,7 @@ class StoreRepository extends BaseRepository
             //  Additionally we can eager load the total orders on these stores as well
             $model = $model->withCount(['orders as my_orders_as_friend_count' => function ($query) {
                 $query->whereHas('users', function ($subQuery) {
-                    $subQuery->where('users.id', auth()->user()->id)
+                    $subQuery->where('users.id', request()->auth_user->id)
                         ->where('user_order_collection_association.role', 'Friend');
                 });
             }]);
@@ -816,7 +824,7 @@ class StoreRepository extends BaseRepository
         /**
          * @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         //  Get the store through the user so that we can capture the user and store association
         $store = $user->stores()->where('stores.id', $store->id);
@@ -836,19 +844,41 @@ class StoreRepository extends BaseRepository
      */
     public function createStore(Request $request)
     {
+        //  Check if we can return this store after creation
+        $return = request()->input('_return') !== false;
+
         //  Create store normally
-        $storeRepository = parent::create($request);
+        parent::create($request, RefreshModel::NO);
+
+        /**
+         * @var Store $store
+         */
+        $store = $this->model;
 
         /**
          * @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
-        /**
-         *  Since we need the user and store association, we must query the
-         *  store through the user to retrieve this pivot information
-         */
-        return $storeRepository->setModel($user->stores()->where('stores.id', $storeRepository->model->id)->first());
+        //  Notify owner of this store creation
+        $user->notify(new StoreCreated($this->model, $user));
+
+        //  Send owner sms of this store creation
+        SendSms::dispatch(
+            $store->craftStoreCreatedSmsMessage($user),
+            $user->mobile_number->withExtension,
+            null, null, null
+        );
+
+        if($return) {
+
+            /**
+             *  Since we need the user and store association, we must query the
+             *  store through the user to retrieve this pivot information
+             */
+            return $this->setModel($user->stores()->where('stores.id', $this->model->id)->first());
+
+        }
     }
 
     /**
@@ -956,6 +986,17 @@ class StoreRepository extends BaseRepository
     }
 
     /**
+     *  Delete store
+     *
+     *  @return StoreRepository
+     */
+    public function deleteStore()
+    {
+        //  Delete store normally
+        parent::delete();
+    }
+
+    /**
      *  Return the store visit shortcode
      *
      *  This will allow the user to dial the shortcode and visit via USSD
@@ -995,7 +1036,7 @@ class StoreRepository extends BaseRepository
         $store = $this->model;
 
         //  Get the User ID that this shortcode is reserved for
-        $reservedForUserId = auth()->user()->id;
+        $reservedForUserId = request()->auth_user->id;
 
         //  Request a payment shortcode for this store
         $shortcodeRepository = $this->shortcodeRepository()->generatePaymentShortcode($store, $reservedForUserId);
@@ -1115,7 +1156,7 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         //  Get the latest subscription matching the given authenticated user to this store
         $latestSubscription = $store->subscriptions()->where('user_id', $user->id)->latest()->first();
@@ -1152,8 +1193,11 @@ class StoreRepository extends BaseRepository
         //  Expire the payment shortcode
         $this->expirePaymentShortcode();
 
+        //  Clear cache for the total stores with an active subscription
+        (new CacheManager(CacheName::TOTAL_STORES_WITH_AN_ACTIVE_SUBSCRIPTION))->forget();
+
         // Send sms to user that their subscription was paid successfully
-        SmsService::sendOrangeSms(
+        SendSms::dispatch(
             $subscription->craftSubscriptionSuccessfulSmsMessageForUser($user, $store),
             $user->mobile_number->withExtension,
             null, null, null
@@ -1429,7 +1473,7 @@ class StoreRepository extends BaseRepository
 
         $request->merge([
             'currency' => $this->model->currency,
-            'user_id' => auth()->user()->id,
+            'user_id' => request()->auth_user->id,
             'store_id' => $this->model->id
         ]);
 
@@ -1558,7 +1602,7 @@ class StoreRepository extends BaseRepository
         $request->merge([
             'currency' => $this->model->currency,
             'store_id' => $this->model->id,
-            'user_id' => auth()->user()->id
+            'user_id' => request()->auth_user->id
         ]);
 
         // Create a new product
@@ -2354,7 +2398,7 @@ class StoreRepository extends BaseRepository
     {
         $request->merge([
             'store_id' => $this->model->id,
-            'user_id' => auth()->user()->id
+            'user_id' => request()->auth_user->id
         ]);
 
         return $this->reviewRepository()->create($request);
@@ -2495,17 +2539,22 @@ class StoreRepository extends BaseRepository
      */
     public function acceptAllInvitationsToFollow()
     {
+        /**
+         *  @var User $user
+         */
+        $user = request()->auth_user;
+
         //  Get the stores that the user has been invited to follow
         $stores = Store::with(['teamMembers' => function($query) {
 
             //  Get each store with the team members who have joined that store
             $query->joinedTeam();
 
-        }])->whereHas('followers', function($query) {
+        }])->whereHas('followers', function($query) use ($user) {
 
             //  Check if the user has been invited to follow this store
             $query->where([
-                'user_id' => auth()->user()->id,
+                'user_id' => $user->id,
                 'follower_status' => 'Invited',
             ]);
 
@@ -2514,10 +2563,13 @@ class StoreRepository extends BaseRepository
         //  Accept the invitations
         DB::table('user_store_association')
             ->where('follower_status', 'Invited')
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', $user->id)
             ->update([
                 'follower_status' => 'Following'
             ]);
+
+        //  Clear cache
+        $this->clearCacheOnAssociationAsFollower($user->id);
 
         //  Notify the team members of each store on the user's decision to accept the invitation
         $this->notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse::Accepted, $stores);
@@ -2530,17 +2582,22 @@ class StoreRepository extends BaseRepository
      */
     public function declineAllInvitationsToFollow()
     {
+        /**
+         *  @var User $user
+         */
+        $user = request()->auth_user;
+
         //  Get the stores that the user has been invited to follow
         $stores = Store::with(['teamMembers' => function($query) {
 
             //  Get each store with the team members who have joined that store
             $query->joinedTeam();
 
-        }])->whereHas('followers', function($query) {
+        }])->whereHas('followers', function($query) use ($user) {
 
             //  Check if the user has been invited to follow this store
             $query->where([
-                'user_id' => auth()->user()->id,
+                'user_id' => $user->id,
                 'follower_status' => 'Invited',
             ]);
 
@@ -2549,10 +2606,13 @@ class StoreRepository extends BaseRepository
         //  Decline the invitations
         DB::table('user_store_association')
             ->where('follower_status', 'Invited')
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', $user->id)
             ->update([
                 'follower_status' => 'Declined'
             ]);
+
+        //  Clear cache
+        $this->clearCacheOnAssociationAsFollower($user->id);
 
         //  Notify the team members of each store on the user's decision to declined the invitation
         $this->notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse::Declined, $stores);
@@ -2568,7 +2628,7 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         $userStoreAssociation = $this->getUserStoreAssociation($user);
 
@@ -2579,6 +2639,9 @@ class StoreRepository extends BaseRepository
 
             //  Notify the team members of this store on the user's decision to accept the invitation
             $this->notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse::Accepted);
+
+            //  Clear cache
+            $this->clearCacheOnAssociationAsFollower($user->id);
 
             return ['message' => 'Invitation accepted successfully'];
 
@@ -2605,7 +2668,7 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         $userStoreAssociation = $this->getUserStoreAssociation($user);
 
@@ -2618,6 +2681,9 @@ class StoreRepository extends BaseRepository
 
                 //  Notify the team members of this store on the user's decision to decline the invitation
                 $this->notifyTeamMembersOnUserResponseToFollowInvitation(InvitationResponse::Declined);
+
+                //  Clear cache
+                $this->clearCacheOnAssociationAsFollower($user->id);
 
                 return ['message' => 'Invitation declined successfully'];
 
@@ -2653,15 +2719,14 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         //  Method to send the notifications
         $sendNotifications = function($storeInvitedToFollow, $user) use ($invitationResponse) {
             if($invitationResponse == InvitationResponse::Accepted) {
 
                 //  Notify the team members that this user has accepted the invitation to join this store
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $storeInvitedToFollow->teamMembers,
                     new InvitationToFollowStoreAccepted($storeInvitedToFollow, $user)
                 );
@@ -2669,8 +2734,7 @@ class StoreRepository extends BaseRepository
             }else{
 
                 //  Notify the team members that this user has declined the invitation to follow this store
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $storeInvitedToFollow->teamMembers,
                     new InvitationToFollowStoreDeclined($storeInvitedToFollow, $user)
                 );
@@ -2733,7 +2797,7 @@ class StoreRepository extends BaseRepository
     {
         return DB::table('user_store_association')
             ->where('store_id', $this->model->id)
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', request()->auth_user->id)
             ->update([
                 'follower_status' => $state
             ]);
@@ -2965,6 +3029,9 @@ class StoreRepository extends BaseRepository
         //  Update the user's following to this store
         $this->updateFollowers($user, $followerStatus);
 
+        //  Clear cache
+        $this->clearCacheOnAssociationAsFollower($user->id);
+
         //  If the user is following on this store
         if( $this->checkIfUserIsFollowing($user) ) {
 
@@ -3014,7 +3081,7 @@ class StoreRepository extends BaseRepository
     public function checkInvitationsToFollow()
     {
         $invitations = DB::table('user_store_association')
-                        ->where('user_id', auth()->user()->id)
+                        ->where('user_id', request()->auth_user->id)
                         ->where('follower_status', 'Invited')
                         ->get();
 
@@ -3064,17 +3131,23 @@ class StoreRepository extends BaseRepository
 
             //  Invite the specified users
             $store->followers()->attach($userIds, [
-                'invited_to_follow_by_user_id' => auth()->user()->id,
+                'invited_to_follow_by_user_id' => request()->auth_user->id,
                 'follower_status' => $followerStatus,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
+            foreach($userIds as $userId) {
+
+                //  Clear cache
+                $this->clearCacheOnAssociationAsFollower($userId);
+
+            }
+
             //  Notify the users that they have been invited to follow this store
-            //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-            Notification::sendNow(
+            Notification::send(
                 $users,
-                new InvitationToFollowStoreCreated($store, auth()->user())
+                new InvitationToFollowStoreCreated($store, request()->auth_user)
             );
 
         }
@@ -3105,7 +3178,7 @@ class StoreRepository extends BaseRepository
 
         $data = collect($mobileNumbers)->map(function($mobileNumber) use($store) {
             return [
-                'invited_to_follow_by_user_id' => auth()->user()->id,
+                'invited_to_follow_by_user_id' => request()->auth_user->id,
                 'mobile_number' => $mobileNumber,
                 'follower_status' => 'Invited',
                 'store_id' => $store->id,
@@ -3180,11 +3253,13 @@ class StoreRepository extends BaseRepository
                     'updated_at' => now(),
                 ]);
 
+                //  Clear cache
+                $this->clearCacheOnAssociationAsFollower($user->id);
+
                 if($followerStatus == 'Following') {
 
                     //  Notify the team members that this user is following this store
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         $store->teamMembers,
                         new FollowingStore($store, $user)
                     );
@@ -3192,8 +3267,7 @@ class StoreRepository extends BaseRepository
                 }else{
 
                     //  Notify the team members that this user has unfollowed this store
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         $store->teamMembers,
                         new UnfollowedStore($store, $user)
                     );
@@ -3388,7 +3462,7 @@ class StoreRepository extends BaseRepository
     public function updateTeamMemberPermissions(User $user)
     {
         //  Deny the action of modifying your own permissions
-        if( $user->id === auth()->user()->id ) throw new CannotModifyOwnPermissionsException;
+        if( $user->id === request()->auth_user->id ) throw new CannotModifyOwnPermissionsException;
 
         //  Add user's permissions to this store
         $this->updateTeamMembersByUserIds($user);
@@ -3403,7 +3477,7 @@ class StoreRepository extends BaseRepository
      */
     public function checkInvitationsToJoinTeam()
     {
-        $invitations = DB::table('user_store_association')->where('user_id', auth()->user()->id)
+        $invitations = DB::table('user_store_association')->where('user_id', request()->auth_user->id)
                         ->where('team_member_status', 'Invited')
                         ->get();
 
@@ -3429,7 +3503,7 @@ class StoreRepository extends BaseRepository
 
         }])->whereHas('teamMembers', function($query) {
             $query->where([
-                'user_id' => auth()->user()->id,
+                'user_id' => request()->auth_user->id,
                 'team_member_status' => 'Invited',
             ]);
         })->get();
@@ -3437,11 +3511,19 @@ class StoreRepository extends BaseRepository
         //  Accept the invitations
         DB::table('user_store_association')
             ->where('team_member_status', 'Invited')
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', request()->auth_user->id)
             ->update([
                 'team_member_status' => 'Joined',
                 'team_member_join_code' => null
             ]);
+
+        /**
+         *  @var User $user
+         */
+        $user = request()->auth_user;
+
+        //  Clear cache
+        $this->clearCacheOnAssociationAsTeamMember($user->id);
 
         //  Notify the team members of each store on the user's decision to accept the invitation
         $this->notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse::Accepted, $stores);
@@ -3464,7 +3546,7 @@ class StoreRepository extends BaseRepository
 
             //  Check if the user has been invited to join this store team
             $query->where([
-                'user_id' => auth()->user()->id,
+                'user_id' => request()->auth_user->id,
                 'team_member_status' => 'Invited',
             ]);
 
@@ -3473,11 +3555,19 @@ class StoreRepository extends BaseRepository
         //  Decline the invitations
         DB::table('user_store_association')
             ->where('team_member_status', 'Invited')
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', request()->auth_user->id)
             ->update([
                 'team_member_status' => 'Declined',
                 'team_member_join_code' => null
             ]);
+
+        /**
+         *  @var User $user
+         */
+        $user = request()->auth_user;
+
+        //  Clear cache
+        $this->clearCacheOnAssociationAsTeamMember($user->id);
 
         //  Notify the team members of each store on the user's decision to decline the invitation
         $this->notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse::Declined, $stores);
@@ -3493,7 +3583,7 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         $userStoreAssociation = $this->getUserStoreAssociation($user);
 
@@ -3504,6 +3594,9 @@ class StoreRepository extends BaseRepository
 
             //  Notify the team members of each store on the user's decision to accept the invitation
             $this->notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse::Accepted);
+
+            //  Clear cache
+            $this->clearCacheOnAssociationAsTeamMember($user->id);
 
             return ['message' => 'Invitation accepted successfully'];
 
@@ -3530,7 +3623,7 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         $userStoreAssociation = $this->getUserStoreAssociation($user);
 
@@ -3543,6 +3636,9 @@ class StoreRepository extends BaseRepository
 
                 //  Notify the team members of each store on the user's decision to decline the invitation
                 $this->notifyTeamMembersOnUserResponseToJoinTeamInvitation(InvitationResponse::Declined);
+
+                //  Clear cache
+                $this->clearCacheOnAssociationAsTeamMember($user->id);
 
                 return ['message' => 'Invitation declined successfully'];
 
@@ -3578,7 +3674,7 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         //  Method to send the notifications
         $sendNotifications = function($storeInvitedToJoinTeam, $user) use ($invitationResponse) {
@@ -3586,8 +3682,7 @@ class StoreRepository extends BaseRepository
             if($invitationResponse == InvitationResponse::Accepted) {
 
                 //  Notify the team members that this user has accepted the invitation to join this store team
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $storeInvitedToJoinTeam->teamMembers,
                     new InvitationToJoinStoreTeamAccepted($storeInvitedToJoinTeam, $user)
                 );
@@ -3595,8 +3690,7 @@ class StoreRepository extends BaseRepository
             }else{
 
                 //  Notify the team members that this user has declined the invitation to join this store team
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $storeInvitedToJoinTeam->teamMembers,
                     new InvitationToJoinStoreTeamDeclined($storeInvitedToJoinTeam, $user)
                 );
@@ -3649,7 +3743,7 @@ class StoreRepository extends BaseRepository
     {
         return DB::table('user_store_association')
             ->where('store_id', $this->model->id)
-            ->where('user_id', auth()->user()->id)->update([
+            ->where('user_id', request()->auth_user->id)->update([
                 'team_member_status' => $state
             ]);
     }
@@ -3775,7 +3869,7 @@ class StoreRepository extends BaseRepository
          /**
           *  @var User $user
           */
-         $user = auth()->user();
+         $user = request()->auth_user;
 
         /**
          *  Get the specified friend group ids. Make sure that the specified friend group ids
@@ -3818,7 +3912,7 @@ class StoreRepository extends BaseRepository
          *  Reference: https://stackoverflow.com/questions/54944227/laravels-syncwithoutdetaching-and-additional-data
          */
         $records = collect($friendGroupIds)->mapWithKeys(function($friendGroupId) {
-            return [$friendGroupId => ['added_by_user_id' => auth()->user()->id]];
+            return [$friendGroupId => ['added_by_user_id' => request()->auth_user->id]];
         })->toArray();
 
         if( count($records) ) {
@@ -3857,8 +3951,7 @@ class StoreRepository extends BaseRepository
             foreach($friendGroups as $friendGroup) {
 
                 //  Notify the friend group users that the store has been added
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $friendGroup->users,
                     new FriendGroupStoreAdded($friendGroup, $store, $user)
                 );
@@ -3895,7 +3988,7 @@ class StoreRepository extends BaseRepository
          /**
           *  @var User $user
           */
-         $user = auth()->user();
+         $user = request()->auth_user;
 
          /**
           *  Get the specified friend group ids. Make sure that the specified friend group ids
@@ -3929,8 +4022,7 @@ class StoreRepository extends BaseRepository
         foreach($friendGroups as $friendGroup) {
 
             //  Notify the friend group users that the store has been removed
-            //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-            Notification::sendNow(
+            Notification::send(
                 $friendGroup->users,
                 new FriendGroupStoreRemoved($friendGroup, $store, $user)
             );
@@ -4089,7 +4181,7 @@ class StoreRepository extends BaseRepository
             UserStoreAssociation::create([
                 'is_assigned' => true,
                 'store_id' => $store->id,
-                'user_id' => auth()->user()->id,
+                'user_id' => request()->auth_user->id,
             ]);
 
         }
@@ -4129,7 +4221,7 @@ class StoreRepository extends BaseRepository
             UserStoreAssociation::create([
                 'is_assigned' => false,
                 'store_id' => $store->id,
-                'user_id' => auth()->user()->id,
+                'user_id' => request()->auth_user->id,
             ]);
 
         }
@@ -4175,7 +4267,7 @@ class StoreRepository extends BaseRepository
             UserStoreAssociation::create([
                 'is_assigned' => true,
                 'store_id' => $store->id,
-                'user_id' => auth()->user()->id,
+                'user_id' => request()->auth_user->id,
             ]);
 
         }
@@ -4192,7 +4284,7 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         $storeIds = $user->storesAsAssigned()->orderByPivot('assigned_position', 'ASC')->pluck('store_id');
 
@@ -4220,7 +4312,7 @@ class StoreRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         // Retrieve all the user assigned store
         $stores = $user->storesAsAssigned()->orderByPivot('assigned_position', 'ASC');
@@ -4323,7 +4415,7 @@ class StoreRepository extends BaseRepository
 
         // Update the positions of all stores in the database using one query
         DB::table('user_store_association')
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', request()->auth_user->id)
             ->whereIn('store_id', array_keys($storePositions))
             ->update(['assigned_position' => DB::raw('CASE store_id ' . implode(' ', array_map(function ($storeId, $position) {
                 return 'WHEN ' . $storeId . ' THEN ' . $position . ' ';
@@ -4576,15 +4668,18 @@ class StoreRepository extends BaseRepository
             //  Set the team member status to "Invited" if no value is indicated
             if( empty($teamMemberStatus) ) $teamMemberStatus = 'Invited';
 
-            $records = $userIds->map(function($userId) use($teamMemberStatus, $teamMemberPermissions, $teamMemberRole) {
+            $records = [];
 
-                $teamMemberJoinCode = $teamMemberStatus == 'Invited' ? $this->generateRandomSixDigitCode() : null;
+            foreach($userIds as $userId) {
 
-                $isAssigned = $teamMemberRole == 'Creator';
+                $isInvited = $teamMemberStatus == 'Invited';
+                $teamMemberJoinCode = $isInvited ? $this->generateRandomSixDigitCode() : null;
+
+                $isCreator = $teamMemberRole == 'Creator';
 
                 $record = [
                     'team_member_permissions' => json_encode($teamMemberPermissions),
-                    'invited_to_join_team_by_user_id' => auth()->user()->id,
+                    'invited_to_join_team_by_user_id' => request()->auth_user->id,
                     'team_member_join_code' => $teamMemberJoinCode,
                     'team_member_status' => $teamMemberStatus,
                     'team_member_role' => $teamMemberRole,
@@ -4594,7 +4689,7 @@ class StoreRepository extends BaseRepository
                     'user_id' => $userId,
 
                     //  Automatically assign store to user if the user is a creator
-                    'is_assigned' => $isAssigned,
+                    'is_assigned' => $isCreator,
 
                     //  Automatically follow by default
                     'follower_status' => 'Following',
@@ -4605,12 +4700,17 @@ class StoreRepository extends BaseRepository
                      *  creator to the store and need to capture their
                      *  last_seen_at activity on this store
                      */
-                    'last_seen_at' => $userId == auth()->user()->id ? now() : null
+                    'last_seen_at' => $userId == request()->auth_user->id ? now() : null
                 ];
 
-                return $record;
+                $records[] = $record;
 
-            })->toArray();
+                //  Clear cache
+                $this->clearCacheOnAssociationAsFollower($user->id);
+                $this->clearCacheOnAssociationAsTeamMember($user->id);
+                $this->clearCacheOnAssociationAsRecentVisitor($user->id);
+
+            }
 
             //  Insert the specified user and store associations
             DB::table('user_store_association')->insert($records);
@@ -4619,10 +4719,9 @@ class StoreRepository extends BaseRepository
             if(strtolower($teamMemberRole) !== 'creator') {
 
                 //  Notify the users that they have been invited to join this store
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $users,
-                    new InvitationToJoinStoreTeamCreated($store, auth()->user())
+                    new InvitationToJoinStoreTeamCreated($store, request()->auth_user)
                 );
 
             }
@@ -4664,7 +4763,7 @@ class StoreRepository extends BaseRepository
 
                 return [
                     'team_member_permissions' => json_encode($teamMemberPermissions),
-                    'invited_to_join_team_by_user_id' => auth()->user()->id,
+                    'invited_to_join_team_by_user_id' => request()->auth_user->id,
                     'team_member_join_code' => $teamMemberJoinCode,
                     'team_member_role' => $teamMemberRole,
                     'mobile_number' => $mobileNumber,
@@ -4727,6 +4826,13 @@ class StoreRepository extends BaseRepository
                 ->where('store_id', $this->model->id)
                 ->whereIn('user_id', $userIds)
                 ->update($data);
+
+            foreach($userIds as $userId) {
+
+                //  Clear cache
+                $this->clearCacheOnAssociationAsTeamMember($userId);
+
+            }
         }
     }
 
@@ -4834,7 +4940,7 @@ class StoreRepository extends BaseRepository
                 $assignedUser = $assignedUsers[0];
 
                 //  If this user's id is the same as the current auth user
-                if($assignedUser->id === auth()->user()->id) {
+                if($assignedUser->id === request()->auth_user->id) {
 
                     //  Deny the action of removing yourself
                     throw new CannotRemoveYourselfAsTeamMemberException();
@@ -4856,7 +4962,7 @@ class StoreRepository extends BaseRepository
                 foreach($assignedUsers as $index => $assignedUser) {
 
                     //  If this user's id is the same as the current auth user
-                    if($assignedUser->id === auth()->user()->id) {
+                    if($assignedUser->id === request()->auth_user->id) {
 
                         /**
                          *  Deny the action of removing yourself by unsetting this user
@@ -4884,7 +4990,11 @@ class StoreRepository extends BaseRepository
             $permissions = collect(Store::PERMISSIONS)->map(fn($permission) => $permission['grant'])->values();
 
             //  Get the pivot ids of the user associations as team members
-            $userStoreAssociationIds = $assignedUsers->map(function(User $assignedUser) use ($store, $permissions) {
+            $userStoreAssociationIds = [];
+
+            foreach($assignedUsers as $assignedUser) {
+
+                $userStoreAssociationIds[] = $assignedUser->user_store_association->id;
 
                 //  Foreach of the available store permissions
                 foreach($permissions as $permission) {
@@ -4894,9 +5004,7 @@ class StoreRepository extends BaseRepository
 
                 }
 
-                return $assignedUser->user_store_association->id;
-
-            })->toArray();
+            }
 
             if(count($userStoreAssociationIds) == 0) {
 
@@ -4914,10 +5022,17 @@ class StoreRepository extends BaseRepository
                     'team_member_role' => null
                 ]);
 
+                foreach($assignedUsers as $assignedUser) {
+
+                    //  Clear cache
+                    $this->clearCacheOnAssociationAsTeamMember($assignedUser->id);
+
+                }
+
                 /**
                  *  @var User $user
                  */
-                $removedByUser = auth()->user();
+                $removedByUser = request()->auth_user;
 
                 //  Get the team members who joined
                 $teamMembers = $store->teamMembers()->joinedTeam()->get();
@@ -4926,8 +5041,7 @@ class StoreRepository extends BaseRepository
                 foreach($assignedUsers as $removedUser) {
 
                     //  Notify the team members that a team member has been removed
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         //  Send notifications to the team members who joined
                         $teamMembers,
                         new RemoveStoreTeamMember($store, $removedUser, $removedByUser)
@@ -5104,6 +5218,95 @@ class StoreRepository extends BaseRepository
             $store->customers()->attach($userId, [
                 'is_associated_as_customer' => true
             ]);
+
+        }
+
+        $cacheManager = (new CacheManager(CacheName::TOTAL_STORES_AS_CUSTOMER))->append($userId);
+
+        if( $cacheManager->has() ) {
+
+            $cacheManager->increment();
+
+        }
+    }
+
+    /**
+     *  Show the user resource totals
+     *
+     *  @return array
+     */
+    public function showResourceTotals()
+    {
+        $data = [];
+        $expiryAt = now()->addHour();
+
+        $includedResourceTotals = collect(explode(',', request()->input('_include_resource_totals')))->map(function($field) {
+            return Str::camel(trim($field));
+        })->filter()->toArray();
+
+        if(in_array('totalStoresWithAnActiveSubscription', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $lastSubscriptionEndAt = null;
+
+            if((new CacheManager(CacheName::TOTAL_STORES_WITH_AN_ACTIVE_SUBSCRIPTION))->has() == false) {
+
+                $storeWithOldestLastSubscriptionEndAt = Store::hasActiveSubscription()->select('last_subscription_end_at')->oldest('last_subscription_end_at')->first();
+                $lastSubscriptionEndAt = $storeWithOldestLastSubscriptionEndAt->last_subscription_end_at ?? null;
+                $expiryAt = $lastSubscriptionEndAt ?? $expiryAt;
+
+            }
+
+            $data['totalStoresWithAnActiveSubscription'] = (new CacheManager(CacheName::TOTAL_STORES_WITH_AN_ACTIVE_SUBSCRIPTION))->remember($expiryAt, function() use ($lastSubscriptionEndAt) {
+
+                return $lastSubscriptionEndAt ? Store::hasActiveSubscription()->count() : 0;
+
+            });
+
+        }
+
+        return $data;
+    }
+
+    public function clearCacheOnAssociationAsFollower($userId)
+    {
+        //  Capture the cache names of the cached items affected by changes on this user store association
+        $cacheNames = [
+            CacheName::TOTAL_STORES_AS_FOLLOWER
+        ];
+
+        foreach($cacheNames as $cacheName) {
+
+            (new CacheManager($cacheName))->append($userId)->forget();
+
+        }
+    }
+
+    public function clearCacheOnAssociationAsTeamMember($userId)
+    {
+        //  Capture the cache names of the cached items affected by changes on this user store association
+        $cacheNames = [
+            CacheName::TOTAL_STORES_JOINED_AS_NON_CREATOR,
+            CacheName::TOTAL_STORES_JOINED_AS_TEAM_MEMBER,
+            CacheName::TOTAL_STORES_INVITED_TO_JOIN_AS_TEAM_MEMBER
+        ];
+
+        foreach($cacheNames as $cacheName) {
+
+            (new CacheManager($cacheName))->append($userId)->forget();
+
+        }
+    }
+
+    public function clearCacheOnAssociationAsRecentVisitor($userId)
+    {
+        //  Capture the cache names of the cached items affected by changes on this user store association
+        $cacheNames = [
+            CacheName::TOTAL_STORES_AS_RECENT_VISITOR
+        ];
+
+        foreach($cacheNames as $cacheName) {
+
+            (new CacheManager($cacheName))->append($userId)->forget();
 
         }
     }

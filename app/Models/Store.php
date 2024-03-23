@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use App\Casts\Money;
 use App\Casts\Currency;
+use App\Traits\StoreTrait;
 use App\Casts\JsonToArray;
 use App\Casts\MobileNumber;
 use App\Models\Base\BaseModel;
@@ -14,13 +15,14 @@ use App\Traits\UserStoreAssociationTrait;
 use App\Models\Pivots\UserStoreAssociation;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Models\Pivots\FriendGroupStoreAssociation;
+use App\Models\Pivots\SmsMessageStoreAssociation;
 use App\Services\MobileNumber\MobileNumberService;
 use App\Models\Pivots\StorePaymentMethodAssociation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Store extends BaseModel
 {
-    use HasFactory, UserStoreAssociationTrait;
+    use HasFactory, StoreTrait, UserStoreAssociationTrait;
 
     const CURRENCY = 'BWP';
 
@@ -73,10 +75,8 @@ class Store extends BaseModel
 
     const USER_STORE_FILTERS = [
         'All', 'Team Member', 'Team Member Left', 'Team Member Joined', 'Team Member Invited', 'Team Member Declined',
-        'Team Member Joined As Creator', 'Team Member Joined As Non Creator',
-        'Follower', 'Unfollower', 'Invited To Follow',
-        'Friend Group Member', 'Customer',
-        'Assigned', 'Recent Visitor'
+        'Team Member Joined As Creator', 'Team Member Joined As Non Creator', 'Follower', 'Unfollower', 'Invited To Follow',
+        'Friend Group Member', 'Customer', 'Assigned', 'Recent Visitor', 'Associated', 'Active Subscription'
     ];
 
     const REGISTERED_WITH_CIPA_AS = [
@@ -177,7 +177,7 @@ class Store extends BaseModel
     ];
 
     /*
-     *  Scope: Return stores that are being searched using the store name
+     *  Scope: Return stores that are being searched
      */
     public function scopeSearch($query, $searchWord)
     {
@@ -199,9 +199,18 @@ class Store extends BaseModel
         }else{
 
             //  If the search word contains letters, then search by store name
-            return $query->where('name', 'like', "%$searchWord%");
+            return $query->searchName($searchWord);
 
         }
+    }
+
+    /*
+     *  Scope: Return stores that are being searched using the store name
+     */
+    public function scopeSearchName($query, $searchWord)
+    {
+        //  If the search word contains letters, then search by store name
+        return $query->where('name', 'like', "%$searchWord%");
     }
 
     /*
@@ -211,6 +220,14 @@ class Store extends BaseModel
     {
         $mobileNumber = MobileNumberService::addMobileNumberExtension($mobileNumber);
         return $query->where('stores.mobile_number', $mobileNumber);
+    }
+
+    /*
+     *  Scope: Return stores that have an active subscription
+     */
+    public function scopeHasActiveSubscription($query)
+    {
+        return $query->where('last_subscription_end_at', '>' , now());
     }
 
     /*
@@ -294,7 +311,7 @@ class Store extends BaseModel
     public function authUserStoreAssociation()
     {
         return $this->hasOne(UserStoreAssociation::class, 'store_id')
-                    ->where('user_id', auth()->user()->id);
+                    ->where('user_id', request()->auth_user->id);
     }
 
     /**
@@ -465,6 +482,19 @@ class Store extends BaseModel
     public function friendGroupStoreAssociation()
     {
         return $this->hasOne(FriendGroupStoreAssociation::class, 'store_id');
+    }
+
+    /**
+     *  Get the sms messages associated with this store
+     *
+     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
+     */
+    public function smsMessages()
+    {
+        return $this->belongsToMany(SmsMessage::class, 'sms_message_store_association', 'sms_message_id', 'store_id')
+                    ->withPivot(SmsMessageStoreAssociation::VISIBLE_COLUMNS)
+                    ->using(SmsMessageStoreAssociation::class)
+                    ->as('user_friend_association');
     }
 
     /****************************

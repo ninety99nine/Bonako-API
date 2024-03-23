@@ -15,6 +15,6 @@ class SubscriptionPlanController extends BaseController
 
     public function showSubscriptionPlans()
     {
-        return response($this->repository->showSubscriptionPlans()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showSubscriptionPlans());
     }
 }

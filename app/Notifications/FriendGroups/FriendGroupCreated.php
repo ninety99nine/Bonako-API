@@ -11,7 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use NotificationChannels\OneSignal\OneSignalChannel;
 use NotificationChannels\OneSignal\OneSignalMessage;
 
-class FriendGroupCreated extends Notification
+class FriendGroupCreated extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 
@@ -67,8 +67,8 @@ class FriendGroupCreated extends Notification
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
         $friendGroup = $this->friendGroup;
+        $subject = $friendGroup->name_with_emoji;
         $body = 'Your group was created successfully';
-        $subject = empty($friendGroup->emoji) ? $friendGroup->name : $friendGroup->emoji.' '.$friendGroup->name;
 
         return OneSignalMessage::create()
             ->setSubject($subject)

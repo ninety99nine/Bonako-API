@@ -13,7 +13,7 @@ class SmsAlertActivityAssociation extends BaseModel
         'enabled' => 'boolean',
     ];
 
-    protected $with = ['smsAlertActivity', 'stores'];
+    //  protected $with = ['smsAlertActivity', 'stores'];
 
     protected $fillable = ['enabled', 'total_alerts_sent', 'sms_alert_id', 'sms_alert_activity_id'];
 

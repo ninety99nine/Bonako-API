@@ -357,8 +357,7 @@ class FriendGroupRepository extends BaseRepository
         );
 
         //  Notify the group creator that this group has been created
-        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::sendNow(
+        Notification::send(
             $this->chooseUser(),
             new FriendGroupCreated($this->getFriendGroup(), $this->chooseUser())
         );
@@ -895,8 +894,7 @@ class FriendGroupRepository extends BaseRepository
             if($invitationResponse == InvitationResponse::Accepted) {
 
                 //  Notify the group members that this user has accepted the invitation to join this friend group
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $friendGroupInvitedToJoin->users,
                     new InvitationToJoinFriendGroupAccepted($friendGroupInvitedToJoin, $user)
                 );
@@ -904,8 +902,7 @@ class FriendGroupRepository extends BaseRepository
             }else{
 
                 //  Notify the group members that this user has declined the invitation to join this friend group
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $friendGroupInvitedToJoin->users,
                     new InvitationToJoinFriendGroupDeclined($friendGroupInvitedToJoin, $user)
                 );
@@ -1060,8 +1057,7 @@ class FriendGroupRepository extends BaseRepository
                 foreach($assignedUsers as $removedUser) {
 
                     //  Notify the group members that a group member has been removed
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         //  Send notifications to the group members who joined
                         $usersWhoJoined,
                         new RemoveFriendGroupMember($friendGroup, $removedUser, $removedByUser)
@@ -1319,8 +1315,7 @@ class FriendGroupRepository extends BaseRepository
             foreach($stores as $store) {
 
                 //  Notify the friend group users that the store has been added
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $usersWhoJoined,
                     new FriendGroupStoreAdded($this->getFriendGroup(), $store, $user)
                 );
@@ -1392,8 +1387,7 @@ class FriendGroupRepository extends BaseRepository
                 foreach($stores as $store) {
 
                     //  Notify the friend group users that the store has been removed
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         $usersWhoJoined,
                         new FriendGroupStoreRemoved($this->getFriendGroup(), $store, $user)
                     );
@@ -1524,8 +1518,7 @@ class FriendGroupRepository extends BaseRepository
             if(strtolower($role) !== 'creator') {
 
                 //  Notify the users that they have been invited to join this friend group
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     $users,
                     new InvitationToJoinFriendGroupCreated($friendGroup, $invitedByUser)
                 );

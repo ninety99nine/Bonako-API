@@ -14,7 +14,7 @@ use NotificationChannels\OneSignal\OneSignalChannel;
 use NotificationChannels\OneSignal\OneSignalMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
-class StoreDeleted extends Notification
+class StoreDeleted extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 

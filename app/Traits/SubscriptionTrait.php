@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use App\Models\Order;
 use App\Models\Store;
 use App\Models\AiAssistant;
+use App\Services\Ussd\UssdService;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Database\Eloquent\Model;
 
@@ -25,7 +26,7 @@ trait SubscriptionTrait
 
         if(($store = $model) instanceof Store) {
 
-            $subscriptionFor = $store->name;
+            return 'Hi '.$user->first_name.', your subscription for '.$store->name.' has been paid successfully. Valid till '.Carbon::parse($this->end_at)->format('d M Y H:i').'. Dial '.(UssdService::appendToMainShortcode($user->mobile_number->withoutExtension)).' to access your store! Enjoy 😉';
 
         }else if($model instanceof AiAssistant) {
 
@@ -33,7 +34,7 @@ trait SubscriptionTrait
 
         }
 
-        return 'Hi '.$user->first_name.', your subscription for '.$subscriptionFor.' has been paid successfully. Valid till '.Carbon::parse($this->end_at)->format('d M Y H:m').'! Enjoy 😉';
+        return 'Hi '.$user->first_name.', your subscription for '.$subscriptionFor.' has been paid successfully. Valid till '.Carbon::parse($this->end_at)->format('d M Y H:i').'! Enjoy 😉';
     }
 
 }

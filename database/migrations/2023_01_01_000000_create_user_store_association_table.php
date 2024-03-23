@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\Store;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use App\Models\Pivots\UserStoreAssociation;
@@ -45,67 +43,6 @@ class CreateUserStoreAssociationTable extends Migration
 
             /*  Customer Information  */
             $table->boolean('is_associated_as_customer')->default(false);
-            $table->char('currency', 3)->default(Store::CURRENCY);
-
-            //  Order Totals (Requested)
-            $table->unsignedSmallInteger('total_orders_requested')->default(0);
-            $table->decimal('sub_total_requested', 10, 2)->default(0);
-            $table->decimal('coupon_discount_total_requested', 10, 2)->default(0);
-            $table->decimal('sale_discount_total_requested', 10, 2)->default(0);
-            $table->decimal('coupon_and_sale_discount_total_requested', 10, 2)->default(0);
-            $table->decimal('grand_total_requested', 10, 2)->default(0);
-            $table->unsignedSmallInteger('total_products_requested')->default(0);
-            $table->unsignedSmallInteger('total_product_quantities_requested')->default(0);
-            $table->unsignedSmallInteger('total_coupons_requested')->default(0);
-
-            $table->decimal('avg_sub_total_requested', 10, 2)->default(0);
-            $table->decimal('avg_coupon_discount_total_requested', 10, 2)->default(0);
-            $table->decimal('avg_sale_discount_total_requested', 10, 2)->default(0);
-            $table->decimal('avg_coupon_and_sale_discount_total_requested', 10, 2)->default(0);
-            $table->decimal('avg_grand_total_requested', 10, 2)->default(0);
-            $table->unsignedSmallInteger('avg_total_products_requested')->default(0);
-            $table->unsignedSmallInteger('avg_total_product_quantities_requested')->default(0);
-            $table->unsignedSmallInteger('avg_total_coupons_requested')->default(0);
-
-            //  Order Totals (Completed)
-            $table->unsignedSmallInteger('total_orders_received')->default(0);
-            $table->decimal('sub_total_received', 10, 2)->default(0);
-            $table->decimal('coupon_discount_total_received', 10, 2)->default(0);
-            $table->decimal('sale_discount_total_received', 10, 2)->default(0);
-            $table->decimal('coupon_and_sale_discount_total_received', 10, 2)->default(0);
-            $table->decimal('grand_total_received', 10, 2)->default(0);
-            $table->unsignedSmallInteger('total_products_received')->default(0);
-            $table->unsignedSmallInteger('total_product_quantities_received')->default(0);
-            $table->unsignedSmallInteger('total_coupons_received')->default(0);
-
-            $table->decimal('avg_sub_total_received', 10, 2)->default(0);
-            $table->decimal('avg_coupon_discount_total_received', 10, 2)->default(0);
-            $table->decimal('avg_sale_discount_total_received', 10, 2)->default(0);
-            $table->decimal('avg_coupon_and_sale_discount_total_received', 10, 2)->default(0);
-            $table->decimal('avg_grand_total_received', 10, 2)->default(0);
-            $table->unsignedSmallInteger('avg_total_products_received')->default(0);
-            $table->unsignedSmallInteger('avg_total_product_quantities_received')->default(0);
-            $table->unsignedSmallInteger('avg_total_coupons_received')->default(0);
-
-            //  Order Totals (Cancelled)
-            $table->unsignedSmallInteger('total_orders_cancelled')->default(0);
-            $table->decimal('sub_total_cancelled', 10, 2)->default(0);
-            $table->decimal('coupon_discount_total_cancelled', 10, 2)->default(0);
-            $table->decimal('sale_discount_total_cancelled', 10, 2)->default(0);
-            $table->decimal('coupon_and_sale_discount_total_cancelled', 10, 2)->default(0);
-            $table->decimal('grand_total_cancelled', 10, 2)->default(0);
-            $table->unsignedSmallInteger('total_products_cancelled')->default(0);
-            $table->unsignedSmallInteger('total_product_quantities_cancelled')->default(0);
-            $table->unsignedSmallInteger('total_coupons_cancelled')->default(0);
-
-            $table->decimal('avg_sub_total_cancelled', 10, 2)->default(0);
-            $table->decimal('avg_coupon_discount_total_cancelled', 10, 2)->default(0);
-            $table->decimal('avg_sale_discount_total_cancelled', 10, 2)->default(0);
-            $table->decimal('avg_coupon_and_sale_discount_total_cancelled', 10, 2)->default(0);
-            $table->decimal('avg_grand_total_cancelled', 10, 2)->default(0);
-            $table->unsignedSmallInteger('avg_total_products_cancelled')->default(0);
-            $table->unsignedSmallInteger('avg_total_product_quantities_cancelled')->default(0);
-            $table->unsignedSmallInteger('avg_total_coupons_cancelled')->default(0);
 
             /*  Timestamps  */
             $table->timestamp('last_seen_at')->nullable();
@@ -117,6 +54,7 @@ class CreateUserStoreAssociationTable extends Migration
             /* Add Indexes */
             $table->index('user_id');
             $table->index('store_id');
+            $table->index('last_seen_at');
             $table->index('mobile_number');
             $table->index('follower_status');
             $table->index('team_member_role');

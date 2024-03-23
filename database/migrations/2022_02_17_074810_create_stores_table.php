@@ -73,8 +73,12 @@ class CreateStoresTable extends Migration
 
             /* Add Indexes */
             $table->index('name');
-            $table->index('mobile_number');
+            $table->index('created_at');
             $table->index('banking_with');
+            $table->index('mobile_number');
+            $table->index('last_subscription_end_at');
+
+
 
         });
     }

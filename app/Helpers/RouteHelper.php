@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Helpers\Routes;
+namespace App\Helpers;
 
 class RouteHelper
 {

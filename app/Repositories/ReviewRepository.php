@@ -142,7 +142,7 @@ class ReviewRepository extends BaseRepository
 
         }elseif(!empty($userId) || $filter == 'me') {
 
-            $userId = !empty($userId) ? $userId : auth()->user()->id;
+            $userId = !empty($userId) ? $userId : request()->auth_user->id;
 
             $reviews = $reviews->where('user_id', $userId);
 

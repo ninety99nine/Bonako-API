@@ -352,7 +352,7 @@ class ProductRepository extends BaseRepository
 
             $template = [
                 'name' => $name,
-                'user_id' => auth()->user()->id,
+                'user_id' => request()->auth_user->id,
                 'parent_product_id' => $this->model->id,
                 'store_id' => $this->model->store_id,
                 'created_at' => now(),

@@ -55,7 +55,7 @@ class FriendGroupResource extends BaseResource
         $userId = $this->chooseUser()->id;
 
         //  Check if this resource belongs to the authenticated
-        $isAuthUser = $userId == auth()->user()->id;
+        $isAuthUser = $userId == request()->auth_user->id;
 
         //  Auth user route name prefix
         $authUserPrefix = 'auth.user.friend.group.';

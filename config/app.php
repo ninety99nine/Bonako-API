@@ -14,6 +14,7 @@ return [
     | required or implemented by the Laravel Framework.
     |
     */
+    'TERMS_AND_CONDITIONS_REDIRECT_URL' => env('TERMS_AND_CONDITIONS_REDIRECT_URL'),
     'USSD_RESERVED_SHORTCODE_RANGE' => env('USSD_RESERVED_SHORTCODE_RANGE', 0),
     'ORANGE_MONEY_PUSH_PAYMENT_URL' => env('ORANGE_MONEY_PUSH_PAYMENT_URL'),
     'MOBILE_NUMBER_EXTENSION' => env('MOBILE_NUMBER_EXTENSION'),
@@ -28,6 +29,7 @@ return [
     'SMS_SENDER_NAME' => env('SMS_SENDER_NAME'),
     'SMS_CREDENTIALS' => env('SMS_CREDENTIALS'),
     'SMS_ENABLED' => env('SMS_ENABLED'),
+    'SMS_URL' => env('SMS_URL'),
 
     'OPENAI_API_TEMPERATURE' => env('OPENAI_API_TEMPERATURE'),
     'OPENAI_API_MAX_TOKENS' => env('OPENAI_API_MAX_TOKENS'),
@@ -40,7 +42,6 @@ return [
 
     'AWS_DEFAULT_REGION' => env('AWS_DEFAULT_REGION'),
     'AWS_BUCKET' => env('AWS_BUCKET'),
-
 
 
     /*
@@ -209,6 +210,7 @@ return [
         App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+        App\Providers\TelescopeServiceProvider::class,
 
     ])->toArray(),
 

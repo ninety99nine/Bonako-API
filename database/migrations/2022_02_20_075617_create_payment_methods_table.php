@@ -23,7 +23,7 @@ class CreatePaymentMethodsTable extends Migration
             $table->string('category');
             $table->string('description');
             $table->boolean('available_on_perfect_pay');
-            $table->boolean('available_on_stores');
+            $table->boolean('available_in_stores');
             $table->boolean('available_on_ussd');
             $table->boolean('active');
 
@@ -37,6 +37,10 @@ class CreatePaymentMethodsTable extends Migration
             $table->index('name');
             $table->index('method');
             $table->index('category');
+            $table->index('available_on_perfect_pay');
+            $table->index('available_in_stores');
+            $table->index('available_on_ussd');
+            $table->index('active');
 
         });
     }

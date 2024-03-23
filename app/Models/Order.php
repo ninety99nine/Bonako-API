@@ -144,7 +144,7 @@ class Order extends BaseModel
     public function scopeAuthAsCustomer($query)
     {
         //  Query orders where the current authenticated has been added as a customer
-        return $query->userAsCustomer(auth()->user()->id);
+        return $query->userAsCustomer(request()->auth_user->id);
     }
 
     /**
@@ -299,7 +299,7 @@ class Order extends BaseModel
     public function authUserOrderCollectionAssociation()
     {
         return $this->hasOne(UserOrderCollectionAssociation::class, 'order_id')
-                    ->where('user_id', auth()->user()->id);
+                    ->where('user_id', request()->auth_user->id);
     }
 
     /**

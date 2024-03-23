@@ -22,8 +22,8 @@ class Transaction extends BaseModel
 
     protected $casts = [
         'amount' => Money::class,
-        'is_verified' => 'boolean',
         'is_cancelled' => 'boolean',
+        'dpo_payment_url_expires_at' => 'datetime',
         'dpo_payment_response' => JsonToArray::class,
         'orange_money_payment_response' => JsonToArray::class,
     ];
@@ -52,7 +52,7 @@ class Transaction extends BaseModel
         'paid_by_user_id',
 
         /*  Verifier Information  */
-        'is_verified', 'verified_by', 'verified_by_user_id',
+        'verified_by', 'verified_by_user_id',
 
         /*  Requester Information  */
         'requested_by_user_id',
@@ -64,6 +64,22 @@ class Transaction extends BaseModel
         'owner_id', 'owner_type'
 
     ];
+
+    /****************************
+     *  SCOPES                  *
+     ***************************/
+
+
+
+    /*
+     *  Scope: Return stores that are being searched
+     */
+    public function scopeSearch($query, $searchWord)
+    {
+        return $query->whereHas('paidByUser', function ($paidByUser) use ($searchWord) {
+            $paidByUser->search($searchWord);
+        });
+    }
 
     public function scopePaid($query)
     {
@@ -77,7 +93,7 @@ class Transaction extends BaseModel
 
     public function scopeBelongsToAuth($query)
     {
-        return $query->where('paid_by_user_id', auth()->user()->id);
+        return $query->where('paid_by_user_id', request()->auth_user->id);
     }
 
     public function scopeCancelled($query)
@@ -170,6 +186,7 @@ class Transaction extends BaseModel
         'number', 'is_paid', 'is_pending_payment',
         'is_verified_by_user', 'is_verified_by_system',
         'is_subject_to_user_verification', 'is_subject_to_system_verification',
+        'dpo_payment_link_has_expired'
     ];
 
     public function getNumberAttribute()
@@ -236,4 +253,19 @@ class Transaction extends BaseModel
     {
         return strtolower($this->getRawOriginal('payment_status')) === 'paid' && strtolower($this->getRawOriginal('verified_by')) === 'system';
     }
+
+    public function getDpoPaymentLinkHasExpiredAttribute()
+    {
+        if( $this->dpo_payment_url ) {
+
+            return \Carbon\Carbon::parse($this->dpo_payment_url_expires_at)->isBefore(now());
+
+        }else{
+
+            return null;
+
+        }
+    }
+
+
 }

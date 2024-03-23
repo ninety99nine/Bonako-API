@@ -17,6 +17,11 @@ class AiMessage extends BaseModel
     const ASSISTANT_CONTENT_MIN_CHARACTERS = 2;
     const ASSISTANT_CONTENT_MAX_CHARACTERS = 2000;
 
+    protected $casts = [
+        'request_at' => 'datetime',
+        'response_at' => 'datetime',
+    ];
+
     protected $tranformableCasts = [];
 
     protected $fillable = [

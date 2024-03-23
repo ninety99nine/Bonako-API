@@ -30,6 +30,13 @@ class CreateSubscriptionPlansTable extends Migration
             $table->boolean('active')->default(false);
             $table->json('metadata');
 
+            /* Add Indexes */
+            $table->index('name');
+            $table->index('service');
+            $table->index('type');
+            $table->index('position');
+            $table->index('active');
+
             /*  Timestamps  */
             $table->timestamps();
 

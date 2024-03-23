@@ -5,6 +5,7 @@ namespace App\Services\Sms;
 use Exception;
 use App\Models\Store;
 use App\Models\SmsMessage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class SmsService
@@ -24,11 +25,15 @@ class SmsService
 
             if(config('app.SMS_ENABLED')) {
 
+                $storeProvided = false;
+
                 // If this sender name is an instance of a Store Model
                 if(($store = $senderName) instanceof Store) {
 
                     // If this store has a sender name
                     if(!empty($store->sms_sender_name)) {
+
+                        $storeProvided = true;
 
                         // Capture the store sender name
                         $senderName = $store->sms_sender_name;
@@ -60,23 +65,27 @@ class SmsService
 
                     $smsMessage = SmsMessage::create([
                         'content' => $content,
-                        'recipient_mobile_number' => $recipientMobileNumber,
+                        'sender_name' => $senderName,
+                        'recipient_mobile_number' => $recipientMobileNumber
                     ]);
+
+                    //  If the store is provided
+                    if($storeProvided) {
+
+                        //  Associate this sms message with the provided store
+                        DB::table('sms_message_store_association')->insert([
+                            'sms_message_id' => $smsMessage->id,
+                            'store_id' => $store->id,
+                            'updated_at' => now(),
+                            'created_at' => now(),
+                        ]);
+
+                    }
 
                     if($smsMessage) {
 
-                        /**
-                         *  Note the following:
-                         *
-                         *  To test sending sms using POSTMAN then replace "https://aas-bw.com.intraorange:443" with "https://aas.orange.co.bw:443".
-                         *  The "https://aas-bw.com.intraorange:443" domain is used to send SMS while the application is hosted on the Orange Server
-                         *  The "https://aas.orange.co.bw:443" domain is used to send SMS while the application is hosted outside the Orange Server
-                         *  such as on a local machine (Macbook, e.t.c) or POSTMAN. Since this application will be hosted on the Orange Server, we
-                         *  will use the "https://aas-bw.com.intraorange:443" domain.
-                         *
-                         *  Note that "tel:+" converts to "tel%3A%2B" after being encoded
-                         */
-                        $smsEndpoint = 'https://aas-bw.com.intraorange:443/smsmessaging/v1/outbound/tel%3A%2B'.$senderMobileNumber.'/requests';
+                        //  Note that "tel:+" converts to "tel%3A%2B" after being encoded
+                        $smsEndpoint = config('app.SMS_URL').'/smsmessaging/v1/outbound/tel%3A%2B'.$senderMobileNumber.'/requests';
 
                         /**
                          *  Sample Response:
@@ -129,7 +138,7 @@ class SmsService
                                 'senderAddress' => 'tel:+'.$senderMobileNumber,       //  Sender number that will be displayed if senderName is not included
                                 'senderName' => $senderName,                          //  Sender name e.g "Company XYZ"
                                 'outboundSMSTextMessage' => [
-                                    'message' => $smsMessage->content.' (mid: '.$smsMessage->id.')'
+                                    'message' => $smsMessage->content
                                 ],
                                 'clientCorrelator' => $smsMessage->id .'-'. time()
                             ]
@@ -196,7 +205,7 @@ class SmsService
              *  such as on a local machine (Macbook, e.t.c) or POSTMAN. Since this application will be hosted on the Orange Server, we
              *  will use the "https://aas-bw.com.intraorange:443" domain
              */
-            $tokenEndpoint = 'https://aas-bw.com.intraorange:443/token';
+            $tokenEndpoint = config('app.SMS_URL').'/token';
 
             /**
              *  Sample Response:

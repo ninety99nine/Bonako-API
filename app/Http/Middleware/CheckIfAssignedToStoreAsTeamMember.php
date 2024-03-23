@@ -22,7 +22,7 @@ class CheckIfAssignedToStoreAsTeamMember
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         if( $user->isAssignedToStoreAsTeamMember($request->store, $roles) ) {
 

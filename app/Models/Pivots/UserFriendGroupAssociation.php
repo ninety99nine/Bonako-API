@@ -2,6 +2,8 @@
 
 namespace App\Models\Pivots;
 
+use App\Models\User;
+use App\Models\Store;
 use App\Casts\MobileNumber;
 use App\Models\Base\BasePivot;
 use Illuminate\Database\Eloquent\Casts\Attribute;

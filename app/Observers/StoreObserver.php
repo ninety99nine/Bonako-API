@@ -2,6 +2,8 @@
 
 namespace App\Observers;
 
+use App\Enums\CacheName;
+use App\Helpers\CacheManager;
 use App\Models\User;
 use App\Models\Store;
 use App\Traits\Base\BaseTrait;
@@ -96,16 +98,6 @@ class StoreObserver
 
         //  Add this store as an sms alertable store
         $this->smsAlertRepository()->addSmsAlertableStore($this->chooseUser(), $store);
-
-        //  Notify the Super-Admins on this store creation
-        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::sendNow(
-            User::where('is_super_admin', '1')->get(),
-            new StoreCreated($store, auth()->user())
-        );
-
-        //  Send slack notification of created store
-        Log::channel('slack_stores')->info($store->name);
     }
 
     public function updated(Store $store)
@@ -128,7 +120,7 @@ class StoreObserver
         $teamMembers = $store->teamMembers()->joinedTeam()->get();
 
         //  Cache the team members for one minute before the store is deleted
-        Cache::put($this->getTeamMembersCacheName($store), $teamMembers, now()->addMinute());
+        (new CacheManager(CacheName::STORE_TEAM_MEMBERS))->append($store->id)->put($teamMembers, now()->addMinute());
     }
 
     public function deleted(Store $store)
@@ -143,15 +135,17 @@ class StoreObserver
         //  Expire active shortcodes
         $this->shortcodeRepository()->setModel($store->shortcodes())->expireShortcode();
 
+        //  Set the cache manager
+        $cacheManager = (new CacheManager(CacheName::STORE_TEAM_MEMBERS))->append($store->id);
+
         //  Retrieve the cached team members
-        $teamMembers = Cache::get($this->getTeamMembersCacheName($store));
+        $teamMembers = $cacheManager->get();
 
         //  Notify the team members on this store deletion
-        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::send($teamMembers, new StoreDeleted($store->id, $store->name_with_emoji, auth()->user()));
+        Notification::send($teamMembers, new StoreDeleted($store->id, $store->name_with_emoji, request()->auth_user));
 
-        // Remove the cached team members
-        Cache::forget($this->getTeamMembersCacheName($store));
+        // Forget the cached team members
+        $cacheManager->forget();
     }
 
     public function restored(Store $store)

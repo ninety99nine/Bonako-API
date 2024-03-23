@@ -2,6 +2,7 @@
 
 namespace App\Services\ShoppingCart;
 
+use App\Enums\CacheName;
 use stdClass;
 use Carbon\Carbon;
 use App\Models\Cart;
@@ -11,6 +12,7 @@ use App\Models\ProductLine;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Facades\Cache;
 use App\Exceptions\CartRequiresStoreException;
+use App\Helpers\CacheManager;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
@@ -61,7 +63,7 @@ class ShoppingCartService
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         //  Get the shopping store
         $this->store = request()->store;
@@ -92,18 +94,20 @@ class ShoppingCartService
         }else{
 
             //  Get the current authenticated user's id as the customer user id
-            $this->customerUserId = auth()->user()->id;
+            $this->customerUserId = request()->auth_user->id;
 
         }
 
         //  Check if this is an existing customer
-        $this->isExistingCustomer = $this->getIsCustomerStatusStoredInCache();
+        $this->isExistingCustomer = $this->getIsCustomerStatusCacheManager()->remember(now()->addMinutes(10), function () {
+            return $this->store->customers()->where('user_id', $this->customerUserId)->exists();
+        });
 
         //  Check if the shopping cart exists in memory
-        if( $this->hasShoppingCartStoredInCache() ) {
+        if( $this->getShoppingCartCacheManager()->has() ) {
 
             //  Get the shopping cart stored in memory (cached)
-            $this->existingCart = $this->getShoppingCartStoredInCache();
+            $this->existingCart = $this->getShoppingCartCacheManager()->get();
 
             //  If we have an existing cached cart
             if( $this->existingCart ) {
@@ -150,133 +154,33 @@ class ShoppingCartService
     }
 
     /**
-     *  Check if we have a shopping cart matching the user's
-     *  session id that is saved in memory
+     *  Get the shopping cart cache manager
+     *
+     *  @return CacheManager
      */
-    public function hasShoppingCartStoredInCache()
+    public function getShoppingCartCacheManager()
     {
-        return Cache::has($this->getShoppingCartCacheName());
-    }
+        $cacheManager = (new CacheManager(CacheName::SHOPPING_CART))->append($this->store->id)->append(request()->auth_user->id);
 
-    /**
-     *  Get the shopping cart matching the user's
-     *  session id that is saved in memory
-     */
-    public function getShoppingCartStoredInCache()
-    {
-        return Cache::get($this->getShoppingCartCacheName());
-    }
+        //  If the authenticated user is not the same customer shopping i.e the team member is shopping for the customer
+        if( request()->auth_user->id != $this->customerUserId ) {
 
-    /**
-     *  Save the shopping cart to memory using the
-     *  provided session id. Save the shopping cart
-     *  for only 10 minutes.
-     */
-    public function saveShoppingCartToCache($shoppingCart)
-    {
-        //  Cache the shopping cart for exactly 10 minutes
-        Cache::put($this->getShoppingCartCacheName(), $shoppingCart, $this->getCacheDatetimeToExpiry());
-    }
-
-    /**
-     *  Generate the shopping cart cache name
-     *
-     *  (1) If the current auth user is the customer
-     *      $cacheName = "SHOPPING_CART_10_1_000001"
-     *
-     *      SHOPPING_CART_ [ store id ] _ [ auth user id ] _ [ session id (optional) ]
-     *
-     *  OR
-     *
-     *  (2) If the current auth user is not the customer
-     *      $cacheName = "SHOPPING_CART_10_1_2_000001"
-     *
-     *      SHOPPING_CART_ [ store id ] _ [ auth user id ] _ [ customer user id ] _ [ session id (optional) ]
-     *
-     *  Looking at scenerio (2), this convention means that we want
-     *  to search for a shopping cart created for the store with
-     *  id "10" by the user with id "1" accessing a shopping cart
-     *  belonging to a customer whose user id is equal to "2"
-     *  and session id equal to "000001"
-     */
-    public function getShoppingCartCacheName()
-    {
-        //  Determine the cache name from the authenticated user and customer id
-        $cacheName = 'SHOPPING_CART_'.$this->store->id.'_'.auth()->user()->id;
-
-        //  If the authenticated user is not the same customer shopping
-        if( auth()->user()->id != $this->customerUserId ) {
-
-            //  Attach the custom user id
-            $cacheName .= '_'.$this->customerUserId;;
+            //  Append the custom user id
+            $cacheManager->append($this->customerUserId);
 
         }
 
-        /**
-         *  If the session id is provided (Usually by the USSD server),
-         *  then we can include it as part of the cache name so that
-         *  we distinguish shopping carts of different sessions.
-         *
-         *  Note that the session id can be provided by Mobile or
-         *  Web apps but is not necessary. Its more useful in the
-         *  case of USSD based requests.
-         *
-         *  Consider the user starts a new session e.g session 000001 and
-         *  selects products while on this session but does not checkout.
-         *  Now consider that the user returns after a couple of minutes
-         *  but this time using a different session. This will therefore
-         *  return a fresh cart for that session e.g 000002 instead of
-         *  the pervious cart intended for session 000001. This may or
-         *  may not be desired, therefore we can put logic that checks
-         *  the existence of a previously cached cart and request the
-         *  user to choose whether to continue shopping with the old
-         *  cart (particularly if it already has products selected)
-         *  or just start from scratch with a fresh cart.
-         */
-        if( request()->filled('session_id') ) {
-
-            //  Combine the session id with the cache name
-            $cacheName .= '_'.request()->input('session_id');
-
-        }
-
-        //  Return the cache name
-        return $cacheName;
+        return $cacheManager;
     }
 
     /**
-     *  Get the store customer status by searching
-     *  in the cache or searching in the database
+     *  Get the "is customer status" cache manager
      *
-     *  @return bool
+     *  @return CacheManager
      */
-    public function getIsCustomerStatusStoredInCache()
+    public function getIsCustomerStatusCacheManager()
     {
-        return Cache::remember($this->getIsCustomerStatusCacheName(), $this->getCacheDatetimeToExpiry(), function () {
-            return $this->store->customers()->where('user_id', $this->customerUserId)->exists();
-        });
-    }
-
-    /**
-     *  Generate the "is customer status" cache name
-     *
-     *  e.g "IS_CUSTOMER_STATUS_10_1"
-     *
-     *  @return string
-     */
-    public function getIsCustomerStatusCacheName()
-    {
-        return 'IS_CUSTOMER_STATUS_'.$this->store->id.'_'.$this->customerUserId;
-    }
-
-    /**
-     *  Get the cache datetime to expiry
-     *
-     *  @return \Illuminate\Support\Carbon
-     */
-    public function getCacheDatetimeToExpiry()
-    {
-        return now()->addMinutes(10);
+        return (new CacheManager(CacheName::IS_CUSTOMER_STATUS))->append($this->store->id)->append($this->customerUserId);
     }
 
     /**
@@ -287,10 +191,10 @@ class ShoppingCartService
     public function forgetCache()
     {
         //  Forget the shopping cart
-        Cache::forget($this->getShoppingCartCacheName());
+        $this->getShoppingCartCacheManager()->forget();
 
         //  Forget the customer existence status
-        Cache::forget($this->getIsCustomerStatusCacheName());
+        $this->getIsCustomerStatusCacheManager()->forget();
 
         //  Return the current shopping cart service instance
         return $this;
@@ -461,8 +365,8 @@ class ShoppingCartService
             'couponLines' => $this->specifiedCouponLines
         ]);
 
-        //  Save the shopping cart to cache
-        $this->saveShoppingCartToCache($shoppingCart);
+        //  Cache the shopping cart for exactly 10 minutes
+        $this->getShoppingCartCacheManager()->put($shoppingCart, now()->addMinutes(10));
 
         //  Return the shopping cart
         return $shoppingCart;

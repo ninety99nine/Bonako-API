@@ -9,7 +9,7 @@ use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Notifications\Notification;
 
-class OrderNotification extends Notification
+class OrderNotification extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 

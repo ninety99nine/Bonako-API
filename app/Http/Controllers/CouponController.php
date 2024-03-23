@@ -19,21 +19,21 @@ class CouponController extends BaseController
 
     public function show(Store $store, Coupon $coupon)
     {
-        return response($this->repository->setModel($coupon)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($coupon));
     }
 
     public function update(UpdateCouponRequest $request, Store $store, Coupon $coupon)
     {
-        return response($this->repository->setModel($coupon)->update($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($coupon)->update($request));
     }
 
     public function confirmDelete(Store $store, Coupon $coupon)
     {
-        return response($this->repository->setModel($coupon)->generateDeleteConfirmationCode(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($coupon)->generateDeleteConfirmationCode());
     }
 
     public function delete(Store $store, Coupon $coupon)
     {
-        return response($this->repository->setModel($coupon)->delete(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($coupon)->delete());
     }
 }

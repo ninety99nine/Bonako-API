@@ -2,21 +2,21 @@
 
 namespace App\Traits;
 
-use App\Exceptions\XPlatformHeaderRequiredException;
 use Exception;
 use App\Models\Order;
 use App\Models\Store;
 use App\Models\Product;
+use App\Enums\CacheName;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Helpers\CacheManager;
 use App\Traits\Base\BaseTrait;
-use Illuminate\Support\Facades\Cache;
+use App\Helpers\PlatformManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Pivots\UserStoreAssociation;
-use App\Models\Transaction;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Exceptions\XPlatformHeaderRequiredException;
 
 trait UserTrait
 {
@@ -50,14 +50,13 @@ trait UserTrait
             'last_seen_at' => $now
         ];
 
-        //  Check the platform e.g Web, Ussd or Mobile
-        $platform = strtolower(request()->header('X-Platform'));
+        $platformManager = new PlatformManager;
 
-        if( $platform === 'web' ) {
+        if( $platformManager->isWeb() ) {
             $data['last_seen_on_web_app_at'] = $now;
-        }else if( $platform === 'ussd' ) {
+        }else if( $platformManager->isUssd() ) {
             $data['last_seen_on_ussd_at'] = $now;
-        }else if( $platform === 'mobile' ) {
+        }else if( $platformManager->isMobile() ) {
             $data['last_seen_on_mobile_app_at'] = $now;
         }else{
             throw new XPlatformHeaderRequiredException;
@@ -153,39 +152,39 @@ trait UserTrait
     public function hasStorePermission(?Model $model, string $permission)
     {
         //  Initialise the store
-        $store_id = null;
+        $storeId = null;
 
         //  If we have the store as the model
         if( $model instanceof Store ) {
 
             //  Get the store id
-            $store_id = $model->id;
+            $storeId = $model->id;
 
         //  If we have the order as the model
         }elseif( $model instanceof Order ) {
 
             //  Get the order store id
-            $store_id = $model->store_id;
+            $storeId = $model->store_id;
 
         //  If we have the product as the model
         }elseif( $model instanceof Product ) {
 
             //  Get the product store id
-            $store_id = $model->store_id;
+            $storeId = $model->store_id;
 
         }
 
         //  If we have the store id
-        if($store_id) {
+        if($storeId) {
 
             //  Check if we have the permissions stored in cache memory
-            $hasPermissions = $this->getHasStorePermissionFromCache($store_id, $permission);
+            $hasPermissions = $this->getHasStorePermissionFromCache($storeId, $permission);
 
             //  If the permissions are not stored in cache memory
             if( $hasPermissions == null ) {
 
                 //  Get the matching store
-                if( $store = $this->storesAsTeamMember()->joinedTeam()->where('store_id', $store_id)->first() ) {
+                if( $store = $this->storesAsTeamMember()->joinedTeam()->where('store_id', $storeId)->first() ) {
 
                     //  Check if the user has the given permissions on the store
                     $hasPermissions = collect($store->user_store_association->team_member_permissions)->contains(function($teamMemberPermission) use ($permission) {
@@ -205,7 +204,7 @@ trait UserTrait
              *  the cache value already exists, then overide to extend the
              *  time to expiry.
              */
-            $this->addHasStorePermissionIntoCache($store_id, $permission, $hasPermissions);
+            $this->addHasStorePermissionIntoCache($storeId, $permission, $hasPermissions);
 
             return $hasPermissions;
 
@@ -217,18 +216,17 @@ trait UserTrait
     }
 
     /**
-     *  Check if the current authenticated user has the given permissions on the store
-     *  by checking the cache
+     *  Check if the current authenticated user has the given permissions
+     *  on the store by checking the cache
      *
-     *  @param int $model
+     *  @param int $storeId
      *  @param string $permission
      *
      *  @return bool
      */
-    public function getHasStorePermissionFromCache($store_id, $permission)
+    public function getHasStorePermissionFromCache($storeId, $permission)
     {
-        $key = $this->getHasStorePermissionCacheName($store_id, $permission);
-        return Cache::get($key);
+        return $this->hasStorePermissionCacheManager($storeId, $permission)->get();
     }
 
     /**
@@ -236,52 +234,39 @@ trait UserTrait
      *  has the given permissions on the store. This cache value is valid
      *  for one day.
      *
-     *  @param int $model
+     *  @param int $storeId
      *  @param string $permission
      *  @param boolean $status
      *
      *  @return bool
      */
-    public function addHasStorePermissionIntoCache($store_id, $permission, $status)
+    public function addHasStorePermissionIntoCache($storeId, $permission, $status)
     {
-        $key = $this->getHasStorePermissionCacheName($store_id, $permission);
-        return Cache::put($key, $status, now()->addDay());
+        return $this->hasStorePermissionCacheManager($storeId, $permission)->put($status, now()->addDay());
     }
 
     /**
      *  Remove the cache value which shows that the current authenticated user
      *  has the given permissions on the store
      *
-     *  @param int $model
+     *  @param int $storeId
      *  @param string $permission
      *
      *  @return bool
      */
-    public function removeHasStorePermissionFromCache($store_id, $permission)
+    public function removeHasStorePermissionFromCache($storeId, $permission)
     {
-        $key = $this->getHasStorePermissionCacheName($store_id, $permission);
-        return Cache::forget($key);
+        return $this->hasStorePermissionCacheManager($storeId, $permission)->forget();
     }
 
     /**
-     *  Check if the current authenticated user has the given permissions on the store
-     *  by checking the cache
+     *  Get the has store permission cache manager
      *
-     *  @param int $model
-     *  @param string $permission
-     *
-     *  @return bool
+     *  @return CacheManager
      */
-    public function getHasStorePermissionCacheName($store_id, $permission)
+    public function hasStorePermissionCacheManager($storeId, $permission)
     {
-        /**
-         *  If the $store_id is equal to "5" and the authenticated user's id
-         *  is equal to "1", then the returned result must be
-         *  "PERMISSION_TO_MANAGE_ORDERS_5_1"
-         */
-        $permission = strtoupper(str_replace(' ', '_', $permission));
-
-        return 'PERMISSION_TO_'.$permission.'_'.$store_id.'_'.auth()->user()->id;
+        (new CacheManager(CacheName::HAS_STORE_PERMISSION))->append($permission)->append($storeId)->append(request()->auth_user->id);
     }
 
     /**

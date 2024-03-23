@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Models\Address;
 use App\Models\AiMessage;
 use App\Enums\AccessToken;
+use App\Enums\CacheName;
+use Illuminate\Support\Str;
 use App\Enums\CanSaveChanges;
 use App\Models\FriendGroup;
 use Illuminate\Http\Request;
@@ -22,6 +24,9 @@ use App\Repositories\FriendGroupRepository;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Notifications\DatabaseNotification;
 use App\Exceptions\DeleteOfSuperAdminRestrictedException;
+use App\Helpers\CacheManager;
+use App\Helpers\RequestAuthUser;
+use App\Jobs\SendSms;
 use App\Models\AiAssistant;
 use App\Models\Order;
 use App\Models\Review;
@@ -46,7 +51,7 @@ class UserRepository extends BaseRepository
      */
     public function getAuthUser()
     {
-        return auth()->user();
+        return request()->auth_user;
     }
 
     /**
@@ -74,7 +79,7 @@ class UserRepository extends BaseRepository
      */
     public function getGuestUserId()
     {
-        return Cache::rememberForever('GUEST_USER_ID', function () {
+        return (new CacheManager(CacheName::GUEST_USER_ID))->rememberForever(function () {
             return $this->getGuestUser()->id;
         });
     }
@@ -86,7 +91,7 @@ class UserRepository extends BaseRepository
      */
     public function getGuestUser()
     {
-        return Cache::rememberForever('GUEST_USER', function () {
+        return (new CacheManager(CacheName::GUEST_USER))->rememberForever(function () {
             $guestUser = User::where('is_guest', '1')->first();
             return $guestUser ? $guestUser : $this->createGuestUser();
         });
@@ -351,7 +356,7 @@ class UserRepository extends BaseRepository
      *  @param Request $request
      *  @return UserResource
      */
-    public function create($request)
+    public function createUser($request)
     {
         return $this->authRepository()->register($request, AccessToken::DO_NOT_RETURN_ACCESS_TOKEN);
     }
@@ -377,6 +382,20 @@ class UserRepository extends BaseRepository
 
         //  Update existing account
         parent::update($data);
+
+        /**
+         *  Incase this user is currently logged in and their account details have been cached,
+         *  we would need to clear their cached account details by acquiring this access tokens
+         *  and then forgetting any account details cached using the bearer tokens of these
+         *  access tokens.
+         */
+        $accessTokens = $this->model->tokens();
+
+        foreach($accessTokens as $accessToken) {
+
+            (new RequestAuthUser())->forgetAuthUserOnCacheUsingAccessToken($accessToken);
+
+        }
 
         /**
          *  When updating the user's mobile number, the user must provide the
@@ -1623,7 +1642,7 @@ class UserRepository extends BaseRepository
         ]);
 
         // Send sms to user that their subscription was paid successfully
-        SmsService::sendOrangeSms(
+        SendSms::dispatch(
             $subscription->craftSubscriptionSuccessfulSmsMessageForUser($user, $aiAssistant),
             $user->mobile_number->withExtension,
             null, null, null
@@ -1833,7 +1852,7 @@ class UserRepository extends BaseRepository
         $transaction = $transactionRepository->model;
 
         // Send sms to user that their transaction was paid successfully
-        SmsService::sendOrangeSms(
+        SendSms::dispatch(
             $smsAlert->craftSmsAlertsPaidSuccessfullyMessage($smsCredits, $transaction),
             $this->getUser()->mobile_number->withExtension,
             null, null, null
@@ -1909,58 +1928,170 @@ class UserRepository extends BaseRepository
      */
     public function showResourceTotals()
     {
-        //  Get the SMS Alert information for the user
-        $smsAlert = $this->showSmsAlert()->model;
+        $data = [];
+        $userId = $this->getUser()->id;
+        $expiryAt = now()->addHour();
 
-        $totalSmsAlertCredits = $smsAlert->sms_credits;
-        $totalReviews = $this->getUser()->reviews()->count();
-        $totalReviewsAsTeamMember = Review::whereHas('store.teamMembers', function ($query) {
-            $query->joinedTeam()->where('user_store_association.user_id', $this->getUser()->id);
-        })->count();
-        $totalNotifications = $this->getUser()->notifications()->count();
-        $totalOrdersAsCustomer = $this->getUser()->ordersAsCustomer()->count();
-        $totalUnreadNotifications = $this->getUser()->notifications()->unread()->count();
-        $totalOrdersAsTeamMember = Order::whereHas('store.teamMembers', function ($query) {
-            $query->joinedTeam();
-        })->count();
-        $totalOrdersAsCustomerOrFriend = $this->getUser()->ordersAsCustomerOrFriend()->count();
+        $includedResourceTotals = collect(explode(',', request()->input('_include_resource_totals')))->map(function($field) {
+            return Str::camel(trim($field));
+        })->filter()->toArray();
 
-        $totalGroupsJoined = $this->getUser()->friendGroups()->joinedGroup()->count();
-        $totalGroupsJoinedAsCreator = $this->getUser()->friendGroups()->joinedGroupAsCreator()->count();
-        $totalGroupsJoinedAsNonCreator = $this->getUser()->friendGroups()->joinedGroupAsNonCreator()->count();
-        $totalGroupsInvitedToJoinAsGroupMember = $this->getUser()->friendGroups()->invitedToJoinGroup()->count();
+        if(in_array('totalSmsAlertCredits', $includedResourceTotals) || empty($includedResourceTotals)) {
 
-        $totalStoresAsFollower = $this->getUser()->storesAsFollower()->count();
-        $totalStoresAsCustomer = $this->getUser()->storesAsCustomer()->count();
-        $totalStoresAsRecentVisitor = $this->getUser()->storesAsRecentVisitor()->count();
+            $data['totalSmsAlertCredits'] = (new CacheManager(CacheName::TOTAL_SMS_ALERT_CREDITS))->append($userId)->remember($expiryAt, function() {
+                $smsAlert = $this->showSmsAlert()->model;
+                return $smsAlert->sms_credits;
+            });
 
-        $totalStoresJoinedAsTeamMember = $this->getUser()->storesAsTeamMember()->joinedTeam()->count();
-        $totalStoresJoinedAsCreator = $this->getUser()->storesAsTeamMember()->joinedTeamAsCreator()->count();
-        $totalStoresJoinedAsNonCreator = $this->getUser()->storesAsTeamMember()->joinedTeamAsNonCreator()->count();
-        $totalStoresInvitedToJoinAsTeamMember = $this->getUser()->storesAsTeamMember()->invitedToJoinTeam()->count();
+        }
 
-        return [
-            'totalReviews' => $totalReviews,
-            'totalNotifications' => $totalNotifications,
-            'totalSmsAlertCredits' => $totalSmsAlertCredits,
-            'totalOrdersAsCustomer' => $totalOrdersAsCustomer,
-            'totalStoresAsFollower' => $totalStoresAsFollower,
-            'totalStoresAsCustomer' => $totalStoresAsCustomer,
-            'totalOrdersAsTeamMember' => $totalOrdersAsTeamMember,
-            'totalUnreadNotifications' => $totalUnreadNotifications,
-            'totalReviewsAsTeamMember' => $totalReviewsAsTeamMember,
-            'totalOrdersAsCustomerOrFriend' => $totalOrdersAsCustomerOrFriend,
+        if(in_array('totalNotifications', $includedResourceTotals) || empty($includedResourceTotals)) {
 
-            'totalGroupsJoined' => $totalGroupsJoined,
-            'totalGroupsJoinedAsCreator' => $totalGroupsJoinedAsCreator,
-            'totalGroupsJoinedAsNonCreator' => $totalGroupsJoinedAsNonCreator,
-            'totalGroupsInvitedToJoinAsGroupMember' => $totalGroupsInvitedToJoinAsGroupMember,
+            $data['totalNotifications'] = (new CacheManager(CacheName::TOTAL_NOTIFICATIONS))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->notifications()->count();
+            });
 
-            'totalStoresJoinedAsCreator' => $totalStoresJoinedAsCreator,
-            'totalStoresAsRecentVisitor' => $totalStoresAsRecentVisitor,
-            'totalStoresJoinedAsTeamMember' => $totalStoresJoinedAsTeamMember,
-            'totalStoresJoinedAsNonCreator' => $totalStoresJoinedAsNonCreator,
-            'totalStoresInvitedToJoinAsTeamMember' => $totalStoresInvitedToJoinAsTeamMember,
-        ];
+        }
+
+        if(in_array('totalUnreadNotifications', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalUnreadNotifications'] = (new CacheManager(CacheName::TOTAL_UNREAD_NOTIFICATIONS))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->notifications()->unread()->count();
+            });
+
+        }
+
+        if(in_array('totalReviews', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalReviews'] = (new CacheManager(CacheName::TOTAL_REVIEWS))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->reviews()->count();
+            });
+        }
+
+        if(in_array('totalReviewsAsTeamMember', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalReviewsAsTeamMember'] = (new CacheManager(CacheName::TOTAL_REVIEWS_AS_TEAM_MEMBER))->append($userId)->remember($expiryAt, function() {
+                return Review::whereHas('store.teamMembers', function ($query) {
+                    $query->joinedTeam()->where('user_store_association.user_id', $this->getUser()->id);
+                })->count();
+            });
+
+        }
+
+        if(in_array('totalOrdersAsCustomer', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalOrdersAsCustomer'] = (new CacheManager(CacheName::TOTAL_ORDERS_AS_CUSTOMER))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->ordersAsCustomer()->count();
+            });
+
+        }
+
+        if(in_array('totalOrdersAsTeamMember', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalOrdersAsTeamMember'] = (new CacheManager(CacheName::TOTAL_ORDERS_AS_TEAM_MEMBER))->append($userId)->remember($expiryAt, function() {
+                return Order::whereHas('store.teamMembers', function ($query) {
+                    $query->joinedTeam();
+                })->count();
+            });
+
+        }
+
+        if(in_array('totalOrdersAsCustomerOrFriend', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalOrdersAsCustomerOrFriend'] = (new CacheManager(CacheName::TOTAL_ORDERS_AS_CUSTOMER_OR_FRIEND))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->ordersAsCustomerOrFriend()->count();
+            });
+
+        }
+
+        if(in_array('totalGroupsJoined', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalGroupsJoined'] = (new CacheManager(CacheName::TOTAL_GROUPS_JOINED))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->friendGroups()->joinedGroup()->count();
+            });
+
+        }
+
+        if(in_array('totalGroupsJoinedAsCreator', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalGroupsJoinedAsCreator'] = (new CacheManager(CacheName::TOTAL_GROUPS_JOINED_AS_CREATOR))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->friendGroups()->joinedGroupAsCreator()->count();
+            });
+
+        }
+
+        if(in_array('totalGroupsJoinedAsNonCreator', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalGroupsJoinedAsNonCreator'] = (new CacheManager(CacheName::TOTAL_GROUPS_JOINED_AS_NON_CREATOR))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->friendGroups()->joinedGroupAsNonCreator()->count();
+            });
+
+        }
+
+        if(in_array('totalGroupsInvitedToJoinAsGroupMember', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalGroupsInvitedToJoinAsGroupMember'] = (new CacheManager(CacheName::TOTAL_GROUPS_INVITED_TO_JOIN_AS_GROUP_MEMBER))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->friendGroups()->invitedToJoinGroup()->count();
+            });
+
+        }
+
+        if(in_array('totalStoresAsFollower', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalStoresAsFollower'] = (new CacheManager(CacheName::TOTAL_STORES_AS_FOLLOWER))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->storesAsFollower()->count();
+            });
+
+        }
+
+        if(in_array('totalStoresAsCustomer', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalStoresAsCustomer'] = (new CacheManager(CacheName::TOTAL_STORES_AS_CUSTOMER))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->storesAsCustomer()->count();
+            });
+
+        }
+
+        if(in_array('totalStoresAsRecentVisitor', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalStoresAsRecentVisitor'] = (new CacheManager(CacheName::TOTAL_STORES_AS_RECENT_VISITOR))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->storesAsRecentVisitor()->count();
+            });
+
+        }
+
+        if(in_array('totalStoresJoinedAsTeamMember', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalStoresJoinedAsTeamMember'] = (new CacheManager(CacheName::TOTAL_STORES_JOINED_AS_TEAM_MEMBER))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->storesAsTeamMember()->joinedTeam()->count();
+            });
+
+        }
+
+        if(in_array('totalStoresJoinedAsCreator', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalStoresJoinedAsCreator'] = (new CacheManager(CacheName::TOTAL_STORES_JOINED_AS_CREATOR))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->storesAsTeamMember()->joinedTeamAsCreator()->count();
+            });
+
+        }
+
+        if(in_array('totalStoresJoinedAsNonCreator', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalStoresJoinedAsCreator'] = (new CacheManager(CacheName::TOTAL_STORES_JOINED_AS_NON_CREATOR))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->storesAsTeamMember()->joinedTeamAsNonCreator()->count();
+            });
+
+        }
+
+        if(in_array('totalStoresInvitedToJoinAsTeamMember', $includedResourceTotals) || empty($includedResourceTotals)) {
+
+            $data['totalStoresInvitedToJoinAsTeamMember'] = (new CacheManager(CacheName::TOTAL_STORES_INVITED_TO_JOIN_AS_TEAM_MEMBER))->append($userId)->remember($expiryAt, function() {
+                return $this->getUser()->storesAsTeamMember()->invitedToJoinTeam()->count();
+            });
+
+        }
+
+        return $data;
     }
 }

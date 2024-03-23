@@ -16,7 +16,9 @@ class Subscription extends BaseModel
     ];
 
     protected $casts = [
-        'active' => 'boolean'
+        'active' => 'boolean',
+        'end_at' => 'datetime',
+        'start_at' => 'datetime',
     ];
 
     protected $tranformableCasts = [];
@@ -31,6 +33,24 @@ class Subscription extends BaseModel
 
     ];
 
+    /*
+     *  Scope: Return subscriptions that are being searched
+     *
+     *  1. We always search on the User model.
+     *  2. We always search on the Store model.
+     *  3. We never search on SmsAlert or AiAssistant models.
+     */
+    public function scopeSearch($query, $searchWord)
+    {
+        return $query->whereHas('user', function ($user) use ($searchWord) {
+                $user->search($searchWord);
+            })->orWhere(function ($query) use ($searchWord) {
+                $query->whereHasMorph('owner', [Store::class], function ($storeQuery) use ($searchWord) {
+                    $storeQuery->searchName($searchWord);
+                });
+            });
+    }
+
     public function scopeExpired($query)
     {
         return $query->where('end_at', '<=', Carbon::now());
@@ -43,7 +63,7 @@ class Subscription extends BaseModel
 
     public function scopeBelongsToAuth($query)
     {
-        return $query->where('user_id', auth()->user()->id);
+        return $query->where('user_id', request()->auth_user->id);
     }
 
     /****************************
@@ -59,9 +79,9 @@ class Subscription extends BaseModel
     }
 
     /**
-     *  Returns the associated subscriber
+     *  Returns the associated user
      */
-    public function subscriber()
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
@@ -75,19 +95,19 @@ class Subscription extends BaseModel
     }
 
     /**
-     *  Returns the latest payment shortcode owned by this subscription
-     */
-    public function activePaymentShortcode()
-    {
-        return $this->morphOne(Shortcode::class, 'owner')->notExpired()->latest();
-    }
-
-    /**
      *  Returns the associated transaction owned by this subscription
      */
     public function transaction()
     {
         return $this->morphOne(Transaction::class, 'owner');
+    }
+
+    /**
+     *  Returns the latest payment shortcode owned by this subscription
+     */
+    public function activePaymentShortcode()
+    {
+        return $this->morphOne(Shortcode::class, 'owner')->notExpired()->latest();
     }
 
     /****************************

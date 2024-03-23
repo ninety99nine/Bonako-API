@@ -43,7 +43,6 @@ class CreateTransactionsTable extends Migration
             $table->foreignId('paid_by_user_id')->nullable();
 
             /*  Verifier Information  */
-            $table->boolean('is_verified')->default(false);
             $table->enum('verified_by', Transaction::VERIFIERS);
             $table->foreignId('verified_by_user_id')->nullable();
 

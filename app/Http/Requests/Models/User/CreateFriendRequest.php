@@ -32,8 +32,12 @@ class CreateFriendRequest extends FormRequest
         //  If the request did not provide a user
         }else{
 
-            //  Get this authenticated user
-            $user = auth()->user();
+            /**
+             *  Get this authenticated user
+             *
+             *  @var User $user
+             */
+            $user = request()->auth_user;
 
         }
 

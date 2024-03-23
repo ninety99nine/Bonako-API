@@ -16,11 +16,11 @@ class AiMessageCategoryController extends BaseController
 
     public function showAiMessageCategories()
     {
-        return response($this->repository->showAiMessageCategories()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showAiMessageCategories());
     }
 
     public function showAiMessageCategory(AiMessageCategory $aiMessageCategory)
     {
-        return response($this->repository->setModel($aiMessageCategory)->showAiMessageCategory()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($aiMessageCategory)->showAiMessageCategory());
     }
 }

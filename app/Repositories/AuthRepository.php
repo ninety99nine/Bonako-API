@@ -4,14 +4,20 @@ namespace App\Repositories;
 
 use Carbon\Carbon;
 use App\Models\User;
+use App\Jobs\SendSms;
+use App\Enums\CacheName;
 use App\Enums\AccessToken;
 use App\Events\LoginSuccess;
 use Illuminate\Http\Request;
+use App\Helpers\CacheManager;
 use App\Traits\Base\BaseTrait;
+use App\Helpers\RequestAuthUser;
+use App\Services\Sms\SmsService;
 use App\Models\MobileVerification;
 use App\Services\Ussd\UssdService;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Resources\UserResource;
+use App\Http\Resources\CustomResource;
 use Illuminate\Validation\ValidationException;
 use App\Exceptions\ResetPasswordFailedException;
 use App\Exceptions\UpdatePasswordFailedException;
@@ -33,23 +39,36 @@ class AuthRepository extends BaseRepository
         //  Run the base constructor
         parent::__construct();
 
-        //  If the user is authenticated
-        if(auth()->check()) {
-
-            //  Set the authenticated user as the model
-            $this->setModel( $this->getAuthUser() );
-
-        }
+        //  Set the authenticated user as the model
+        $this->setModel( $this->getAuthUser() );
     }
 
     /**
-     *  Return the current authenticated user
+     *  Return the current authenticated user.
      *
-     *  @return User - Current authenticated user
+     *  This user may or may not be available e.g When logging in, its possible that
+     *  the user may not be available, however when registering the user may be
+     *  available e.g Super Admin creating an account on behalf of another user
+     *
+     *  @return User|null - Current authenticated user
      */
     public function getAuthUser()
     {
-        return auth()->user();
+        return request()->auth_user;
+    }
+
+    /**
+     *  Check if the current authenticated user exists
+     *
+     *  This user may or may not be available e.g When logging in, its possible that
+     *  the user may not be available, however when registering the user may be
+     *  available e.g Super Admin creating an account on behalf of another user
+     *
+     *  @return bool
+     */
+    public function hasAuthUser()
+    {
+        return request()->auth_user_exists;
     }
 
     /**
@@ -67,7 +86,7 @@ class AuthRepository extends BaseRepository
      */
     public function login(Request $request)
     {
-        //  Set matching user
+        //  Set the user matching the given mobile number
         $this->setModel($this->getUserFromMobileNumber());
 
         //  If the request is coming from the Ussd server then we do not need to verify the password
@@ -152,7 +171,7 @@ class AuthRepository extends BaseRepository
          *  authenticated user so that we can capture information
          *  about this user performing this action.
          */
-        if(auth()->check()) {
+        if($this->hasAuthUser()) {
 
             //  Set the user id of the authenticated user
             $request->merge(['registered_by_user_id' => $this->getAuthUser()->id]);
@@ -175,19 +194,47 @@ class AuthRepository extends BaseRepository
          */
         $this->revokeRequestMobileVerificationCode($request);
 
-        // If we should return the access token
+        /**
+         *  If we should return the access token.
+         *  -------------------------------------
+         *  This is applicable for cases when someone is creating
+         *  an account themselves and therefore needs the access
+         *  token to use as a means of authenticating further
+         *  requests
+         */
         if ($withAccessToken == AccessToken::RETURN_ACCESS_TOKEN) {
 
             // Return the user account and access token
-            return $this->getUserAndAccessToken();
+            $result = $this->getUserAndAccessToken();
 
-        // If we should not return the access token
+        /**
+         *  If we should not return the access token.
+         *  -----------------------------------------
+         *  This is applicable for cases when a user e.g Super Admin
+         *  is creating an account on behalf of another user and
+         *  therefore does not require the access token since
+         *  this would not be useful to this user.
+         */
         } else {
 
             // Return the user account only
-            return $this->transform();
+            $result = $this->transform();
 
         }
+
+        /**
+         *  @var User $createdUser
+         */
+        $createdUser = $this->model;
+
+        // Send sms to user that their account was created
+        SendSms::dispatch(
+            $createdUser->craftAccountCreatedSmsMessageForUser(),
+            $createdUser->mobile_number->withExtension,
+            null, null, null
+        );
+
+        return $result;
     }
 
     /**
@@ -204,13 +251,13 @@ class AuthRepository extends BaseRepository
             ],
         ];
 
-        return [
+        return new CustomResource([
             'title' => 'Terms & Conditions',
             'instruction' => 'Accept the following terms of service to continue using Perfect Order services',
             'confirmation' => 'I agree and accept these terms of service by proceeding to use this service.',
             'button' => 'Accept',
             'items' => $items
-        ];
+        ]);
     }
 
     /**
@@ -240,7 +287,9 @@ class AuthRepository extends BaseRepository
 
         }
 
-        return ['message' => 'Terms and conditions accepted successfully'];
+        return [
+            'message' => 'Terms and conditions accepted successfully'
+        ];
     }
 
     /**
@@ -256,7 +305,7 @@ class AuthRepository extends BaseRepository
         //  Get the user tokens
         $tokens = $this->model->tokens;
 
-        //  Get the user tokens
+        //  Get the user tokens with limited information
         $tranformedTokens = collect($tokens)->map(fn($token) => $token->only(['name', 'last_used_at', 'created_at']))->toArray();
 
         return [
@@ -271,13 +320,14 @@ class AuthRepository extends BaseRepository
      */
     public function accountExists()
     {
+        //  Set the user matching the given mobile number
         $user = $this->getUserFromMobileNumber();
 
         //  Return user account
-        return [
+        return new CustomResource([
             'exists' => !is_null($user),
             'accountSummary' => $user ? collect($user)->only(['mobile_number', 'requires_password']) : null
-        ];
+        ]);
     }
 
     /**
@@ -289,7 +339,7 @@ class AuthRepository extends BaseRepository
      */
     public function resetPassword(Request $request)
     {
-        //  Set matching user
+        //  Set the user matching the given mobile number
         $this->setModel($this->getUserFromMobileNumber());
 
         try {
@@ -352,7 +402,9 @@ class AuthRepository extends BaseRepository
         $mobileNumber = $request->input('mobile_number');
         $isValid = MobileVerification::where('mobile_number', $mobileNumber)->where('code', $code)->exists();
 
-        return ['is_valid' => $isValid];
+        return [
+            'is_valid' => $isValid
+        ];
     }
 
     /**
@@ -371,10 +423,10 @@ class AuthRepository extends BaseRepository
         //  Return the mobile verification with limited information
         $data = collect($mobileVerification)->only(['code'])->toArray();
 
-        return [
+        return new CustomResource([
             'exists' => !empty($data),
             'code' => $data['code'] ?? null
-        ];
+        ]);
     }
 
     /**
@@ -386,14 +438,20 @@ class AuthRepository extends BaseRepository
      */
     public static function revokeRequestMobileVerificationCode(Request $request)
     {
-        $hasProvidedMobileNumber = $request->filled('mobile_number');
+        //  If this is not a request from the USSD platform
+        if( !UssdService::verifyIfRequestFromUssdServer() ) {
 
-        if( $hasProvidedMobileNumber ){
+            $hasProvidedMobileNumber = $request->filled('mobile_number');
 
-            $mobileNumber = $request->input('mobile_number');
+            if( $hasProvidedMobileNumber ){
 
-            //  Revoke the mobile verificaiton code
-            MobileVerification::where('mobile_number', $mobileNumber)->update(['code' => null]);
+                $mobileNumber = $request->input('mobile_number');
+
+                //  Revoke the mobile verificaiton code
+                MobileVerification::where('mobile_number', $mobileNumber)->update(['code' => null]);
+
+            }
+
         }
     }
 
@@ -522,14 +580,20 @@ class AuthRepository extends BaseRepository
         if( UssdService::verifyIfRequestFromUssdServer() ) {
 
             //  Create the access token
-            $accessToken = $this->createAccessToken();
+            $newAccessTokenInstance = $this->createAccessToken();
 
         }else{
 
             //  Create the access token while revoking previous access tokens i.e single device sign in
-            $accessToken = $this->createAccessTokenWhileRevokingPreviousAccessTokens();
+            $newAccessTokenInstance = $this->createAccessTokenWhileRevokingPreviousAccessTokens();
 
         }
+
+        //  Get the plain text token
+        $plainTextToken = $newAccessTokenInstance->plainTextToken;
+
+        //  Get the access token model
+        $accessToken = $newAccessTokenInstance->accessToken;
 
         /**
          *  Temporarily login as this user so that we can make use of the auth()->user()
@@ -537,13 +601,28 @@ class AuthRepository extends BaseRepository
          *  We can archieve this by attaching the access token to the current
          *  request.
          */
-        request()->headers->set('Authorization', 'Bearer ' . $accessToken);
+        request()->headers->set('Authorization', 'Bearer ' . $plainTextToken);
 
-        return [
+        /**
+         *  Set this authenticated user on the cache and the request payload.
+         *
+         *  (1) Setting this authenticated user on the cache means that we won't have to query
+         *      the database to find out if the user is authenticated for each and every follow
+         *      up request. This allows the API to be more responsive and to reduce the number
+         *      of database queries that could slow down the API.
+         *
+         *  (2) Setting this authenticated user on the Request is important since transforming
+         *      the User payload using the UserResource transformer requires access to the
+         *      request()->auth_user. We must therefore make sure that this user is made
+         *      present on the request property "auth_user".
+         */
+        (new RequestAuthUser($this->model))->setAuthUserOnCache($plainTextToken, $accessToken)->setAuthUserOnRequest();
+
+        return new CustomResource([
+            'message' => 'Signed in successfullly',
+            'access_token' => $plainTextToken,
             'user' => parent::transform(),
-            'access_token' => $accessToken,
-            'message' => 'Signed in successfullly'
-        ];
+        ]);
     }
 
     /**
@@ -590,7 +669,9 @@ class AuthRepository extends BaseRepository
      */
     private function revokeAccessTokens()
     {
-        $this->model->tokens()->delete();
+        $this->removeTokensFromDatabaseAndCache(
+            $this->model->tokens()
+        );
     }
 
     /**
@@ -601,7 +682,9 @@ class AuthRepository extends BaseRepository
      */
     private function revokeCurrentAccessToken()
     {
-        $this->model->currentAccessToken()->delete();
+        $this->removeTokensFromDatabaseAndCache(
+            $this->model->currentAccessToken()
+        );
     }
 
     /**
@@ -611,13 +694,31 @@ class AuthRepository extends BaseRepository
      */
     private function revokeAccessTokensExceptTheCurrentAccessToken()
     {
-        $this->model->tokens()->where('id', '!=', $this->model->currentAccessToken()->id)->delete();
+        $this->removeTokensFromDatabaseAndCache(
+            $this->model->tokens()->where('id', '!=', $this->model->currentAccessToken()->id)
+        );
+    }
+
+    /**
+     *  Remove tokens by deleting from database and clearing the cache
+     *
+     *  @return void
+     */
+    private function removeTokensFromDatabaseAndCache($tokenInstance)
+    {
+        foreach($tokenInstance->get() as $accessToken) {
+
+            (new RequestAuthUser())->forgetAuthUserOnCacheUsingAccessToken($accessToken);
+
+        }
+
+        $tokenInstance->delete();
     }
 
     /**
      *  Create a new personal access token for the user.
      *
-     *  @return string
+     *  @return \Laravel\Sanctum\NewAccessToken
      */
     private function createAccessToken()
     {
@@ -630,27 +731,7 @@ class AuthRepository extends BaseRepository
                      ? request()->input('device_name')
                      : $this->model->name;
 
-        return $this->model->createToken($tokenName)->plainTextToken;
-    }
-
-    /**
-     *  Return the FriendGroupRepository instance
-     *
-     *  @return FriendGroupRepository
-     */
-    public function friendGroupRepository()
-    {
-        return resolve(FriendGroupRepository::class);
-    }
-
-    /**
-     *  Return the UserRepository instance
-     *
-     *  @return UserRepository
-     */
-    public function userRepository()
-    {
-        return resolve(UserRepository::class);
+        return $this->model->createToken($tokenName);
     }
 
 }

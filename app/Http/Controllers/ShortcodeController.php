@@ -16,6 +16,6 @@ class ShortcodeController extends BaseController
 
     public function showOwner(ShowShortcodeOwnerRequest $request)
     {
-        return response($this->repository->setModel()->showShortcodeOwner($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showShortcodeOwner($request));
     }
 }

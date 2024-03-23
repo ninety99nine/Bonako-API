@@ -117,6 +117,104 @@ class TransactionRepository extends BaseRepository
     }
 
     /**
+     *  Show the transactions
+     *
+     *  @return TransactionRepository
+     */
+    public function showTransactions()
+    {
+        $requestedByUser = $this->model->separateWordsThenLowercase(request()->input('requested_by_user'));
+        $verifiedByUser = $this->model->separateWordsThenLowercase(request()->input('verified_by_user'));
+        $paymentStatus = $this->model->separateWordsThenLowercase(request()->input('payment_status'));
+        $paidByUser = $this->model->separateWordsThenLowercase(request()->input('paid_by_user'));
+        $verifiedBy = $this->model->separateWordsThenLowercase(request()->input('verified_by'));
+        $ownerType = $this->model->separateWordsThenLowercase(request()->input('owner_type'));
+        $paymentMethod = request()->input('payment_method');
+        $percentage = request()->filled('percentage');
+        $amount = request()->filled('amount');
+
+        //  Query the latest transactions first
+        $transactions = $this->model->latest();
+
+        if(!empty($paymentStatus)) {
+            $transactions = $transactions->where('payment_status', $paymentStatus);
+        }
+
+        if(!empty($ownerType)) {
+            $transactions = $transactions->where('owner_type', $ownerType);
+        }
+
+        if(request()->filled('has_proof_of_payment_photo')) {
+
+            $hasProofOfPaymentPhoto = $this->isTruthy(request()->input('has_proof_of_payment_photo'));
+
+            if($hasProofOfPaymentPhoto == true) {
+                $transactions = $transactions->whereNotNull('proof_of_payment_photo');
+            }elseif($hasProofOfPaymentPhoto == false) {
+                $transactions = $transactions->whereNull('proof_of_payment_photo');
+            }
+
+        }
+
+        if(request()->filled('cancelled')) {
+
+            $cancelled = $this->isTruthy(request()->input('cancelled'));
+
+            if($cancelled == true) {
+
+                $transactions = $transactions->cancelled();
+
+            }else if($cancelled == false) {
+
+                $transactions = $transactions->notCancelled();
+
+            }
+
+        }
+
+        if(!empty($amount)) {
+            [$operator, $amount] = $this->extractOperatorAndValue($amount);
+            $transactions = $transactions->where('amount', $operator, $amount);
+        }
+
+        if(!empty($percentage)) {
+            [$operator, $percentage] = $this->extractOperatorAndValue($percentage);
+            $transactions = $transactions->where('percentage', $operator, $percentage);
+        }
+
+        if(!empty($paymentMethod)) {
+            $transactions = $transactions->whereHas('paymentMethod', function ($paymentMethodQuery) use ($paymentMethod) {
+                $paymentMethodQuery->search($paymentMethod);
+            });
+        }
+
+        if(!empty($paidByUser)) {
+            $transactions = $transactions->whereHas('paidByUser', function ($paidByUserQuery) use ($paidByUser) {
+                $paidByUserQuery->search($paidByUser);
+            });
+        }
+
+        if(!empty($verifiedBy)) {
+            $transactions = $transactions->where('verified_by', $verifiedBy);
+        }
+
+        if(!empty($verifiedByUser)) {
+            $transactions = $transactions->whereHas('verifiedByUser', function ($verifiedByUserQuery) use ($verifiedByUser) {
+                $verifiedByUserQuery->search($verifiedByUser);
+            });
+        }
+
+        if(!empty($requestedByUser)) {
+            $transactions = $transactions->whereHas('requestedByUser', function ($requestedByUserQuery) use ($requestedByUser) {
+                $requestedByUserQuery->search($requestedByUser);
+            });
+        }
+
+        //  Eager load the transaction relationships based on request inputs
+        return $this->eagerLoadTransactionRelationships($transactions)->get();
+    }
+
+    /**
      *  Show the transaction while eager loading any required relationships
      *
      *  @return TransactionRepository
@@ -206,7 +304,7 @@ class TransactionRepository extends BaseRepository
         }
 
         //  Set the transaction description
-        $description = ($fullPayment ? 'Full' : 'Partial') . ' payment for order #'.$order->number . ($userVerifiedTransaction == UserVerfiedTransaction::YES ? ' confirmed by ' : ' requested by ') . auth()->user()->name;
+        $description = ($fullPayment ? 'Full' : 'Partial') . ' payment for order #'.$order->number . ($userVerifiedTransaction == UserVerfiedTransaction::YES ? ' confirmed by ' : ' requested by ') . request()->auth_user->name;
 
         //  Determine the payer of this amount (If the mobile number is provided then this payer is not the customer)
         if( $mobileNumber = $request->input('mobile_number') ) {
@@ -243,7 +341,7 @@ class TransactionRepository extends BaseRepository
          *  Credit/Debit card. Requested transactions are verified by the system after the payer
          *  makes payment using a generated payment link or shortcode.
          */
-        $requestedByUserId = ($userVerifiedTransaction == UserVerfiedTransaction::NO) ? auth()->user()->id : null;
+        $requestedByUserId = ($userVerifiedTransaction == UserVerfiedTransaction::NO) ? request()->auth_user->id : null;
 
         /**
          *  If the transaction is a user verified transaction, then this is verified transaction that
@@ -251,13 +349,10 @@ class TransactionRepository extends BaseRepository
          *  after the payer makes payment using other payment methods such as cash, cheque or any
          *  other payment that cannot be verified by the system.
          */
-        $verifiedByUserId = ($userVerifiedTransaction == UserVerfiedTransaction::YES) ? auth()->user()->id : null;
+        $verifiedByUserId = ($userVerifiedTransaction == UserVerfiedTransaction::YES) ? request()->auth_user->id : null;
 
         //  Set the verified by (System / User)
-        $verifiedBy = empty($verifiedByUserId) ? 'System' : 'User';
-
-        //  Set the verified status (True / False)
-        $isVerified = empty($verifiedByUserId) ? false : true;
+        $verifiedBy = $verifiedByUserId == null ? 'System' : 'User';
 
         //  If verified by the user
         if($userVerifiedTransaction == UserVerfiedTransaction::YES) {
@@ -300,7 +395,6 @@ class TransactionRepository extends BaseRepository
             'requested_by_user_id' => $requestedByUserId,
             'verified_by_user_id' => $verifiedByUserId,
             'verified_by' => $verifiedBy,
-            'is_verified' => $isVerified,
 
             'owner_id' => $order->id,
             'owner_type' => $order->getResourceName()
@@ -526,7 +620,7 @@ class TransactionRepository extends BaseRepository
             'verified_by_user_id' => null,
             'payment_method_id' => $paymentMethodId,
             'paid_by_user_id' => $this->chooseUser()->id,
-            'requested_by_user_id' => auth()->user()->id,
+            'requested_by_user_id' => request()->auth_user->id,
 
             'owner_id' => $model->id,
             'owner_type' => $model->getResourceName()

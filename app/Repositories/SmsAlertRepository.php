@@ -4,10 +4,12 @@ namespace App\Repositories;
 
 use App\Models\User;
 use App\Models\Store;
+use App\Enums\RefreshModel;
 use App\Traits\Base\BaseTrait;
 use App\Models\SmsAlertActivity;
 use Illuminate\Support\Facades\DB;
 use App\Repositories\BaseRepository;
+use Illuminate\Database\Eloquent\Builder;
 use App\Repositories\SmsAlertActivityAssociationRepository;
 
 class SmsAlertRepository extends BaseRepository
@@ -35,27 +37,27 @@ class SmsAlertRepository extends BaseRepository
         $smsAlertRepository = parent::create([
             'sms_credits' => 0,
             'user_id' => $user->id
-        ]);
+        ], RefreshModel::NO);
 
-        $smsAlertActivities = SmsAlertActivity::all();
+        $smsAlertActivityIds = SmsAlertActivity::pluck('id');
         $smsAlert = $smsAlertRepository->model;
         $records = [];
 
-        foreach($smsAlertActivities as $smsAlertActivity) {
+        foreach($smsAlertActivityIds as $smsAlertActivityId) {
 
             $records[] = [
                 'updated_at' => now(),
                 'created_at' => now(),
                 'total_alerts_sent' => 0,
                 'sms_alert_id' => $smsAlert->id,
-                'sms_alert_activity_id' => $smsAlertActivity->id,
+                'sms_alert_activity_id' => $smsAlertActivityId,
             ];
 
         }
 
         DB::table('sms_alert_activity_associations')->insert($records);
 
-        return $smsAlertRepository->setModel($smsAlert->fresh());
+        return $smsAlertRepository;
     }
 
     /**
@@ -71,7 +73,7 @@ class SmsAlertRepository extends BaseRepository
         if(is_null($smsAlert)) {
             return $this->createSmsAlert($user);
         }else{
-            return $this->setModel($user->smsAlert);
+            return $this->setModel($smsAlert);
         }
     }
 
@@ -87,13 +89,31 @@ class SmsAlertRepository extends BaseRepository
         $smsAlertRepository = $this->showSmsAlert($user);
         $smsAlert = $smsAlertRepository->model;
 
-        $smsAlertActivityAssociations = $smsAlert->smsAlertActivityAssociations;
+        $smsAlertActivityAssociationIds = $smsAlert->smsAlertActivityAssociations()->whereHas('smsAlertActivity', function (Builder $query) {
 
-        foreach($smsAlertActivityAssociations as $smsAlertActivityAssociation) {
+            //  Where the sms alert activity requires stores
+            $query->where('requires_stores', '1');
 
-            // Add this store to this sms alert activity association
-            $this->smsAlertActivityAssociationRepository()->setModel($smsAlertActivityAssociation)->addSmsAlertableStore($store);
+        })->whereDoesntHave('stores', function (Builder $query) use ($store) {
+
+            //  Where the store does not exist
+            $query->where('sms_alert_activity_store_associations.store_id', $store->id);
+
+        })->pluck('sms_alert_activity_associations.id');
+
+        $records = [];
+
+        foreach($smsAlertActivityAssociationIds as $smsAlertActivityAssociationId) {
+
+            $records[] = [
+                'updated_at' => now(),
+                'created_at' => now(),
+                'store_id' => $store->id,
+                'sms_alert_activity_association_id' => $smsAlertActivityAssociationId,
+            ];
 
         }
+
+        DB::table('sms_alert_activity_store_associations')->insert($records);
     }
 }

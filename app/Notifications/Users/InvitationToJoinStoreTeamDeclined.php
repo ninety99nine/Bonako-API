@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
-class InvitationToJoinStoreTeamDeclined extends Notification
+class InvitationToJoinStoreTeamDeclined extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 

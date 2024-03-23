@@ -78,287 +78,287 @@ class StoreController extends BaseController
 
     public function showStoreFilters(ShowStoresRequest $request)
     {
-        return response($this->repository->showStoreFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showStoreFilters());
     }
 
     public function index(ShowStoresRequest $request)
     {
-        return response($this->repository->showStores()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showStores());
     }
 
     public function showBrandStores(ShowStoresRequest $request)
     {
-        return response($this->repository->showBrandStores()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showBrandStores());
     }
 
     public function showInfluencerStores(ShowStoresRequest $request)
     {
-        return response($this->repository->showInfluencerStores()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showInfluencerStores());
     }
 
     public function createStore(CreateStoreRequest $request)
     {
-        return response($this->repository->createStore($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->repository->createStore($request), Response::HTTP_CREATED);
     }
 
     public function show(Store $store)
     {
-        return response($this->repository->show($store)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->show($store));
     }
 
     public function update(UpdateStoreRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->updateStore($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->updateStore($request));
     }
 
     public function confirmDelete(Store $store)
     {
-        return response($this->repository->setModel($store)->generateDeleteConfirmationCode(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->generateDeleteConfirmationCode());
     }
 
     public function delete(DeleteRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->delete(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->deleteStore());
     }
 
     public function showAllTeamMemberPermissions()
     {
-        return response($this->repository->showAllTeamMemberPermissions(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showAllTeamMemberPermissions());
     }
 
     public function generatePaymentShortcode(GeneratePaymentShortcodeRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->generatePaymentShortcode($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->generatePaymentShortcode($request));
     }
 
     public function showSupportedPaymentMethods(Store $store)
     {
-        return response($this->repository->setModel($store)->showSupportedPaymentMethods()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showSupportedPaymentMethods());
     }
 
     public function showAvailablePaymentMethods(Store $store)
     {
-        return response($this->repository->setModel($store)->showAvailablePaymentMethods()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showAvailablePaymentMethods());
     }
 
     public function showSharableContent(Store $store)
     {
-        return response($this->repository->setModel($store)->showSharableContent(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showSharableContent());
     }
 
     public function showSharableContentChoices(Store $store)
     {
-        return response($this->repository->setModel($store)->showSharableContentChoices(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showSharableContentChoices());
     }
 
     public function createStoreAccessSubscription(CreateStoreSubscriptionRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->createStoreAccessSubscription($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->createStoreAccessSubscription($request), Response::HTTP_CREATED);
     }
 
     public function createStoreAccessFakeSubscription(CreateStoreSubscriptionRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->createStoreAccessSubscription($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->createStoreAccessSubscription($request), Response::HTTP_CREATED);
     }
 
     public function calculateStoreAccessSubscriptionAmount(CalculateStoreSubscriptionRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->calculateStoreAccessSubscriptionAmount($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->calculateStoreAccessSubscriptionAmount($request));
     }
 
     public function showMySubscriptions(ShowSubscriptionsRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showMySubscriptions($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showMySubscriptions($request));
     }
 
     public function showVisitShortcode(Store $store)
     {
-        return response($this->repository->setModel($store)->showVisitShortcode()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showVisitShortcode());
     }
 
     public function showCouponFilters(Store $store)
     {
-        return response($this->repository->setModel($store)->showCouponFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showCouponFilters());
     }
 
     public function showCoupons(Store $store)
     {
-        return response($this->repository->setModel($store)->showCoupons()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showCoupons());
     }
 
     public function createCoupon(CreateCouponRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->createCoupon($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->createCoupon($request), Response::HTTP_CREATED);
     }
 
     public function showProductFilters(Store $store)
     {
-        return response($this->repository->setModel($store)->showProductFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showProductFilters());
     }
 
     public function showProducts(Store $store)
     {
-        return response($this->repository->setModel($store)->showProducts()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showProducts());
     }
 
     public function createProduct(CreateProductRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->createProduct($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->createProduct($request), Response::HTTP_CREATED);
     }
 
     public function updateProductVisibility(UpdateProductVisibilityRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->updateProductVisibility($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->updateProductVisibility($request));
     }
 
     public function updateProductArrangement(UpdateProductArrangementRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->updateProductArrangement($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->updateProductArrangement($request));
     }
 
     public function showOrderFilters(ShowStoreOrderFiltersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showOrderFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showOrderFilters());
     }
 
     public function showOrders(ShowStoreOrdersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showOrders()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showOrders());
     }
 
     public function showLogo(Store $store)
     {
-        return response($this->repository->setModel($store)->showLogo(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showLogo());
     }
 
     public function updateLogo(UpdateLogoRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->updateLogo($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->updateLogo($request), Response::HTTP_CREATED);
     }
 
     public function deleteLogo(Store $store)
     {
-        return response($this->repository->setModel($store)->removeExistingLogo(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->removeExistingLogo());
     }
 
     public function showAdverts(Store $store)
     {
-        return response($this->repository->setModel($store)->showAdverts(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showAdverts());
     }
 
     public function createAdvert(CreateAdvertRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->createAdvert($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->createAdvert($request), Response::HTTP_CREATED);
     }
 
     public function updateAdvert(UpdateAdvertRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->updateAdvert($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->updateAdvert($request), Response::HTTP_CREATED);
     }
 
     public function deleteAdvert(DeleteAdvertRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->deleteAdvert($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->deleteAdvert($request));
     }
 
     public function showCoverPhoto(Store $store)
     {
-        return response($this->repository->setModel($store)->showCoverPhoto(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showCoverPhoto());
     }
 
     public function updateCoverPhoto(UpdateCoverPhotoRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->updateCoverPhoto($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->updateCoverPhoto($request), Response::HTTP_CREATED);
     }
 
     public function deleteCoverPhoto(Store $store)
     {
-        return response($this->repository->setModel($store)->removeExistingCoverPhoto(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->removeExistingCoverPhoto());
     }
 
     public function showReviewFilters(Store $store)
     {
-        return response($this->repository->setModel($store)->showReviewFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showReviewFilters());
     }
 
     public function showReviews(ShowReviewsRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showReviews()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showReviews());
     }
 
     public function showReviewRatingOptions(Store $store)
     {
-        return response($this->repository->setModel($store)->showReviewRatingOptions(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showReviewRatingOptions());
     }
 
     public function createReview(CreateReviewRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->createReview($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->createReview($request), Response::HTTP_CREATED);
     }
 
     public function checkInvitationsToFollow()
     {
-        return response($this->repository->checkInvitationsToFollow(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->checkInvitationsToFollow());
     }
 
     public function acceptAllInvitationsToFollow()
     {
-        return response($this->repository->acceptAllInvitationsToFollow(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->acceptAllInvitationsToFollow());
     }
 
     public function declineAllInvitationsToFollow()
     {
-        return response($this->repository->declineAllInvitationsToFollow(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->declineAllInvitationsToFollow());
     }
 
     public function showFollowerFilters(Request $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showFollowerFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showFollowerFilters());
     }
 
     public function showFollowers(ShowFollowersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showFollowers()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showFollowers());
     }
 
     public function inviteFollowers(InviteFollowersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->inviteFollowers(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->inviteFollowers());
     }
 
     public function acceptInvitationToFollow(Store $store)
     {
-        return response($this->repository->setModel($store)->acceptInvitationToFollow(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->acceptInvitationToFollow());
     }
 
     public function declineInvitationToFollow(Store $store)
     {
-        return response($this->repository->setModel($store)->declineInvitationToFollow(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->declineInvitationToFollow());
     }
 
     public function showFollowing(Store $store)
     {
-        return response($this->repository->setModel($store)->showFollowing(auth()->user()), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showFollowing(request()->auth_user));
     }
 
     public function updateFollowing(UpdateFollowingRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->updateFollowing($request, auth()->user()), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->updateFollowing($request, request()->auth_user));
     }
 
     public function showTeamMemberFilters(Request $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showTeamMemberFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showTeamMemberFilters());
     }
 
     public function showMyPermissions(Store $store)
     {
-        return response($this->repository->setModel($store)->showTeamMemberPermissions(auth()->user()), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showTeamMemberPermissions(request()->auth_user));
     }
 
     public function showTeamMembers(ShowTeamMembersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showTeamMembers()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showTeamMembers());
     }
 
     /**
@@ -374,22 +374,22 @@ class StoreController extends BaseController
      */
     public function showTeamMember(Store $store, User $teamMember)
     {
-        return response($this->repository->setModel($store)->showTeamMember($teamMember)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showTeamMember($teamMember));
     }
 
     public function showTeamMemberPermissions(Store $store, User $teamMember)
     {
-        return response($this->repository->setModel($store)->showTeamMemberPermissions($teamMember), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showTeamMemberPermissions($teamMember));
     }
 
     public function updateTeamMemberPermissions(UpdateTeamMemberPermissionsRequest $request, Store $store, User $teamMember)
     {
-        return response($this->repository->setModel($store)->updateTeamMemberPermissions($teamMember), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->updateTeamMemberPermissions($teamMember));
     }
 
     public function inviteTeamMembers(InviteTeamMembersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->inviteTeamMembers(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->inviteTeamMembers());
     }
 
     /**
@@ -418,42 +418,42 @@ class StoreController extends BaseController
      */
     public function removeTeamMembers(RemoveTeamMembersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->removeTeamMembers($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->removeTeamMembers($request));
     }
 
     public function checkInvitationsToJoinTeam()
     {
-        return response($this->repository->checkInvitationsToJoinTeam(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->checkInvitationsToJoinTeam());
     }
 
     public function acceptAllInvitationsToJoinTeam()
     {
-        return response($this->repository->acceptAllInvitationsToJoinTeam(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->acceptAllInvitationsToJoinTeam());
     }
 
     public function declineAllInvitationsToJoinTeam()
     {
-        return response($this->repository->declineAllInvitationsToJoinTeam(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->declineAllInvitationsToJoinTeam());
     }
 
     public function acceptInvitationToJoinTeam(Store $store)
     {
-        return response($this->repository->setModel($store)->acceptInvitationToJoinTeam(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->acceptInvitationToJoinTeam());
     }
 
     public function declineInvitationToJoinTeam(Store $store)
     {
-        return response($this->repository->setModel($store)->declineInvitationToJoinTeam(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->declineInvitationToJoinTeam());
     }
 
     public function showCustomerFilters(Request $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showCustomerFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showCustomerFilters());
     }
 
     public function showCustomers(ShowCustomersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showCustomers()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showCustomers());
     }
 
     /**
@@ -469,47 +469,47 @@ class StoreController extends BaseController
      */
     public function showCustomer(Store $store, User $customer)
     {
-        return response($this->repository->setModel($store)->showCustomer($customer)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showCustomer($customer));
     }
 
     public function addStoreToFriendGroups(AddStoreToFriendGroupsRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->addStoreToFriendGroups(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->addStoreToFriendGroups());
     }
 
     public function removeStoreFromFriendGroup(RemoveStoreFromFriendGroupRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->removeStoreFromFriendGroup(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->removeStoreFromFriendGroup());
     }
 
     public function addStoreToBrandStores(Store $store)
     {
-        return response($this->repository->setModel($store)->addStoreToBrandStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->addStoreToBrandStores());
     }
 
     public function removeStoreFromBrandStores(Store $store)
     {
-        return response($this->repository->setModel($store)->removeStoreFromBrandStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->removeStoreFromBrandStores());
     }
 
     public function addOrRemoveStoreFromBrandStores(Store $store)
     {
-        return response($this->repository->setModel($store)->addOrRemoveStoreFromBrandStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->addOrRemoveStoreFromBrandStores());
     }
 
     public function addStoreToInfluencerStores(Store $store)
     {
-        return response($this->repository->setModel($store)->addStoreToInfluencerStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->addStoreToInfluencerStores());
     }
 
     public function removeStoreFromInfluencerStores(Store $store)
     {
-        return response($this->repository->setModel($store)->removeStoreFromInfluencerStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->removeStoreFromInfluencerStores());
     }
 
     public function addOrRemoveStoreFromInfluencerStores(Store $store)
     {
-        return response($this->repository->setModel($store)->addOrRemoveStoreFromInfluencerStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->addOrRemoveStoreFromInfluencerStores());
     }
 
 
@@ -518,23 +518,23 @@ class StoreController extends BaseController
 
     public function updateAssignedStoreArrangement(UpdateAssignedStoreArrangementRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->updateAssignedStoreArrangement($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->updateAssignedStoreArrangement($request));
     }
 
 
     public function addStoreToAssignedStores(Store $store)
     {
-        return response($this->repository->setModel($store)->addStoreToAssignedStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->addStoreToAssignedStores());
     }
 
     public function removeStoreFromAssignedStores(Store $store)
     {
-        return response($this->repository->setModel($store)->removeStoreFromAssignedStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->removeStoreFromAssignedStores());
     }
 
     public function addOrRemoveStoreFromAssignedStores(Store $store)
     {
-        return response($this->repository->setModel($store)->addOrRemoveStoreFromAssignedStores(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->addOrRemoveStoreFromAssignedStores());
     }
 
 
@@ -543,26 +543,26 @@ class StoreController extends BaseController
 
     public function showShoppingCartOrderForOptions(Store $store)
     {
-        return response($this->repository->setModel($store)->showShoppingCartOrderForOptions(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showShoppingCartOrderForOptions());
     }
 
     public function showShoppingCartOrderForUsers(ShowShoppingCartOrderForUsersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->showShoppingCartOrderForUsers($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->showShoppingCartOrderForUsers($request));
     }
 
     public function countShoppingCartOrderForUsers(countShoppingCartOrderForUsersRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->countShoppingCartOrderForUsers($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->countShoppingCartOrderForUsers($request));
     }
 
     public function inspectShoppingCart(InspectCartRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->inspectShoppingCart()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($store)->inspectShoppingCart());
     }
 
     public function convertShoppingCart(ConvertCartRequest $request, Store $store)
     {
-        return response($this->repository->setModel($store)->convertShoppingCart()->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($store)->convertShoppingCart(), Response::HTTP_CREATED);
     }
 }

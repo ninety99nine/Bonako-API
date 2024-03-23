@@ -14,7 +14,7 @@ use NotificationChannels\OneSignal\OneSignalChannel;
 use NotificationChannels\OneSignal\OneSignalMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
-class FriendGroupUserRemoved extends Notification
+class FriendGroupUserRemoved extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 

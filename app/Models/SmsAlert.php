@@ -10,7 +10,7 @@ class SmsAlert extends BaseModel
 {
     use HasFactory, SmsAlertTrait;
 
-    protected $with = ['smsAlertActivityAssociations'];
+    //   protected $with = ['smsAlertActivityAssociations'];
 
     protected $fillable = ['sms_credits', 'user_id'];
 

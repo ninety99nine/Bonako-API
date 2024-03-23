@@ -49,102 +49,102 @@ class OrderController extends BaseController
 
     public function show(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->show()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->show());
     }
 
     public function update(UpdateOrderRequest $request, Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->updateOrder($store)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->updateOrder($store));
     }
 
     public function showCart(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showOrderCart()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showOrderCart());
     }
 
     public function showCustomer(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showOrderCustomer()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showOrderCustomer());
     }
 
     public function showOccasion(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showOccasion()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showOccasion());
     }
 
     public function showDeliveryAddress(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showDeliveryAddress()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showDeliveryAddress());
     }
 
     public function showUsers(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showUsers()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showUsers());
     }
 
     public function cancel(CancelOrderRequest $request, Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->cancelOrder($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->cancelOrder($request));
     }
 
     public function uncancel(UncancelRequest $request, Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->uncancelOrder($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->uncancelOrder($request));
     }
 
     public function showCancellationReasons(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showCancellationReasons(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showCancellationReasons());
     }
 
     public function generateCollectionCode(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->generateCollectionCode(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->generateCollectionCode());
     }
 
     public function revokeCollectionCode(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->revokeCollectionCode(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->revokeCollectionCode());
     }
 
     public function updateStatus(UpdateStatusRequest $request, Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->updateStatus($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->updateStatus($request));
     }
 
     public function showViewers(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showViewers()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showViewers());
     }
 
     public function requestPayment(RequestPaymentRequest $request, Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->requestPayment($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->requestPayment($request));
     }
 
     public function showRequestPaymentPaymentMethods(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showRequestPaymentPaymentMethods($store)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showRequestPaymentPaymentMethods($store));
     }
 
     public function markAsVerifiedPayment(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->markAsVerifiedPayment()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->markAsVerifiedPayment());
     }
 
     public function markAsUnverifiedPayment(MarkAsUnverifiedPaymentRequest $request, Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->markAsUnverifiedPayment($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->markAsUnverifiedPayment($request));
     }
 
     public function showMarkAsUnverifiedPaymentPaymentMethods(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showMarkAsUnverifiedPaymentPaymentMethods($store)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showMarkAsUnverifiedPaymentPaymentMethods($store));
     }
 
     public function showOrderPayingUsers(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showOrderPayingUsers()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showOrderPayingUsers());
     }
 
 
@@ -152,26 +152,26 @@ class OrderController extends BaseController
 
     public function showOrderTransactionFilters(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showOrderTransactionFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showOrderTransactionFilters());
     }
 
     public function showOrderTransactions(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showOrderTransactions()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showOrderTransactions());
     }
 
     public function showOrderTransactionsCount(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->showOrderTransactionsCount(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->showOrderTransactionsCount());
     }
 
     public function confirmDelete(Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->generateDeleteConfirmationCode(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->generateDeleteConfirmationCode());
     }
 
     public function delete(DeleteRequest $request, Store $store, Order $order)
     {
-        return response($this->repository->setModel($order)->delete(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($order)->delete());
     }
 }

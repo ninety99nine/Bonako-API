@@ -31,7 +31,7 @@ class SmsAlertActivityAssociationResource extends BaseResource
         $userId = $this->chooseUser()->id;
 
         //  Check if this resource belongs to the authenticated
-        $isAuthUser = $userId == auth()->user()->id;
+        $isAuthUser = $userId == request()->auth_user->id;
 
         //  Set the route name prefix
         $prefix = $isAuthUser ? $authUserPrefix : $userPrefix;

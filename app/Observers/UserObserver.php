@@ -3,7 +3,6 @@
 namespace App\Observers;
 
 use App\Models\User;
-use App\Services\Sms\SmsService;
 use Illuminate\Support\Facades\DB;
 use App\Repositories\UserRepository;
 use App\Models\Pivots\UserStoreAssociation;
@@ -30,6 +29,8 @@ class UserObserver
         //  If this is not a guest user
         if($user->is_guest == false) {
 
+            $mobileNumberWithExtension = $user->mobile_number->withExtension;
+
             /**
              *  Get the user and store association incase the user was previously invited
              *  to follow stores or join store teams before they created their account. In
@@ -37,14 +38,14 @@ class UserObserver
              *  mobile number.
              */
             $mobileNumberStoreAssociations = DB::table('user_store_association')->where([
-                'mobile_number' => $user->mobile_number->withExtension
+                'mobile_number' => $mobileNumberWithExtension
             ]);
 
             if($mobileNumberStoreAssociations->count()) {
 
                 //  Get user and store associations together with the associated store and the user who invited this user to follow this store
-                $userStoreAssociationsToFollow = UserStoreAssociation::with(['store', 'userWhoInvitedToFollow'])->where([
-                    'mobile_number' => $user->mobile_number->withExtension,
+                $userStoreAssociationsToFollow = UserStoreAssociation::where([
+                    'mobile_number' => $mobileNumberWithExtension,
                     'follower_status' => 'Invited'
                 ])->get();
 
@@ -52,17 +53,16 @@ class UserObserver
                 foreach($userStoreAssociationsToFollow as $userStoreAssociationToFollow) {
 
                     //  Notify the user that they have been invited to follow this store
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         $user,
-                        new InvitationToFollowStoreCreated($userStoreAssociationToFollow->store, $userStoreAssociationToFollow->userWhoInvitedToFollow)
+                        new InvitationToFollowStoreCreated($userStoreAssociationToFollow->store_id, $userStoreAssociationToFollow->invited_to_follow_by_user_id)
                     );
 
                 }
 
                 //  Get user and store associations together with the associated store and the user who invited this user to join this store team
                 $userStoreAssociationsToJoinTeam = UserStoreAssociation::with(['store', 'userWhoInvitedToJoinTeam'])->where([
-                    'mobile_number' => $user->mobile_number->withExtension,
+                    'mobile_number' => $mobileNumberWithExtension,
                     'team_member_status' => 'Invited'
                 ])->get();
 
@@ -70,8 +70,7 @@ class UserObserver
                 foreach($userStoreAssociationsToJoinTeam as $userStoreAssociationToJoinTeam) {
 
                     //  Notify the user that they have been invited to join this store team
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         $user,
                         new InvitationToJoinStoreTeamCreated($userStoreAssociationToJoinTeam->store, $userStoreAssociationToJoinTeam->userWhoInvitedToFollow)
                     );
@@ -92,14 +91,14 @@ class UserObserver
              *  the user based on any associations based on their mobile number.
              */
             $mobileNumberFriendGroupAssociations = DB::table('user_friend_group_association')->where([
-                'mobile_number' => $user->mobile_number->withExtension
+                'mobile_number' => $mobileNumberWithExtension
             ]);
 
             if($mobileNumberFriendGroupAssociations->count()) {
 
                 //  Get user and friend group associations together with the associated friend group and the user who invited this user
-                $userStoreAssociationsToJoinGroup = UserFriendGroupAssociation::with(['friendGroup', 'userWhoInvitedToJoinGroup'])->where([
-                    'mobile_number' => $user->mobile_number->withExtension,
+                $userStoreAssociationsToJoinGroup = UserFriendGroupAssociation::where([
+                    'mobile_number' => $mobileNumberWithExtension,
                     'status' => 'Invited'
                 ])->get();
 
@@ -107,10 +106,9 @@ class UserObserver
                 foreach($userStoreAssociationsToJoinGroup as $userStoreAssociationToJoinGroup) {
 
                     //  Notify the user that they have been invited to join this friend group
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         $user,
-                        new InvitationToJoinFriendGroupCreated($userStoreAssociationToJoinGroup->friendGroup, $userStoreAssociationToJoinGroup->userWhoInvitedToJoinGroup)
+                        new InvitationToJoinFriendGroupCreated($userStoreAssociationToJoinGroup->friend_group_id, $userStoreAssociationToJoinGroup->invited_to_join_by_user_id)
                     );
 
                 }
@@ -123,12 +121,6 @@ class UserObserver
 
             }
 
-            // Send sms to user that their account was created
-            SmsService::sendOrangeSms(
-                $user->craftAccountCreatedSmsMessageForUser(),
-                $user->mobile_number->withExtension,
-                null, null, null
-            );
         }
     }
 

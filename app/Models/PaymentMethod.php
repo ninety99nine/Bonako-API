@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Casts\Money;
+use App\Casts\Currency;
+use App\Casts\Percentage;
+use App\Enums\PaymentMethodFilter;
 use App\Models\Base\BaseModel;
 use App\Traits\Base\BaseTrait;
 use App\Traits\PaymentMethodTrait;
@@ -12,13 +16,17 @@ class PaymentMethod extends BaseModel
 {
     use HasFactory, BaseTrait, PaymentMethodTrait;
 
-    const FILTERS = ['All', 'Available On Perfect Pay', 'Available On Stores', 'Available On Ussd'];
+    const FILTERS = [
+        PaymentMethodFilter::All->value,
+        PaymentMethodFilter::Active->value,
+        PaymentMethodFilter::Inactive->value
+    ];
 
     protected $casts = [
         'active' => 'boolean',
         'amount' => Money::class,
         'available_on_ussd' => 'boolean',
-        'available_on_stores' => 'boolean',
+        'available_in_stores' => 'boolean',
         'available_on_perfect_pay' => 'boolean',
     ];
 
@@ -29,12 +37,22 @@ class PaymentMethod extends BaseModel
 
     protected $fillable = [
         'name', 'method', 'category', 'description',
-        'available_on_perfect_pay', 'available_on_stores', 'available_on_ussd',  'active', 'position'
+        'available_on_perfect_pay', 'available_in_stores', 'available_on_ussd',  'active', 'position'
     ];
 
     /****************************
      *  SCOPES                  *
      ***************************/
+
+    /*
+     *  Scope: Return payment methods that are being searched
+     */
+    public function scopeSearch($query, $searchWord)
+    {
+        return $query->where('name', 'like', "%$searchWord%")
+                     ->orWhere('method', 'like', "%$searchWord%")
+                     ->orWhere('category', 'like', "%$searchWord%");
+    }
 
     /**
      *  Scope payment methods available for perfect pay
@@ -53,9 +71,9 @@ class PaymentMethod extends BaseModel
      *  to choose the payment method of choice when placing an order
      *  on a given store
      */
-    public function scopeAvailableOnStores($query)
+    public function scopeAvailableInStores($query)
     {
-        return $query->active()->where('available_on_stores', '1');
+        return $query->active()->where('available_in_stores', '1');
     }
 
     /**

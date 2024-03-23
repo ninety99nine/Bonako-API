@@ -3,7 +3,9 @@
 namespace App\Repositories;
 
 use Exception;
+use App\Enums\CacheName;
 use Illuminate\Http\Request;
+use App\Helpers\CacheManager;
 use App\Traits\Base\BaseTrait;
 use App\Models\SubscriptionPlan;
 use App\Repositories\BaseRepository;
@@ -38,23 +40,39 @@ class SubscriptionPlanRepository extends BaseRepository
      */
     public function showSubscriptionPlans()
     {
-        //  Get the specified subscription plan type
-        $type = request()->input('type');
+        $type = $this->model->separateWordsThenLowercase(request()->input('type'));
+        $service = $this->model->separateWordsThenLowercase(request()->input('service'));
 
-        //  Get the specified subscription plan service
-        $service = request()->input('service');
+        $page = $this->getCurrentPage();
+        $perPage = $this->model->separateWordsThenLowercase(request()->input('per_page'));
+        $cacheManager = (new CacheManager(CacheName::SUBSCRIPTION_PLANS))->append($service, true)->append($type, true)->append($perPage)->append($page);
 
-        //  Get the specified subscription plan active status
-        $active = request()->input('active');
+        $callback = function() use ($service, $type) {
 
-        //  Get the subscription plans by order of their positions
-        $subscriptionPlans = $this->model->orderBy('position', 'asc');
+            //  Get the subscription plans by order of their positions
+            $subscriptionPlans = $this->model->orderBy('position', 'asc');
 
-        if(!empty($service)) {
-            $subscriptionPlans = $subscriptionPlans->where('service', urldecode($service));
+            if(!empty($service)) {
+                $subscriptionPlans = $subscriptionPlans->where('service', urldecode($service));
+            }
+
+            if(!empty($type)) {
+                $subscriptionPlans = $subscriptionPlans->where('type', $type);
+            }
+
+            return $this->setModel($subscriptionPlans)->get();
+
+        };
+
+        if( request()->filled('search') ) {
+
+            return $callback();
+
+        }else{
+
+            return $cacheManager->remember(now()->addWeek(), $callback);
+
         }
-
-        return $this->setModel($subscriptionPlans)->get();
     }
 
     /**

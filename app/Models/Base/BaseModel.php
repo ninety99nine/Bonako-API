@@ -16,6 +16,14 @@ abstract class BaseModel extends Model
 {
     use BaseTrait;
 
+    /*
+     *  Scope: Return results that are being searched.
+     */
+    public function scopeSearch($query, $searchWord)
+    {
+        return $query->where('id', $searchWord);
+    }
+
     /**
      * Cast an attribute to a native PHP type.
      *

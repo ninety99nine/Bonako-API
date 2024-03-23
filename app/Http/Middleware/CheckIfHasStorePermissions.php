@@ -21,7 +21,7 @@ class CheckIfHasStorePermissions
         /**
          *  @var User $user
          */
-        $user = request()->user();
+        $user = request()->auth_user;
 
         if( $user->hasStorePermissionUsingRequest($request, $permission) ) {
 

@@ -21,7 +21,7 @@ class AddressResource extends BaseResource
      */
     private function viewingPrivately() {
         $isSuperAdmin = $this->isSuperAdmin;
-        $isOwner = $this->resource->user_id == auth()->user()->id;
+        $isOwner = $this->resource->user_id == request()->auth_user->id;
 
         return $isSuperAdmin || $isOwner;
     }
@@ -48,7 +48,7 @@ class AddressResource extends BaseResource
         $userId = $this->chooseUser()->id;
 
         //  Check if this resource belongs to the authenticated
-        $isAuthUser = $userId == auth()->user()->id;
+        $isAuthUser = $userId == request()->auth_user->id;
 
         //  Auth user route name prefix
         $authUserPrefix = 'auth.user.address.';

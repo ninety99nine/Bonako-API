@@ -18,13 +18,13 @@ class MarkOrderAsSeenByTeamMember
      */
     public function handle(Request $request, Closure $next)
     {
-        /**
-         *  @var User $user
-         */
-        $user = request()->user();
-
         //  Check if we are requesting to view a specific order
         if(Route::currentRouteName() == 'order.show') {
+
+            /**
+             *  @var User $user
+             */
+            $user = $request->auth_user;
 
             //  Check if the user has the permission to manage the requested order
             if( $user->hasStorePermissionUsingRequest($request, 'manage orders') ) {

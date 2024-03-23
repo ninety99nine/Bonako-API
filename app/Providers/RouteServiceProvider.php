@@ -64,7 +64,7 @@ class RouteServiceProvider extends ServiceProvider
                 /**
                  *  @var User $user
                  */
-                $user = auth()->user();
+                $user = request()->auth_user;
 
                 return $user->friendGroups()->where('friend_groups.id', $friendGroupId)->first();
 
@@ -97,7 +97,7 @@ class RouteServiceProvider extends ServiceProvider
             /**
              *  @var User $user
              */
-            $user = auth()->user();
+            $user = request()->auth_user;
 
             /**
              *  First search for this store through the user and store
@@ -133,7 +133,7 @@ class RouteServiceProvider extends ServiceProvider
             /**
              *  @var User $user
              */
-            $user = auth()->user();
+            $user = request()->auth_user;
 
             /**
              *  @var Store $store
@@ -197,12 +197,12 @@ class RouteServiceProvider extends ServiceProvider
             if( UssdService::verifyIfRequestFromUssdServer() ) {
 
                 // Allow more requests from the USSD platform
-                return Limit::perMinute(600)->by(optional($request->user())->id ?: $request->ip());
+                return Limit::perMinute(600)->by(optional($request->auth_user)->id ?: $request->ip());
 
             }else{
 
                 // Allow less requests from any other platform
-                return Limit::perMinute(300)->by(optional($request->user())->id ?: $request->ip());
+                return Limit::perMinute(300)->by(optional($request->auth_user)->id ?: $request->ip());
 
             }
 

@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
-class SubscriptionCreated extends Notification
+class SubscriptionCreated extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 

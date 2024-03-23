@@ -2,6 +2,8 @@
 
 namespace App\Observers;
 
+use App\Enums\CacheName;
+use App\Helpers\CacheManager;
 use App\Models\FriendGroup;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
@@ -39,21 +41,23 @@ class FriendGroupObserver
          */
         $users = $friendGroup->users()->joinedGroup()->get();
 
-        //  Cache the team members for one minute before the store is deleted
-        Cache::put($this->getUsersCacheName($friendGroup), $users, now()->addMinute());
+        //  Cache the users for one minute before the store is deleted
+        (new CacheManager(CacheName::FRIEND_GROUP_USERS))->append($friendGroup->id)->put($users, now()->addMinute());
     }
 
     public function deleted(FriendGroup $friendGroup)
     {
+        //  Set the cache manager
+        $cacheManager = (new CacheManager(CacheName::FRIEND_GROUP_USERS))->append($friendGroup->id);
+
         //  Retrieve the cached users
-        $users = Cache::get($this->getUsersCacheName($friendGroup));
+        $users = $cacheManager->get();
 
         //  Notify the group members on this friend group deletion
-        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::send($users, new FriendGroupDeleted($friendGroup->id, $friendGroup->name_with_emoji, auth()->user()));
+        Notification::send($users, new FriendGroupDeleted($friendGroup->id, $friendGroup->name_with_emoji, request()->auth_user));
 
-        // Remove the cached users
-        Cache::forget($this->getUsersCacheName($friendGroup));
+        // Forget the cached users
+        $cacheManager->forget();
     }
 
     public function restored(FriendGroup $friendGroup)
@@ -62,10 +66,5 @@ class FriendGroupObserver
 
     public function forceDeleted(FriendGroup $friendGroup)
     {
-    }
-
-    public function getUsersCacheName(FriendGroup $friendGroup)
-    {
-        return 'friend_group_'.$friendGroup->id.'_users';
     }
 }

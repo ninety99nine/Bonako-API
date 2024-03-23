@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
-class RemoveStoreTeamMember extends Notification
+class RemoveStoreTeamMember extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 

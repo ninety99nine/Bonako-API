@@ -15,7 +15,9 @@ class Shortcode extends BaseModel
 
     const ACTIONS = ['Pay', 'Visit'];
 
-    protected $dates = ['expires_at'];
+    protected $casts = [
+        'expires_at' => 'datetime',
+    ];
 
     protected $tranformableCasts = [];
 
@@ -66,7 +68,7 @@ class Shortcode extends BaseModel
 
     public function scopeBelongsToAuth($query)
     {
-        return $query->where('reserved_for_user_id', auth()->user()->id);
+        return $query->where('reserved_for_user_id', request()->auth_user->id);
     }
 
     /****************************

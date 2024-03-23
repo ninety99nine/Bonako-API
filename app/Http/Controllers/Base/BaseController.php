@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Base;
 
 use Illuminate\Support\Str;
+use Illuminate\Http\Response;
+use App\Repositories\BaseRepository;
+use App\Repositories\SubscriptionRepository;
+use Illuminate\Database\Eloquent\Model;
 
 class BaseController extends Controller
 {
     protected $repository;
     protected $repositoryClass;
+    protected $repositoryClassName;
     protected $repositoryClassPath = 'App\Repositories\\';
 
     public function __construct()
@@ -36,12 +41,12 @@ class BaseController extends Controller
         $this->middleware(function ($request, $next) {
 
             /**
-             *  $this->repositoryClass can be set manually if the repository class
+             *  $this->repositoryClassName can be set manually if the repository class
              *  has a unique name that we cannot implicitly derive. If the value
-             *  of $this->repositoryClass is NULL then we can implicitly derive
+             *  of $this->repositoryClassName is NULL then we can implicitly derive
              *  the class name.
              */
-            if( $this->repositoryClass === null ) {
+            if( $this->repositoryClassName === null ) {
 
                 /**
                  *  Implicitly derive the repository class name in the following way:
@@ -51,16 +56,38 @@ class BaseController extends Controller
                  *  the repository class name to resolve. In this case the
                  *  final result must be "StoreRepository".
                  */
-                $this->repositoryClass = Str::replace('Controller', 'Repository', class_basename($this));
+                $this->repositoryClassName = Str::replace('Controller', 'Repository', class_basename($this));
 
             }
 
+            //  Set the repository class
+            $this->repositoryClass = $this->repositoryClassPath . $this->repositoryClassName;
+
             //  Resolve and set the repository result
-            $this->repository = resolve($this->repositoryClassPath . $this->repositoryClass);
+            $this->repository = resolve($this->repositoryClass);
 
             //  Continue the request
             return $next($request);
 
         });
+    }
+
+    public function prepareOutput($output, $status = Response::HTTP_OK) {
+
+        //  Check if the output is an instance of the BaseRepository
+        if( $output instanceof BaseRepository) {
+
+            //  Transform and return the output
+            $output = $output->transform();
+
+        }
+
+        // Return the output with the response status code
+        return response($output, $status);
+
+    }
+
+    public function setModel(Model $model) {
+        return $this->repository->setModel($model);
     }
 }

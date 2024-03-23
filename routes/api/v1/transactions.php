@@ -8,6 +8,9 @@ use App\Http\Controllers\TransactionController;
  *
  *  Public users are allowed to view a transaction
  */
+
+ Route::get('/transactions', [TransactionController::class, 'showTransactions'])->name('transactions.show');
+
 Route::controller(TransactionController::class)
     ->prefix('transactions/{transaction}')
     ->name('transaction')->group(function () {

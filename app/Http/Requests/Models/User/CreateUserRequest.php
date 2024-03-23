@@ -33,7 +33,7 @@ class CreateUserRequest extends FormRequest
         /**
          *  @var User $user
          */
-        $authUserIsSuperAdmin = ($user = auth()->user()) ? $user->isSuperAdmin() : false;
+        $authUserIsSuperAdmin = ($user = request()->auth_user) ? $user->isSuperAdmin() : false;
         $requestIsFromUssdServer = $ussdService->verifyIfRequestFromUssdServer();
 
         return [

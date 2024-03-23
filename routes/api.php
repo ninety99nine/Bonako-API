@@ -1,11 +1,6 @@
 <?php
 
-use App\Helpers\Routes\RouteHelper;
-use App\Models\Order;
-use App\Models\Product;
-use App\Models\Store;
-use App\Models\User;
-use App\Services\Sms\SmsService;
+use App\Helpers\RouteHelper;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
@@ -28,10 +23,11 @@ Route::prefix('v1')->group(function() {
 });
 
 //  Api version 1 routes
-Route::prefix('v1')->middleware(['require.api.headers'])->group(function() {
+Route::prefix('v1')->middleware(['format.request.payload', 'format.response.payload', 'response.payload.limiter'])->group(function() {
 
     Route::middleware([
-        'auth:sanctum', 'last.seen', 'last.seen.at.store', 'mark.order.as.seen.by.team.member', 'format.request.and.response.payloads'
+        'auth:sanctum', 'capture.auth.user.on.request', 'last.seen', 'last.seen.at.store',
+        'mark.order.as.seen.by.team.member'
     ])->group(function() {
 
         //  Include Api version 1 route files

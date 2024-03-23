@@ -39,6 +39,17 @@ class SubscriptionPlan extends BaseModel
 
     ];
 
+    /*
+     *  Scope: Return users that are being searched
+     */
+    public function scopeSearch($query, $searchWord)
+    {
+        return $query->where('name', 'like', "%{$searchWord}%")
+                     ->orWhere('type', 'like', "%{$searchWord}%")
+                     ->orWhere('service', 'like', "%{$searchWord}%")
+                     ->orWhere('description', 'like', "%{$searchWord}%");
+    }
+
     /****************************
      *  ACCESSORS               *
      ***************************/

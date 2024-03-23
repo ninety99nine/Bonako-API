@@ -16,11 +16,11 @@ class PaymentMethodController extends BaseController
 
     public function showPaymentMethodFilters()
     {
-        return response($this->repository->showPaymentMethodFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showPaymentMethodFilters());
     }
 
     public function showPaymentMethods()
     {
-        return response($this->repository->showPaymentMethods()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showPaymentMethods());
     }
 }

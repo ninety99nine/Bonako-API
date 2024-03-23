@@ -14,6 +14,7 @@ use App\Repositories\OrderRepository;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\Orders\OrderPaidUsingDPO;
 use App\Exceptions\DPOCompanyTokenNotProvidedException;
+use App\Jobs\SendSms;
 
 class DirectPayOnlineService
 {
@@ -348,8 +349,7 @@ class DirectPayOnlineService
                 $teamMembers = $store->teamMembers()->whereNotIn('users.id', $users->pluck('id'))->joinedTeam()->get();
 
                 //  Send order payment notification to the customer, friends and team members
-                //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                Notification::sendNow(
+                Notification::send(
                     //  Send notifications to the team members who joined
                     collect($teamMembers)->merge(
                         //  As well as the customer and friends who were tagged on this order
@@ -361,7 +361,7 @@ class DirectPayOnlineService
                 foreach($users->concat($teamMembers) as $user) {
 
                     // Send order mark as verified payment sms to user
-                    SmsService::sendOrangeSms(
+                    SendSms::dispatch(
                         $order->craftOrderMarkAsVerifiedPaymentMessage($store, $transaction),
                         $user->mobile_number->withExtension,
                         $store, null, null

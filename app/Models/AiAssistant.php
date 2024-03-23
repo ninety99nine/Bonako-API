@@ -34,6 +34,7 @@ class AiAssistant extends BaseModel
     const MAXIMUM_FREE_REQUESTS = 0;
 
     protected $casts = [
+        'remaining_paid_tokens_expire_at' => 'datetime',
         'requires_subscription' => 'boolean',
     ];
 

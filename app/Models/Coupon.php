@@ -177,16 +177,16 @@ class Coupon extends BaseModel
 
         if($isActive($this->activate_using_start_datetime) && $isActive($this->activate_using_end_datetime)) {
 
-            $instructions[] = 'Place an order between the '.Carbon::parse($this->start_datetime)->format('d M Y H:m').' and the '.Carbon::parse($this->end_datetime)->format('d M Y H:m');
+            $instructions[] = 'Place an order between the '.Carbon::parse($this->start_datetime)->format('d M Y H:i').' and the '.Carbon::parse($this->end_datetime)->format('d M Y H:i');
 
         }else{
 
             if($isActive($this->activate_using_start_datetime)) {
-                $instructions[] = 'Place an order after the '.Carbon::parse($this->start_datetime)->format('d M Y H:m');
+                $instructions[] = 'Place an order after the '.Carbon::parse($this->start_datetime)->format('d M Y H:i');
             }
 
             if($isActive($this->activate_using_end_datetime)) {
-                $instructions[] = 'Place an order before the '.Carbon::parse($this->end_datetime)->format('d M Y H:m');
+                $instructions[] = 'Place an order before the '.Carbon::parse($this->end_datetime)->format('d M Y H:i');
             }
 
         }

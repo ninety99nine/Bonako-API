@@ -73,7 +73,7 @@ class AiMessageRepository extends BaseRepository
         //  If we don't have any free requests left and we don't have any tokens left
         if( $doesNotHaveAnyFreeRequestsLeft && $doesNotHaveAnyTokensLeft) {
 
-            $assistantContent = 'Hi '.auth()->user()->first_name.', please subscribe to ask me more questions';
+            $assistantContent = 'Hi '.request()->auth_user->first_name.', please subscribe to ask me more questions';
 
             //  Indicate that a subscription is required
             if($aiAssistant->requires_subscription == false) {
@@ -248,7 +248,7 @@ class AiMessageRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         $systemContent = $aiMessageCategory->system_prompt.'. ';
         $systemContent .= 'You are talking to '.$user->first_name.' who is an entrepreneur. ';

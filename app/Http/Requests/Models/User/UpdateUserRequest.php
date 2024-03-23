@@ -30,13 +30,14 @@ class UpdateUserRequest extends FormRequest
      *
      * @return array
      */
-    public function rules(UssdService $ussdService)
+    public function rules()
     {
+        $user = $this->chooseUser();
+
         /**
          *  @var User $authUser
          */
-        $authUser = auth()->user();
-        $user = $this->chooseUser();
+        $authUser = request()->auth_user;
         $authUserIsSuperAdmin = $authUser->isSuperAdmin();
 
         $alreadyHasPassword = !empty($user->password);

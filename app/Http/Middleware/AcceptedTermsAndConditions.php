@@ -17,9 +17,15 @@ class AcceptedTermsAndConditions
      */
     public function handle(Request $request, Closure $next)
     {
-        //  If the authenticated user accepted the terms and conditions then continue
-        if( request()->user()->accepted_terms_and_conditions ){
+        /**
+         *  @var User $user
+         */
+        $user = request()->auth_user;
 
+        //  If the authenticated user has accepted the terms and conditions
+        if( $user->accepted_terms_and_conditions ) {
+
+            //  Continue
             return $next($request);
 
         }else{

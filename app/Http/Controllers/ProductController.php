@@ -23,51 +23,51 @@ class ProductController extends BaseController
 
     public function index(Request $request)
     {
-        return response($this->repository->get()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->get());
     }
 
     public function show(Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->showProduct()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($product)->showProduct());
     }
 
     public function update(UpdateProductRequest $request, Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->updateProduct($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($product)->updateProduct($request));
     }
 
     public function confirmDelete(Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->generateDeleteConfirmationCode(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($product)->generateDeleteConfirmationCode());
     }
 
     public function delete(Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->delete(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($product)->delete());
     }
 
     public function showPhoto(Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->showPhoto(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($product)->showPhoto());
     }
 
     public function updatePhoto(UpdatePhotoRequest $request, Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->updatePhoto($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($product)->updatePhoto($request), Response::HTTP_CREATED);
     }
 
     public function deletePhoto(Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->removeExistingPhoto(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($product)->removeExistingPhoto());
     }
 
     public function showVariations(ShowVariationsRequest $request, Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->showVariations($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($product)->showVariations($request));
     }
 
     public function createVariations(CreateVariationsRequest $request, Store $store, Product $product)
     {
-        return response($this->repository->setModel($product)->createVariations($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($product)->createVariations($request), Response::HTTP_CREATED);
     }
 }

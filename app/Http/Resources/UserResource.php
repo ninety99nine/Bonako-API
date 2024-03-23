@@ -135,7 +135,7 @@ class UserResource extends BaseResource
     public function setLinks()
     {
         //  Check if this resource belongs to the authenticated
-        $isAuthUser = $this->resource->id == auth()->user()->id;
+        $isAuthUser = $this->resource->id == request()->auth_user->id;
 
         //  Auth user route name prefix
         $authUserPrefix = 'auth.user.';

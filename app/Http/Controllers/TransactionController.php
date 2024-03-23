@@ -20,63 +20,63 @@ class TransactionController extends BaseController
      */
     protected $repository;
 
-    public function index(Request $request)
+    public function showTransactions()
     {
-        return response($this->repository->get()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showTransactions());
     }
 
     public function show(Store $store, Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->show()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->show());
     }
 
     public function confirmDelete(Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->generateDeleteConfirmationCode(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->generateDeleteConfirmationCode());
     }
 
     public function delete(Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->deleteTransaction(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->deleteTransaction());
     }
 
     public function cancel(CancelTransactionRequest $request, Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->cancel($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->cancel($request));
     }
 
     public function uncancel(UncancelRequest $request, Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->uncancel($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->uncancel($request));
     }
 
     public function showCancellationReasons(Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->showCancellationReasons(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->showCancellationReasons());
     }
 
     public function generatePaymentShortcode(Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->generatePaymentShortcode()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->generatePaymentShortcode());
     }
 
     public function expirePaymentShortcode(Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->expirePaymentShortcode()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->expirePaymentShortcode());
     }
 
     public function showProofOfPaymentPhoto(Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->showProofOfPaymentPhoto(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->showProofOfPaymentPhoto());
     }
 
     public function updateProofOfPaymentPhoto(UpdateProofOfPaymentPhotoRequest $request, Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->updateProofOfPaymentPhoto($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($transaction)->updateProofOfPaymentPhoto($request), Response::HTTP_CREATED);
     }
 
     public function deleteProofOfPaymentPhoto(Transaction $transaction)
     {
-        return response($this->repository->setModel($transaction)->removeExistingProofOfPaymentPhoto(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($transaction)->removeExistingProofOfPaymentPhoto());
     }
 }

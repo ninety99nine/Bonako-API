@@ -2,13 +2,12 @@
 
 namespace App\Models\Pivots;
 
-use App\Models\User;
-use App\Casts\Money;
-use App\Models\Store;
-use App\Casts\Currency;
 use App\Casts\MobileNumber;
-use App\Models\Base\BasePivot;
 use App\Casts\TeamMemberPermissions;
+use App\Models\User;
+use App\Models\Store;
+use App\Models\Base\BasePivot;
+use App\Models\UserStoreOrderStatistic;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -28,42 +27,6 @@ class UserStoreAssociation extends BasePivot
         'is_associated_as_customer' => 'boolean',
         'last_subscription_end_at' => 'datetime',
         'team_member_permissions' => TeamMemberPermissions::class,
-
-        'sub_total_requested' => Money::class,
-        'coupon_discount_total_requested' => Money::class,
-        'sale_discount_total_requested' => Money::class,
-        'coupon_and_sale_discount_total_requested' => Money::class,
-        'grand_total_requested' => Money::class,
-
-        'avg_sub_total_requested' => Money::class,
-        'avg_coupon_discount_total_requested' => Money::class,
-        'avg_sale_discount_total_requested' => Money::class,
-        'avg_coupon_and_sale_discount_total_requested' => Money::class,
-        'avg_grand_total_requested' => Money::class,
-
-        'sub_total_received' => Money::class,
-        'coupon_discount_total_received' => Money::class,
-        'sale_discount_total_received' => Money::class,
-        'coupon_and_sale_discount_total_received' => Money::class,
-        'grand_total_received' => Money::class,
-
-        'avg_sub_total_received' => Money::class,
-        'avg_coupon_discount_total_received' => Money::class,
-        'avg_sale_discount_total_received' => Money::class,
-        'avg_coupon_and_sale_discount_total_received' => Money::class,
-        'avg_grand_total_received' => Money::class,
-
-        'sub_total_cancelled' => Money::class,
-        'coupon_discount_total_cancelled' => Money::class,
-        'sale_discount_total_cancelled' => Money::class,
-        'coupon_and_sale_discount_total_cancelled' => Money::class,
-        'grand_total_cancelled' => Money::class,
-
-        'avg_sub_total_cancelled' => Money::class,
-        'avg_coupon_discount_total_cancelled' => Money::class,
-        'avg_sale_discount_total_cancelled' => Money::class,
-        'avg_coupon_and_sale_discount_total_cancelled' => Money::class,
-        'avg_grand_total_cancelled' => Money::class
     ];
 
     const TEAM_MEMBER_FILTERS = ['All', ...self::TEAM_MEMBER_STATUSES];
@@ -77,10 +40,6 @@ class UserStoreAssociation extends BasePivot
     const FOLLOWER_STATUSES = ['Following', 'Unfollowed', 'Invited', 'Declined'];
 
     const CUSTOMER_FILTERS = ['All', 'Loyal'];
-
-    protected $tranformableCasts = [
-        'currency' => Currency::class,
-    ];
 
     const VISIBLE_COLUMNS = [
 
@@ -96,72 +55,10 @@ class UserStoreAssociation extends BasePivot
         'follower_status', 'invited_to_follow_by_user_id',
 
         /*  Customer Information  */
-        'is_associated_as_customer', 'currency',
+        'is_associated_as_customer',
 
         /*  Assigned Information  */
         'is_assigned', 'assigned_position',
-
-        'currency',
-
-        //  Order Totals (Requested)
-        'total_orders_requested',
-        'sub_total_requested',
-        'coupon_discount_total_requested',
-        'sale_discount_total_requested',
-        'coupon_and_sale_discount_total_requested',
-        'grand_total_requested',
-        'total_products_requested',
-        'total_product_quantities_requested',
-        'total_coupons_requested',
-
-        'avg_sub_total_requested',
-        'avg_coupon_discount_total_requested',
-        'avg_sale_discount_total_requested',
-        'avg_coupon_and_sale_discount_total_requested',
-        'avg_grand_total_requested',
-        'avg_total_products_requested',
-        'avg_total_product_quantities_requested',
-        'avg_total_coupons_requested',
-
-        //  Order Totals (Delivered)
-        'total_orders_received',
-        'sub_total_received',
-        'coupon_discount_total_received',
-        'sale_discount_total_received',
-        'coupon_and_sale_discount_total_received',
-        'grand_total_received',
-        'total_products_received',
-        'total_product_quantities_received',
-        'total_coupons_received',
-
-        'avg_sub_total_received',
-        'avg_coupon_discount_total_received',
-        'avg_sale_discount_total_received',
-        'avg_coupon_and_sale_discount_total_received',
-        'avg_grand_total_received',
-        'avg_total_products_received',
-        'avg_total_product_quantities_received',
-        'avg_total_coupons_received',
-
-        //  Order Totals (Cancelled)
-        'total_orders_cancelled',
-        'sub_total_cancelled',
-        'coupon_discount_total_cancelled',
-        'sale_discount_total_cancelled',
-        'coupon_and_sale_discount_total_cancelled',
-        'grand_total_cancelled',
-        'total_products_cancelled',
-        'total_product_quantities_cancelled',
-        'total_coupons_cancelled',
-
-        'avg_sub_total_cancelled',
-        'avg_coupon_discount_total_cancelled',
-        'avg_sale_discount_total_cancelled',
-        'avg_coupon_and_sale_discount_total_cancelled',
-        'avg_grand_total_cancelled',
-        'avg_total_products_cancelled',
-        'avg_total_product_quantities_cancelled',
-        'avg_total_coupons_cancelled',
 
         /*  Timestamps  */
         'last_seen_on_mobile_app_at',
@@ -170,6 +67,7 @@ class UserStoreAssociation extends BasePivot
         'last_seen_at',
         'created_at',
         'updated_at'
+
     ];
 
     /**
@@ -194,6 +92,16 @@ class UserStoreAssociation extends BasePivot
     public function userWhoInvitedToJoinTeam()
     {
         return $this->belongsTo(User::class, 'invited_to_join_team_by_user_id');
+    }
+
+    /**
+     *  Returns the user store association statistic
+     *
+     *  @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function userStoreOrderStatistic()
+    {
+        return $this->hasOne(UserStoreOrderStatistic::class, 'user_store_association_id');
     }
 
     /****************************

@@ -17,15 +17,21 @@ class LastSeen
      */
     public function handle(Request $request, Closure $next)
     {
-        //  If the user is authenticated update their last seen
-        if($request->user()) {
+        //  If the authenticated user exists
+        if($request->auth_userExists) {
 
             /**
-             * @var User $user
+             *  @var User $user
              */
-            $user = $request->user();
+            $user = $request->auth_user;
 
-            $user->updateLastSeen();
+            //  If the last update was at least 5 minutes ago
+            if ($user && $user->last_seen_at->diffInMinutes(now()) > 5) {
+
+                //  Update the last seen datetime
+                $user->updateLastSeen();
+
+            }
 
         }
 

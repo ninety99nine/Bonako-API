@@ -10,9 +10,12 @@ class CreateSmsAlertsTable extends Migration
     {
         Schema::create('sms_alerts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->cascadeOnDelete();
+            $table->foreignId('user_id');
             $table->unsignedInteger('sms_credits')->default(0);
             $table->timestamps();
+
+            /*  Foreign Key Constraints */
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
         });
     }
 

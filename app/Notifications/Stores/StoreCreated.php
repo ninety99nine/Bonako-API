@@ -12,7 +12,7 @@ use Illuminate\Notifications\Messages\SlackMessage;
 use NotificationChannels\OneSignal\OneSignalChannel;
 use NotificationChannels\OneSignal\OneSignalMessage;
 
-class StoreCreated extends Notification
+class StoreCreated extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 
@@ -27,7 +27,16 @@ class StoreCreated extends Notification
     public function __construct(Store $store, User $createdByUser)
     {
         $this->store = $store;
-        $this->createdByUser = $createdByUser;
+
+        /**
+         *  When the createdByUser is passed as a parameter, it may contain
+         *  loaded relationships such as smsAlert. To prevent this loaded
+         *  relationship from being queried when this job runs, we can
+         *  do so using withoutRelations();
+         *
+         *  Reference: https://laravel.com/docs/10.x/queues#handling-relationships
+         */
+        $this->createdByUser = $createdByUser->withoutRelations();
     }
 
     /**
@@ -76,8 +85,8 @@ class StoreCreated extends Notification
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
         $store = $this->store;
+        $subject = $store->name_with_emoji;
         $body = 'Your store was created successfully';
-        $subject = empty($store->emoji) ? $store->name : $store->emoji.' '.$store->name;
 
         return OneSignalMessage::create()
             ->setSubject($subject)

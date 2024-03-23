@@ -49,8 +49,6 @@ class Product extends BaseModel
 
     const POSITION_MAX = 255;                               //  since we use unsignedTinyInteger() table schema
 
-    protected $dates = ['visibility_expires_at'];
-
     protected $casts = [
         'is_free' => 'boolean',
         'on_sale' => 'boolean',
@@ -66,6 +64,7 @@ class Product extends BaseModel
         'unit_cost_price' => Money::class,
         'unit_sale_discount' => Money::class,
         'unit_regular_price' => Money::class,
+        'visibility_expires_at' => 'datetime',
         'variant_attributes' => JsonToArray::class,
     ];
 

@@ -16,11 +16,11 @@ class OccasionController extends BaseController
 
     public function showOccasions()
     {
-        return response($this->repository->showOccasions()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->showOccasions());
     }
 
     public function showOccasion(Occasion $occasion)
     {
-        return response($this->repository->setModel($occasion)->showOccasion()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($occasion)->showOccasion());
     }
 }

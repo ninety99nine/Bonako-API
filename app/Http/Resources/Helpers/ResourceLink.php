@@ -22,10 +22,7 @@ class ResourceLink {
     public function getLink()
     {
         return [
-            $this->name => [
-                'href' => $this->href,
-                'description' => $this->description
-            ]
+            $this->name => $this->href
         ];
     }
 }

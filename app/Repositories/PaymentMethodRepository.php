@@ -2,12 +2,18 @@
 
 namespace App\Repositories;
 
+use App\Enums\CacheName;
+use App\Enums\PaymentMethodAvailability;
+use App\Enums\PaymentMethodFilter;
+use App\Helpers\CacheManager;
 use App\Models\PaymentMethod;
-use App\Models\SubscriptionPlan;
 use App\Repositories\BaseRepository;
+use App\Traits\Base\BaseTrait;
 
 class PaymentMethodRepository extends BaseRepository
 {
+    use BaseTrait;
+
     /**
      *  Show the payment method filters
      *
@@ -54,13 +60,22 @@ class PaymentMethodRepository extends BaseRepository
     /**
      *  Show the transaction
      *
-     *  @return TransactionRepository
+     *  @return PaymentMethodRepository
      */
     public function showPaymentMethods()
     {
+        $page = $this->getCurrentPage();
+        $usage = $this->model->separateWordsThenLowercase(request()->input('usage'));
         $filter = $this->model->separateWordsThenLowercase(request()->input('filter'));
-        $paymentMethods = $this->queryPaymentMethodsByFilter($filter)->orderBy('position', 'asc');
-        return $this->setModel($paymentMethods)->get();
+        $perPage = $this->model->separateWordsThenLowercase(request()->input('per_page'));
+        $cacheManager = (new CacheManager(CacheName::PAYMENT_METHODS))->append($usage, true)->append($filter, true)->append($perPage)->append($page);
+
+        return $cacheManager->remember(now()->addWeek(), function() use ($filter) {
+
+            $paymentMethods = $this->queryPaymentMethodsByFilter($filter)->orderBy('position', 'asc');
+            return $this->setModel($paymentMethods)->get();
+
+        });
     }
 
     /**
@@ -74,26 +89,31 @@ class PaymentMethodRepository extends BaseRepository
         //  Normalize the filter
         $filter = $this->model->separateWordsThenLowercase($filter);
 
+        //  Normalize the usage
+        $usage = $this->model->separateWordsThenLowercase(request()->input('usage'));
+
         //  Get the payment method eloquent instance
         $paymentMethods = $this->model;
 
-        if($filter == 'available on perfect pay') {
+        if($usage == strtolower(PaymentMethodAvailability::AvailableOnPerfectPay->value)) {
 
             $paymentMethods = $paymentMethods->availableOnPerfectPay();
 
-        }else if($filter == 'available on stores') {
+        }else if($usage == strtolower(PaymentMethodAvailability::AvailableInStores->value)) {
 
-            $paymentMethods = $paymentMethods->availableOnStores();
+            $paymentMethods = $paymentMethods->availableInStores();
 
-        }else if($filter == 'available on ussd') {
+        }else if($usage == strtolower(PaymentMethodAvailability::AvailableOnUssd->value)) {
 
             $paymentMethods = $paymentMethods->availableOnUssd();
 
-        }else if($filter == 'active') {
+        }
+
+        if($filter == strtolower(PaymentMethodFilter::Active->value)) {
 
             $paymentMethods = $paymentMethods->active();
 
-        }else if($filter == 'inactive') {
+        }else if($filter == strtolower(PaymentMethodFilter::Inactive->value)) {
 
             $paymentMethods = $paymentMethods->inactive();
 

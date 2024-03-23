@@ -15,7 +15,7 @@ use NotificationChannels\OneSignal\OneSignalChannel;
 use NotificationChannels\OneSignal\OneSignalMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 
-class FriendGroupStoreAdded extends Notification
+class FriendGroupStoreAdded extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 

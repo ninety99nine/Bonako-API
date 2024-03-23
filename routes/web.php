@@ -1,14 +1,8 @@
 <?php
 
-use App\Http\Controllers\HomeController;
+use App\Jobs\SendSms;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebController;
-use App\Models\Order;
-use App\Models\Store;
-use App\Models\Transaction;
-use App\Models\User;
-use App\Services\Sms\SmsService;
-use Illuminate\Support\Facades\View;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,8 +29,7 @@ Route::get('/test-sms', function () {
         $content = $order->craftNewOrderForFriendMessage($store, $customer, $friend, $friends);
         $recipientMobileNumber = $customer->mobile_number->withExtension;
         */
-
-        return SmsService::sendOrangeSms('This is a test sms', '26772882239', null, null, null);
+        SendSms::dispatch('This is a test sms', '26772882239', null, null, null);
 
         return 'Sent!';
 
@@ -60,13 +53,7 @@ Route::controller(WebController::class)->group(function(){
 });
 
 //  Redirect to terms and conditions
-Route::redirect('/terms', 'https://forms.fillout.com/t/hNffdJnchyus', 301)->name('terms.and.conditions.show');
-
-/*
-Route::get('/create', [ExampleController::class, 'form'])->name('form-show');
-Route::post('/create', [ExampleController::class, 'store'])->name('form-create');
-*/
-
+Route::redirect('/terms', config('app.TERMS_AND_CONDITIONS_REDIRECT_URL'), 301)->name('terms.and.conditions.show');
 
 //  Incase we don't match any route
 Route::fallback(function() {

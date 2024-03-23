@@ -7,14 +7,16 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Models\Subscription;
 use App\Models\Base\BaseModel;
+use App\Traits\Base\BaseTrait;
 use App\Models\SubscriptionPlan;
 use App\Repositories\BaseRepository;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\Subscriptions\SubscriptionCreated;
-use Illuminate\Database\Eloquent\Model;
 
 class SubscriptionRepository extends BaseRepository
 {
+    use BaseTrait;
     /**
      *  Return the TransactionRepository instance
      *
@@ -36,6 +38,109 @@ class SubscriptionRepository extends BaseRepository
     }
 
     /**
+     *  Eager load relationships on the given model
+     *
+     *  @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Builder $model
+     *  @return OrderRepository
+     */
+    public function eagerLoadSubscriptionRelationships($model) {
+
+        $relationships = [];
+        $countableRelationships = [];
+
+        //  Check if we want to eager load the user on this review
+        if( request()->input('with_user') ) {
+
+            //  Additionally we can eager load the user on this review
+            array_push($relationships, 'user');
+
+        }
+
+        //  Check if we want to eager load the owner
+        if( request()->input('with_owner') ) {
+
+            //  Additionally we can eager load the owner
+            array_push($relationships, 'owner');
+
+        }
+
+        //  Check if we want to eager load the transaction
+        if( request()->input('with_transaction') ) {
+
+            //  Additionally we can eager load the transaction
+            array_push($relationships, 'transaction');
+
+        }
+
+        //  Check if we want to eager load the subscription plan
+        if( request()->input('with_subscription_plan') ) {
+
+            //  Additionally we can eager load the subscription plan
+            array_push($relationships, 'subscriptionPlan');
+
+        }
+
+        if( !empty($relationships) ) {
+
+            $model = ($model instanceof Subscription)
+                ? $model->load($relationships)->loadCount($countableRelationships)
+                : $model->with($relationships)->withCount($countableRelationships);
+
+        }
+
+        $this->setModel($model);
+
+        return $this;
+    }
+
+    /**
+     *  Show the subscriptions
+     *
+     *  @return SubscriptionRepository
+     */
+    public function showSubscriptions()
+    {
+        $endAt = request()->input('end_at');
+        $startAt = request()->input('start_at');
+        $status = $this->model->separateWordsThenLowercase(request()->input('status'));
+        $service = $this->model->separateWordsThenLowercase(request()->input('service'));
+
+        //  Query the latest subscriptions first
+        $subscriptions = $this->model->latest();
+
+        if(!empty($endAt)) {
+            [$operator, $date] = $this->extractOperatorAndDate($endAt);
+            $subscriptions = $subscriptions->whereDate('end_at', $operator, $date);
+        }
+
+        if(!empty($startAt)) {
+            [$operator, $date] = $this->extractOperatorAndDate($startAt);
+            $subscriptions = $subscriptions->whereDate('start_at', $operator, $date);
+        }
+
+        if(!empty($status)) {
+
+            if($status == 'active') {
+
+                $subscriptions = $subscriptions->notExpired();
+
+            }else if($status == 'inactive') {
+
+                $subscriptions = $subscriptions->expired();
+
+            }
+
+        }
+
+        if(!empty($service)) {
+            $subscriptions = $subscriptions->where('owner_type', $service);
+        }
+
+        //  Eager load the subscription relationships based on request inputs
+        return $this->eagerLoadSubscriptionRelationships($subscriptions)->get();
+    }
+
+    /**
      *  Create a subscription
      *
      *  @param Model $model - The resource being subscribed for
@@ -48,8 +153,17 @@ class SubscriptionRepository extends BaseRepository
         //  If the subscription exists
         if($latestSubscription) {
 
-            //  Set the start datetime based on the last subscription end datetime
-            $startAt = Carbon::parse($latestSubscription->end_at);
+            if(Carbon::parse($latestSubscription->end_at)->isFuture()) {
+
+                //  Set the start datetime based on the last subscription end datetime
+                $startAt = Carbon::parse($latestSubscription->end_at);
+
+            }else{
+
+                //  Set the start datetime as the current datetime
+                $startAt = now();
+
+            }
 
         }else{
 
@@ -81,7 +195,7 @@ class SubscriptionRepository extends BaseRepository
             'end_at' => $endAt,
             'start_at' => $startAt,
             'owner_id' => $model->id,
-            'user_id' => auth()->user()->id,
+            'user_id' => request()->auth_user->id,
             'owner_type' => $model->getResourceName(),
             'subscription_plan_id' => $subscriptionPlanId
         ]);
@@ -116,13 +230,12 @@ class SubscriptionRepository extends BaseRepository
          *  subscriptions are successful. For now we only allow a user to subscribe
          *  for themselves.
          */
-        $notifyUsers = auth()->user();
-        $subscriptionByUser = auth()->user();
-        $subscriptionForUser = auth()->user();
+        $notifyUsers = request()->auth_user;
+        $subscriptionByUser = request()->auth_user;
+        $subscriptionForUser = request()->auth_user;
 
         //  Notify the user that they have subscribed successfully
-        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::sendNow(
+        Notification::send(
             $notifyUsers,
             new SubscriptionCreated($subscription, $transaction, $subscriptionFor, $subscriptionByUser, $subscriptionForUser)
         );

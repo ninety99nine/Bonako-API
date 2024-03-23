@@ -39,7 +39,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            //  \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
@@ -69,15 +69,17 @@ class Kernel extends HttpKernel
          *  Custom Middleware -  By Julian B Tabona
          */
         'request.via.ussd' => \App\Http\Middleware\CheckIfRequestFromUssdServer::class,
-        'require.api.headers' => \App\Http\Middleware\RequireApiHeaders::class,
         'accepted.terms.and.conditions' => \App\Http\Middleware\AcceptedTermsAndConditions::class,
         'store.permission' => \App\Http\Middleware\CheckIfHasStorePermissions::class,
         'assigned.to.store.as.team.member' => \App\Http\Middleware\CheckIfAssignedToStoreAsTeamMember::class,
         'superadmin' => \App\Http\Middleware\CheckIfSuperAdmin::class,
-        'format.request.and.response.payloads' => \App\Http\Middleware\FormatRequestAndResponsePayload::class,
+        'format.request.payload' => \App\Http\Middleware\FormatRequestPayload::class,
+        'format.response.payload' => \App\Http\Middleware\FormatResponsePayload::class,
+        'response.payload.limiter' => \App\Http\Middleware\ResponsePayloadLimiter::class,
         'last.seen' => \App\Http\Middleware\LastSeen::class,
         'last.seen.at.store' => \App\Http\Middleware\LastSeenAtStore::class,
         'mark.order.as.seen.by.team.member' => \App\Http\Middleware\MarkOrderAsSeenByTeamMember::class,
+        'capture.auth.user.on.request' => \App\Http\Middleware\CaptureAuthUserOnRequest::class,
     ];
 
     /**
@@ -96,8 +98,23 @@ class Kernel extends HttpKernel
          *  if the user is authenticated first, we ensure that the header validation
          *  takes precedence over user authentication.
          */
-        \App\Http\Middleware\RequireApiHeaders::class,  //  Run this first
-        \App\Http\Middleware\Authenticate::class,       //  Then this (Authentication)
+        \App\Http\Middleware\RequireApiHeaders::class,                  //  Require API headers first
+        \App\Http\Middleware\FormatRequestPayload::class,               //  Then format the request payload
+        \App\Http\Middleware\CaptureAuthUserOnRequest::class,           //  Then Capture the authenticated user on request (if any)
+        \App\Http\Middleware\Authenticate::class,                       //  Then Authenticate the request
+        \Illuminate\Routing\Middleware\ThrottleRequests::class,         //  Then check the rate limits against the authenticated user (if any)
+
+        /**
+         *  Remember that the middlewares are fired one after another in linear diretion.
+         *  First the middlewares are executed from the first until the last when the request enters,
+         *  and then we run the middlewares in reverse order, that is from the last to the first when
+         *  we are sending out a response. Since the ResponsePayloadLimiter and the FormatResponsePayload
+         *  are executed when the response is being sent out, we should place the FormatResponsePayload
+         *  after the ResponsePayloadLimiter, so that when the response is returned, we execute the
+         *  FormatResponsePayload and then the ResponsePayloadLimiter.
+         */
+        \App\Http\Middleware\ResponsePayloadLimiter::class,             //  Then limit the response payload
+        \App\Http\Middleware\FormatResponsePayload::class,              //  Then format the response payload
 
         /**
          *  Always run the route model binding after the user is authenticated. This ensures

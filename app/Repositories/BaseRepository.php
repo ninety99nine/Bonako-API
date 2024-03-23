@@ -2,10 +2,11 @@
 
 namespace App\Repositories;
 
-use Exception;
-use Carbon\Carbon;
+use App\Enums\CacheName;
+use App\Enums\RefreshModel;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\Request;
+use App\Helpers\CacheManager;
 use Illuminate\Database\Eloquent\Model;
 use App\Exceptions\InvalidPerPageException;
 use App\Services\Sorting\RepositorySorting;
@@ -15,7 +16,6 @@ use Illuminate\Validation\ValidationException;
 use App\Exceptions\DeleteConfirmationCodeInvalid;
 use App\Exceptions\RepositoryQueryFailedException;
 use App\Exceptions\RepositoryModelNotFoundException;
-use Illuminate\Http\Request;
 
 abstract class BaseRepository
 {
@@ -405,6 +405,39 @@ abstract class BaseRepository
 
             }
 
+            /**
+             *  Resolve caching Error:
+             *
+             *  $paymentMethods = PaymentMethod::orderBy('position', 'asc');
+             *  $paymentMethodRepository = (new PaymentMethodRepository)->setModel($paymentMethods);
+             *
+             *  Cache::remember('PAYMENT_METHODS', now()->addDay(), function() {
+             *
+             *      $paymentMethods = PaymentMethod::orderBy('position', 'asc');
+             *      return (new PaymentMethodRepository)->setModel($paymentMethods)->get();
+             *
+             *  });
+             *
+             *  Notice that for this PaymentMethodRepository, $this->model is equal to
+             *  Query Builder Instance e.g:
+             *
+             *  $this->model = PaymentMethod::orderBy('position', 'asc');
+             *
+             *  When we try and cache the callback, we are going to get the following error:
+             *
+             *  Serialization of 'PDO' is not allowed
+             *
+             *  An Eloquent Query Builder Instance has a reference to a PDO instance since the PDO instance is used to build the queries.
+             *  PDO objects contain active links to databases (which may have a transaction initiated or DB session settings and variables).
+             *  You cannot serialize a PDO object because the above would get lost and cannot be re-established automatically. This means
+             *  whenever we try to Cache any Repository where $this->model = Eloquent Query Builder Instance, we  will get this error.
+             *
+             *  To resolve this issue, we need to set $this->model to a non Query Builder instance e.g $this->model = (new PaymentMethod);
+             *
+             *  This way the caching will work just fine.
+             */
+            $this->setModel( resolve($this->getModelClass()) );
+
             return $this;
 
         //  If we failed to perform the query
@@ -443,7 +476,7 @@ abstract class BaseRepository
      *
      *  @param Request | Model | array $data The data that must be used to create the record
      */
-    public function create($data)
+    public function create($data, $refreshModel = RefreshModel::YES)
     {
         //  Get the extracted data
         $data = $this->extractDBData($data);
@@ -451,8 +484,20 @@ abstract class BaseRepository
         //  Ignore unsupported fields
         $data = collect($data)->except($this->createIgnoreFields)->all();
 
-        //  Set repository model after creating and retrieving a fresh model instance
-        $this->setModel( $this->model->create($data)->fresh() );
+        //  Save the model into the database
+        $createdModel = $this->model->create($data);
+
+        if( $refreshModel == RefreshModel::YES ) {
+
+            //  Set a fresh instance of this created model
+            $this->setModel( $createdModel->fresh() );
+
+        }else{
+
+            //  Set this created model
+            $this->setModel( $createdModel );
+
+        }
 
         /**
          *  Return the Repository Class instance. This is so that we can chain other
@@ -650,8 +695,8 @@ abstract class BaseRepository
         //  Generate random 6 digit number
         $code = $this->generateRandomSixDigitCode();
 
-        //  Cache the new code for exactly 1 day
-        Cache::put($this->getDeleteConfirmationCodeCacheName(), $code, now()->addDay());
+        //  Cache the new code for exactly 10 minutes
+        $this->getDeleteConfirmationCodeCacheManager()->put($code, now()->addMinutes(10));
 
         return [
             'message' => 'Enter the confirmation code "'.$code.'" to confirm deleting this ' . $this->getModelNameInLowercase(),
@@ -677,9 +722,9 @@ abstract class BaseRepository
 
             }
 
-            if( Cache::has($this->getDeleteConfirmationCodeCacheName()) ) {
+            if( $this->getDeleteConfirmationCodeCacheManager()->has() ) {
 
-                if( $code == Cache::get($this->getDeleteConfirmationCodeCacheName()) ) {
+                if( $code == $this->getDeleteConfirmationCodeCacheManager()->get() ) {
 
                     return true;
 
@@ -709,22 +754,17 @@ abstract class BaseRepository
      */
     public function removeDeleteConfirmationCode()
     {
-        Cache::forget($this->getDeleteConfirmationCodeCacheName());
+        $this->getDeleteConfirmationCodeCacheManager()->forget();
     }
 
     /**
-     *  Generate the code required to delete important assets
+     *  Get the confirmation code cache manager
+     *
+     *  @return CacheManager
      */
-    public function getDeleteConfirmationCodeCacheName()
+    public function getDeleteConfirmationCodeCacheManager()
     {
-        /**
-         *  If the $model is a store with id equal to "5", then
-         *  the returned result must be "DELETE_STORE_5_1"
-         *
-         *  If the $model is an order with id equal to "5", then
-         *  the returned result must be "DELETE_ORDER_5_1"
-         */
-        return 'DELETE_'.strtoupper(class_basename($this->model)).'_'.$this->model->id.'_'.auth()->user()->id;
+        (new CacheManager(CacheName::DELETE_CONFIRMATION_CODE))->appendModel($this->model);
     }
 
     /**

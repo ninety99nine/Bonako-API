@@ -114,7 +114,7 @@ class OrderMarkedAsPaid extends OrderNotification
         $transaction = $this->transaction;
         $verifiedByUser = $this->verifiedByUser;
         $subject = 'Order payment confirmation';
-        $body = $order->craftOrderMarkedAsPaidtMessage($store, $transaction, $verifiedByUser);
+        $body = $order->craftOrderMarkedAsPaidMessage($store, $transaction, $verifiedByUser);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

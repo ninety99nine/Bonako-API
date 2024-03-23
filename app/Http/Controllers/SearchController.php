@@ -52,7 +52,7 @@ class SearchController extends Controller
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         /**
          *  $result = [
@@ -123,16 +123,16 @@ class SearchController extends Controller
         // Order by the total followers (Fourth priority to order)
         if(request()->input('followers_count')) $model = $model->orderBy('followers_count', 'desc');
 
-        return response($storeRepository->setModel($model)->get()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($storeRepository->setModel($model)->get());
     }
 
     public function searchFriends()
     {
-        return response($this->userRepository()->setModel(auth()->user())->showFriends()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->userRepository()->setModel(request()->auth_user)->showFriends());
     }
 
     public function searchFriendGroups()
     {
-        return response($this->friendGroupRepository()->get()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->friendGroupRepository()->get());
     }
 }

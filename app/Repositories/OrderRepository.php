@@ -39,6 +39,7 @@ use App\Exceptions\OrderProhibitsMultiplePendingPaymentByUserException;
 use App\Exceptions\OrderWithPaidTransactionsCannotBeCancelledException;
 use App\Exceptions\OrderWithPendingTransactionsCannotBeUpdatedException;
 use App\Exceptions\OrderWithPendingTransactionsCannotBeCancelledException;
+use App\Jobs\SendSms;
 use App\Models\Address;
 use App\Models\DeliveryAddress;
 use App\Models\FriendGroup;
@@ -48,6 +49,7 @@ use App\Models\Pivots\UserOrderViewAssociation;
 use App\Models\Pivots\UserStoreAssociation;
 use App\Models\Product;
 use App\Models\Store;
+use App\Models\UserStoreOrderStatistic;
 use App\Notifications\Orders\OrderCreated;
 use App\Notifications\Orders\OrderMarkedAsPaid;
 use App\Notifications\Orders\OrderPaymentRequest;
@@ -348,7 +350,7 @@ class OrderRepository extends BaseRepository
             //  Query the store orders where the user is associated as a customer
             $orders = $store->orders()->whereHas('users', function ($query) {
                 $query->where('user_order_collection_association.role', 'Customer')
-                      ->where('user_order_collection_association.user_id', auth()->user()->id);
+                      ->where('user_order_collection_association.user_id', request()->auth_user->id);
             });
 
         //  If the user must be associated as a friend
@@ -357,7 +359,7 @@ class OrderRepository extends BaseRepository
             //  Query the store orders where the user is associated as a friend
             $orders = $store->orders()->whereHas('users', function ($query) {
                 $query->where('user_order_collection_association.role', 'Friend')
-                      ->where('user_order_collection_association.user_id', auth()->user()->id);
+                      ->where('user_order_collection_association.user_id', request()->auth_user->id);
             });
 
         //  If the user must be associated as a customer or friend
@@ -368,7 +370,7 @@ class OrderRepository extends BaseRepository
                 $query->where(function ($subquery) {
                     $subquery->where('user_order_collection_association.role', 'Customer')
                             ->orWhere('user_order_collection_association.role', 'Friend');
-                })->where('user_order_collection_association.user_id', auth()->user()->id);
+                })->where('user_order_collection_association.user_id', request()->auth_user->id);
             });
 
         //  If the user must be associated as a team member
@@ -377,7 +379,7 @@ class OrderRepository extends BaseRepository
             //  Query the store orders where the user is associated as a team member
             $orders = Order::whereHas('store', function ($query) use ($store) {
                 $query->where('stores.id', $store->id)->whereHas('teamMembers', function ($query2) {
-                    $query2->joinedTeam()->matchingUserId(auth()->user()->id);
+                    $query2->joinedTeam()->matchingUserId(request()->auth_user->id);
                 });
             });
 
@@ -681,7 +683,7 @@ class OrderRepository extends BaseRepository
             //  Query the friend group orders where the user is associated as a customer
             $orders = $friendGroup->orders()->whereHas('users', function ($query) {
                 $query->where('user_order_collection_association.role', 'Customer')
-                      ->where('user_order_collection_association.user_id', auth()->user()->id);
+                      ->where('user_order_collection_association.user_id', request()->auth_user->id);
             });
 
         //  If the user must be associated as a friend
@@ -690,7 +692,7 @@ class OrderRepository extends BaseRepository
             //  Query the friend group orders where the user is associated as a friend
             $orders = $friendGroup->orders()->whereHas('users', function ($query) {
                 $query->where('user_order_collection_association.role', 'Friend')
-                      ->where('user_order_collection_association.user_id', auth()->user()->id);
+                      ->where('user_order_collection_association.user_id', request()->auth_user->id);
             });
 
         //  If the user must be associated as a customer or friend
@@ -701,7 +703,7 @@ class OrderRepository extends BaseRepository
                 $query->where(function ($subquery) {
                     $subquery->where('user_order_collection_association.role', 'Customer')
                             ->orWhere('user_order_collection_association.role', 'Friend');
-                })->where('user_order_collection_association.user_id', auth()->user()->id);
+                })->where('user_order_collection_association.user_id', request()->auth_user->id);
             });
 
         //  If the user must be associated as a team member
@@ -711,7 +713,7 @@ class OrderRepository extends BaseRepository
             $orders = Order::whereHas('friendGroups', function ($query) use ($friendGroup) {
                 $query->where('friend_groups.id', $friendGroup->id)->whereHas('store', function ($query) {
                     $query->whereHas('teamMembers', function ($query2) {
-                        $query2->joinedTeam()->matchingUserId(auth()->user()->id);
+                        $query2->joinedTeam()->matchingUserId(request()->auth_user->id);
                     });
                 });
             });
@@ -857,7 +859,7 @@ class OrderRepository extends BaseRepository
         /**
          *  @var User $user
          */
-        $user = auth()->user();
+        $user = request()->auth_user;
 
         //  Check if we are ordering for me
         $orderForMe = $orderFor == 'me';
@@ -1233,17 +1235,15 @@ class OrderRepository extends BaseRepository
         if($isUpdatableOrder) {
 
             //  Send order updated notification to the customer, friends, and team members who have joined this store
-            //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-            Notification::sendNow($notifiableUsers, new OrderUpdated($order, auth()->user()));
+            Notification::send($notifiableUsers, new OrderUpdated($order, request()->auth_user));
 
         }else{
 
             //  Send order created notification to the customer, friends, and team members who have joined this store
-            //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-            Notification::sendNow($notifiableUsers, new OrderCreated($order, auth()->user()));
+            Notification::send($notifiableUsers, new OrderCreated($order, request()->auth_user));
 
             // Send sms to customer placing this order
-            SmsService::sendOrangeSms(
+            SendSms::dispatch(
                 $order->craftNewOrderForCustomerMessage($store),
                 $userAsCustomer->mobile_number->withExtension,
                 $store, null, null
@@ -1252,7 +1252,7 @@ class OrderRepository extends BaseRepository
             foreach($teamMembers as $teamMember) {
 
                 // Send sms to team member who has joined this store
-                SmsService::sendOrangeSms(
+                SendSms::dispatch(
                     $order->craftNewOrderForSellerMessage($store, $userAsCustomer),
                     $teamMember->mobile_number->withExtension,
                     $store, null, null
@@ -1273,7 +1273,7 @@ class OrderRepository extends BaseRepository
             foreach($friends as $friend) {
 
                 // Send sms to friend tagged on this order
-                SmsService::sendOrangeSms(
+                SendSms::dispatch(
                     $order->craftNewOrderForFriendMessage($friend),
                     $friend->mobile_number->withExtension,
                     $store, null, null
@@ -1367,6 +1367,21 @@ class OrderRepository extends BaseRepository
         }
 
         /**
+         *  Check if the user store order statistic exists for this user store association
+         */
+        if( DB::table('user_store_order_statistics')->where('user_store_association_id', $userStoreAssociation->id)->exists() ) {
+
+            //  Get the user store order statistic
+            $userStoreOrderStatistic = $userStoreAssociation->userStoreOrderStatistic;
+
+        }else{
+
+            //  Create an new user store order statistic instance
+            $userStoreOrderStatistic = new UserStoreOrderStatistic;
+
+        }
+
+        /**
          *  Get the Model fields matching the given type
          *  that must be modified e.g
          *
@@ -1403,7 +1418,7 @@ class OrderRepository extends BaseRepository
          *      ... e.t.c
          *   ]
          */
-        $fields = collect( $userStoreAssociation->getAttributes() )->keys()->filter(function($field) use ($type) {
+        $fields = collect( $userStoreOrderStatistic->getAttributes() )->keys()->filter(function($field) use ($type) {
 
             return Str::endsWith($field, $type);
 
@@ -1425,35 +1440,35 @@ class OrderRepository extends BaseRepository
             /**
              *  The following will modify the model field as follows
              *
-             *  $userStoreAssociation['total_orders_requested'] += 1;
-             *  $userStoreAssociation['grand_total_requested'] += $model['grand_total'];
-             *  $userStoreAssociation['sub_total_requested'] += $model['sub_total'];
+             *  $userStoreOrderStatistic['total_orders_requested'] += 1;
+             *  $userStoreOrderStatistic['grand_total_requested'] += $model['grand_total'];
+             *  $userStoreOrderStatistic['sub_total_requested'] += $model['sub_total'];
              *  ... e.t.c
              */
 
             if( $increment ) {
 
                 //  Check if this is a Money object
-                if(is_object($userStoreAssociation[$field]) && isset($cart[$matchingField])) {
+                if(is_object($userStoreOrderStatistic[$field]) && isset($cart[$matchingField])) {
 
-                    $userStoreAssociation[$field]->amount += $cart[$matchingField]->amount;
+                    $userStoreOrderStatistic[$field]->amount += $cart[$matchingField]->amount;
 
                 }else if($matchingField == 'total_orders') {
 
-                    $userStoreAssociation[$field] += 1;
+                    $userStoreOrderStatistic[$field] += 1;
 
                 }
 
             }else{
 
                 //  Check if this is a Money object
-                if(is_object($userStoreAssociation[$field]) && isset($cart[$matchingField])) {
+                if(is_object($userStoreOrderStatistic[$field]) && isset($cart[$matchingField])) {
 
-                    $userStoreAssociation[$field]->amount -= $cart[$matchingField]->amount;
+                    $userStoreOrderStatistic[$field]->amount -= $cart[$matchingField]->amount;
 
                 }else if($matchingField == 'total_orders') {
 
-                    $userStoreAssociation[$field] -= 1;
+                    $userStoreOrderStatistic[$field] -= 1;
 
                 }
 
@@ -1477,24 +1492,24 @@ class OrderRepository extends BaseRepository
              *  that are not returning null to calculate their
              *  average values
              */
-            if( $userStoreAssociation[$avgField] !== null ) {
+            if( $userStoreOrderStatistic[$avgField] !== null ) {
 
                 /**
                  *  The following will modify the model averages as follows
                  *
-                 *  $userStoreAssociation['avg_grand_total_requested'] = $userStoreAssociation['grand_total_requested'] / $model['total_orders_requested'];
-                 *  $userStoreAssociation['avg_sub_total_requested'] = $userStoreAssociation['sub_total_requested'] / $model['total_orders_requested'];
+                 *  $userStoreOrderStatistic['avg_grand_total_requested'] = $userStoreOrderStatistic['grand_total_requested'] / $model['total_orders_requested'];
+                 *  $userStoreOrderStatistic['avg_sub_total_requested'] = $userStoreOrderStatistic['sub_total_requested'] / $model['total_orders_requested'];
                  *  ... e.t.c
                  */
 
                 //  Check if this is a Money object
-                if(is_object($userStoreAssociation[$avgField])) {
+                if(is_object($userStoreOrderStatistic[$avgField])) {
 
-                    $userStoreAssociation[$avgField]->amount = $userStoreAssociation[$field]->amount / $userStoreAssociation['total_orders_'.$type];
+                    $userStoreOrderStatistic[$avgField]->amount = $userStoreOrderStatistic[$field]->amount / $userStoreOrderStatistic['total_orders_'.$type];
 
                 }else {
 
-                    $userStoreAssociation[$avgField] = $userStoreAssociation[$field] / $userStoreAssociation['total_orders_'.$type];
+                    $userStoreOrderStatistic[$avgField] = $userStoreOrderStatistic[$field] / $userStoreOrderStatistic['total_orders_'.$type];
 
                 }
 
@@ -1503,7 +1518,7 @@ class OrderRepository extends BaseRepository
         }
 
         //  Save the changes on the customer order totals
-        $userStoreAssociation->save();
+        $userStoreOrderStatistic->save();
     }
 
     /**
@@ -1903,14 +1918,13 @@ class OrderRepository extends BaseRepository
                     $requestedByUser = $transaction->requestedByUser;
 
                     //  Send order payment request notification to the payer
-                    //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-                    Notification::sendNow(
+                    Notification::send(
                         $paidByUser,
                         new OrderPaymentRequest($order, $store, $transaction, $requestedByUser, $paymentMethod)
                     );
 
                     // Send order payment request sms to the paying user
-                    SmsService::sendOrangeSms(
+                    SendSms::dispatch(
                         $order->craftOrderPaymentRequestMessage($store, $transaction, $requestedByUser, $paymentMethod),
                         $paidByUser->mobile_number->withExtension,
                         $store, null, null
@@ -1983,7 +1997,6 @@ class OrderRepository extends BaseRepository
         //  Mark this transaction as paid
         $transactionRepository = $this->transactionRepository()->setModel($authTransactionPendingPayment)->update([
             'payment_status' => 'Paid',
-            'is_verified' => true,
 
             /**
              *  Update description:
@@ -1991,7 +2004,7 @@ class OrderRepository extends BaseRepository
              *  Before: Partial payment for order #00001 requested by John Doe
              *  After:  Partial payment for order #00001 requested by John Doe and paid by Mark Winters
              */
-            'description' => $authTransactionPendingPayment->description . ' and paid by ' . auth()->user()->name
+            'description' => $authTransactionPendingPayment->description . ' and paid by ' . request()->auth_user->name
         ]);
 
         //  Update the order amount balance
@@ -2052,11 +2065,10 @@ class OrderRepository extends BaseRepository
          *
          *  @var User $verifiedByUser
          */
-        $verifiedByUser = auth()->user();
+        $verifiedByUser = request()->auth_user;
 
         //  Send order marked as paid notification to the customer, friends and team members
-        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::sendNow(
+        Notification::send(
             //  Send notifications to the team members who joined
             collect($teamMembers)->merge(
                 //  As well as the customer and friends who were tagged on this order
@@ -2068,8 +2080,8 @@ class OrderRepository extends BaseRepository
         foreach($users->concat($teamMembers) as $user) {
 
             // Send order mark as verified payment sms to user
-            SmsService::sendOrangeSms(
-                $order->craftOrderMarkedAsPaidtMessage($store, $transaction, $verifiedByUser),
+            SendSms::dispatch(
+                $order->craftOrderMarkedAsPaidMessage($store, $transaction, $verifiedByUser),
                 $user->mobile_number->withExtension,
                 $store, null, null
             );
@@ -2164,7 +2176,7 @@ class OrderRepository extends BaseRepository
 
         //  Get the user if assigned to this order
         $userOrderAssociation = DB::table('user_order_collection_association')
-                                    ->where('user_id', auth()->user()->id)
+                                    ->where('user_id', request()->auth_user->id)
                                     ->where('order_id', $order->id)
                                     ->where('can_collect', '1')
                                     ->first();
@@ -2201,7 +2213,7 @@ class OrderRepository extends BaseRepository
              *  Save the collection record on the user and order association.
              *  Set to expire exactly after 120 seconds (2 minutes)
              */
-            DB::table('user_order_collection_association')->where('order_id', $order->id)->where('user_id', auth()->user()->id)->update($collectionRecord);
+            DB::table('user_order_collection_association')->where('order_id', $order->id)->where('user_id', request()->auth_user->id)->update($collectionRecord);
 
             //  Collection record was created
             return array_merge(
@@ -2239,7 +2251,7 @@ class OrderRepository extends BaseRepository
 
         //  Get the user if assigned to this order
         $userOrderAssociation = DB::table('user_order_collection_association')
-                                    ->where('user_id', auth()->user()->id)
+                                    ->where('user_id', request()->auth_user->id)
                                     ->where('order_id', $order->id)
                                     ->where('can_collect', '1')
                                     ->first();
@@ -2289,7 +2301,7 @@ class OrderRepository extends BaseRepository
          *
          *  @var User $updatedByUser
          */
-        $updatedByUser = auth()->user();
+        $updatedByUser = request()->auth_user;
 
         // Get the order status
         $status = $this->separateWordsThenLowercase(request()->input('status'));
@@ -2307,8 +2319,7 @@ class OrderRepository extends BaseRepository
         }
 
         //  Send order status changed notification to customer and friends (if any)
-        //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-        Notification::sendNow(
+        Notification::send(
             /**
              *  Send notifications to the customer
              *
@@ -2344,7 +2355,7 @@ class OrderRepository extends BaseRepository
         foreach($users->concat($teamMembers) as $user) {
 
             // Send order collected sms to user
-            SmsService::sendOrangeSms(
+            SendSms::dispatch(
                 $order->craftOrderStatusUpdatedMessage($store, $updatedByUser),
                 $user->mobile_number->withExtension,
                 $store, null, null
@@ -2458,7 +2469,7 @@ class OrderRepository extends BaseRepository
              *
              *  @var User $verifiedByUser
              */
-            $verifiedByUser = auth()->user();
+            $verifiedByUser = request()->auth_user;
 
             /**
              *  Get the user that collected this order
@@ -2525,7 +2536,7 @@ class OrderRepository extends BaseRepository
             foreach($users->concat($teamMembers) as $user) {
 
                 // Send order collected sms to user
-                SmsService::sendOrangeSms(
+                SendSms::dispatch(
                     $order->craftOrderCollectedMessage($store, $collectedByUser, $verifiedByUser),
                     $user->mobile_number->withExtension,
                     $store, null, null
@@ -2665,7 +2676,7 @@ class OrderRepository extends BaseRepository
         $orderId = $order->id;
 
         // Get the user id
-        $userId = auth()->user()->id;
+        $userId = request()->auth_user->id;
 
         // Get the user order view association if exists
         $userOrderViewAssociation = UserOrderViewAssociation::where('order_id', $orderId)->where('user_id', $userId)->first();
@@ -2725,14 +2736,13 @@ class OrderRepository extends BaseRepository
         if( $totalViewsByTeam == 1 ) {
 
             //  Send order seen notification to customer and friends (if any)
-            //  change to Notification::send() instead of Notification::sendNow() so that this is queued
-            Notification::sendNow(
+            Notification::send(
                 //  Send notifications to the customer
                 collect([$order->customer])->merge(
                     //  As well as the friends (if any) who were tagged on this order
                     $order->order_for_total_friends == 0 ? [] : $order->friends
                 ),
-                new OrderSeen($order, auth()->user())
+                new OrderSeen($order, request()->auth_user)
             );
 
         }

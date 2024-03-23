@@ -2,15 +2,19 @@
 
 namespace App\Http\Resources;
 
+use App\Helpers\PayloadLimiter;
 use Illuminate\Support\Str;
 use App\Models\Base\BasePivot;
 use Illuminate\Database\Eloquent\Model;
 use App\Http\Resources\Helpers\ResourceLink;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class BaseResource extends JsonResource
 {
+    use BaseTrait;
+
     /**
      *  Check if this user is a Super Admin
      */
@@ -115,11 +119,12 @@ class BaseResource extends JsonResource
          *  "auth.login", "auth.register", "auth.login", "auth.reset.password", e.t.c
          */
         $this->isAuthourizedUser = request()->routeIs('auth.*');
-        $this->isSuperAdmin = ($user = request()->user()) ? $user->isSuperAdmin() : false;
+        $this->isSuperAdmin = ($user = request()->auth_user) ? $user->isSuperAdmin() : false;
         $this->isPublicUser = !($this->isAuthourizedUser || $this->isSuperAdmin);
 
         //  If the request does not intend to disable casting completely
-        if( !in_array(request()->input('_noCasting'), [true, 'true', '1'], true) ) {
+        if( !$this->isTruthy(request()->input('_no_casting')) ) {
+
 
             /**
              *  Some Models such as the Laravel Based Models e.g Illuminate\Notifications\DatabaseNotification
@@ -127,7 +132,7 @@ class BaseResource extends JsonResource
              *  therefore we need to check whether or not this resource contains this method before we
              *  attempt to call it.
              */
-            if( method_exists($this->resource, 'getTranformableCasts') ) {
+            if( ($this->resource instanceof Model) && method_exists($this->resource, 'getTranformableCasts') ) {
 
                 /**
                  *  Cast the fields of this resource
@@ -160,38 +165,64 @@ class BaseResource extends JsonResource
     public function transformedStructure()
     {
         //  If the request does not intend to hide the fields completely
-        if( !in_array(request()->input('_noFields'), [true, 'true', '1'], true) ) {
+        if( request()->input('_no_fields') ) {
+
+            $data = [];
+
+        }else{
 
             //  Set the transformable model fields
             $data = $this->extractFields();
 
-        }else{
+        }
 
-            $data = [];
+        //  If the request does not intend to hide the links completely
+        if( !request()->input('_no_links') ) {
+
+            //  Set the transformable model links (If permitted)
+            $links = $this->showLinks ? $this->getLinks() : [];
+
+            if (count($links) > 0) {
+
+                $data['_links'] = $links;
+
+            }
 
         }
 
         //  If the request does not intend to hide the attributes completely
-        if( !in_array(request()->input('_noAttributes'), [true, 'true', '1'], true) ) {
+        if( !request()->input('_no_attributes') ) {
 
-            //  Set the transformable model attributes (If permitted)
-            $data['_attributes'] = $this->showAttributes ? $this->extractAttributes() : [];
+            if( $this->resource instanceof Model ) {
 
-        }
+                //  Set the transformable model attributes (If permitted)
+                $attributes = $this->showAttributes ? $this->extractAttributes() : [];
 
-        //  If the request does not intend to hide the links completely
-        if( !in_array(request()->input('_noLinks'), [true, 'true', '1'], true) ) {
+                if (count($attributes) > 0) {
 
-            //  Set the transformable model links (If permitted)
-            $data['_links'] = $this->showLinks ? $this->getLinks() : [];
+                    $data['_attributes'] = $attributes;
+
+                }
+
+            }
 
         }
 
         //  If the request does not intend to hide the relationships completely
-        if( !in_array(request()->input('_noRelationships'), [true, 'true', '1'], true) ) {
+        if( !request()->input('_no_relationships') ) {
 
-            //  Set the transformable model relationships (If permitted)
-            $data['_relationships'] = $this->showRelationships ? $this->getRelationships() : [];
+            if( $this->resource instanceof Model ) {
+
+                //  Set the transformable model relationships (If permitted)
+                $relationships = $this->showRelationships ? $this->getRelationships() : [];
+
+                if (count($relationships) > 0) {
+
+                    $data['_relationships'] = $relationships;
+
+                }
+
+            }
 
         }
 
@@ -203,43 +234,100 @@ class BaseResource extends JsonResource
      */
     public function extractFields()
     {
-        //  Get model fields (Method defined in the App\Models\Traits\BaseTrait)
-        $fields = $this->customFields === null ? collect($this->getAttributes())->keys()->toArray() : $this->customFields;
+        if( $this->resource instanceof Model ) {
 
-        //  Include additional custom fields
-        $fields = $this->customIncludeFields === null ? $fields : collect($fields)->merge($this->customIncludeFields)->toArray();
+            /**
+             *  The withoutRelations() returns a clone $this->resource without its loaded relationships.
+             *  We implement this method so that relationships loaded on it are not returned as fields.
+             *  We will return relationships as paylaod of the "_relationships" part of this transformed
+             *  resource. Refer to the HasRelationships to class see how the withoutRelations() works.
+             *
+             *  Illuminate\Database\Eloquent\Concerns\HasRelationships
+             */
+            $data = $this->resource->withoutRelations()->toArray();
 
-        //  Exclude additional custom fields
-        $fields = $this->customExcludeFields === null ? $fields : collect($fields)->filter(fn($field) => !in_array($field, $this->customExcludeFields))->toArray();
+        }else{
 
-        //  If the request intends to specify specific fields to show
-        if( request()->filled('_includeFields') == true ) {
+            $data = $this->resource;
 
-            //  Capture the fields that we must include
-            $fieldsToInclude = Str::of( request()->input('_includeFields') )->explode(',')->map(function($field) {
+            /**
+             *
+             *  We need to iterate over the values of the $data array and make sure that
+             *  each and every that is an instance of BaseResource is first transformed
+             *  before we proceed any further since the PayloadLimiter will convert
+             *  any object into an array, which would not allow these resource
+             *  objects to be transformed, but will be simply converted to
+             *  array format.
+             *
+             *  We can iterate over each element and confirm if each element is an instance of
+             *  BaseResource and therefore run transformedStructure() to covert that value
+             *  from its resource object format to its transformed array format before
+             *  we proceed any further. This functionality is required for instance
+             *  in the HomeController.php apiHome() method. We return the following,
+             *
+             *  return (new HomeResource([
+             *      'user' => new UserResource($authUser)
+             *      ...
+             *  ]));
+             *
+             *  We need to transformt the result of UserResource($authUser) before
+             *  the PayloadLimiter() method below converts:
+             *
+             *  [
+             *      'user' => new UserResource($authUser)
+             *      ...
+             *  ]
+             *
+             *  into an array. We should have something like this:
+             *
+             *  [
+             *      'user' => [
+             *          'first_name': 'John',
+             *          'last_name': 'Doe'
+             *      ]
+             *      ...
+             *  ]
+             *
+             *  Now we may proceed
+             */
+            foreach($data as $key => $value) {
 
-                return Str::replace(' ', '', Str::snake($field));
+                if($value instanceof BaseResource) {
 
-            })->toArray();
+                    $data[$key] = $value->transformedStructure();
 
-            $fields = collect($fields)->filter(fn($field) => in_array($field, $fieldsToInclude))->toArray();
+                }
 
-        //  If the request intends to specify specific fields to exclude
-        }elseif( request()->filled('_excludeFields') == true ) {
-
-            //  Capture the fields that we must exclude
-            $fieldsToExclude = Str::of( request()->input('_excludeFields') )->explode(',')->map(function($field) {
-
-                return Str::replace(' ', '', Str::snake($field));
-
-            })->toArray();
-
-            $fields = collect($fields)->filter(fn($field) => !in_array($field, $fieldsToExclude))->toArray();
+            }
 
         }
 
-        //  Return the fields as key-value pairs
-        return collect($fields)->map(fn($field) => [$field => $this->$field])->collapse();
+        //  If the request intends to specify specific fields to show
+        if( request()->filled('_include_fields') == true ) {
+
+            $data = (new PayloadLimiter($data, request()->input('_include_fields'), false))->getLimitedPayload();
+
+        }
+
+        //  If the request intends to specify specific fields to exclude
+        if( request()->filled('_exclude_fields') == true ) {
+
+            //  Capture the fields that we must exclude
+            $fieldsToExclude = Str::of( request()->input('_exclude_fields') )->explode(',')->map(function($field) {
+
+                return Str::replace(' ', '', Str::snake($field));
+
+            })->toArray();
+
+            $data = collect($data)->filter(function($value, $key) use ($fieldsToExclude) {
+
+                return !in_array($key, $fieldsToExclude);
+
+            })->toArray();
+
+        }
+
+        return $data;
     }
 
     /**
@@ -269,40 +357,20 @@ class BaseResource extends JsonResource
 
         }
 
+        //  Retun an empty array on empty attributes
+        if(empty($attributes)) return [];
+
         //  Include additional custom attributes
         $attributes = $this->customIncludeAttributes === null ? $attributes : collect($attributes)->merge($this->customIncludeAttributes)->toArray();
 
         //  Exclude additional custom attributes
         $attributes = $this->customExcludeAttributes === null ? $attributes : collect($attributes)->filter(fn($field) => !in_array($field, $this->customExcludeAttributes))->toArray();
 
-        //  If the request intends to specify specific attributes to show
-        if( request()->filled('_includeAttributes') == true ) {
-
-            //  Capture the attributes that we must include
-            $attributesToInclude = Str::of( request()->input('_includeAttributes') )->explode(',')->map(function($attribute) {
-
-                return Str::replace(' ', '', Str::snake($attribute));
-
-            })->toArray();
-
-            $attributes = collect($attributes)->filter(fn($attribute) => in_array($attribute, $attributesToInclude))->toArray();
-
-        //  If the request intends to specify specific attributes to exclude
-        }elseif( request()->filled('_excludeAttributes') == true ) {
-
-            //  Capture the attributes that we must exclude
-            $attributesToExclude = Str::of( request()->input('_excludeAttributes') )->explode(',')->map(function($attribute) {
-
-                return Str::replace(' ', '', Str::snake($attribute));
-
-            })->toArray();
-
-            $attributes = collect($attributes)->filter(fn($attribute) => !in_array($attribute, $attributesToExclude))->toArray();
-
-        }
-
         //  Return the attributes as key-value pairs
-        $attributes = collect($attributes)->map(fn($attribute) => [$attribute => $this->$attribute])->collapse();
+        $attributes = collect($attributes)->mapWithKeys(fn($key) => [$key => $this->$key])->all();
+
+        //  Retun an empty array on empty attributes
+        if( collect($attributes)->count() == 0 ) return [];
 
         //  Foreach attribute
         foreach($attributes as $attribute) {
@@ -311,7 +379,7 @@ class BaseResource extends JsonResource
             if($attribute instanceof BasePivot) {
 
                 //  If the request does not intend to disable casting completely
-                if( !in_array(request()->input('_noCasting'), [true, 'true', '1'], true) ) {
+                if( !$this->isTruthy(request()->input('_no_casting')) ) {
 
                     /**
                      *  Cast the fields of this resource
@@ -330,7 +398,34 @@ class BaseResource extends JsonResource
 
         }
 
-        //  Return the attributes as key-value pairs
+        //  Convert attributes to an array
+        $attributes = collect($attributes)->toArray();
+
+        //  If the request intends to specify specific attributes to show
+        if( request()->filled('_include_attributes') == true ) {
+
+            $attributes = (new PayloadLimiter($attributes, request()->input('_include_attributes'), false))->getLimitedPayload();
+
+        }
+
+        //  If the request intends to specify specific attributes to exclude
+        if( request()->filled('_exclude_attributes') == true ) {
+
+            //  Capture the attributes that we must exclude
+            $fieldsToExclude = Str::of( request()->input('_exclude_attributes') )->explode(',')->map(function($field) {
+
+                return Str::replace(' ', '', Str::snake($field));
+
+            })->toArray();
+
+            $attributes = collect($attributes)->filter(function($value, $key) use ($fieldsToExclude) {
+
+                return !in_array($key, $fieldsToExclude);
+
+            })->toArray();
+
+        }
+
         return $attributes;
     }
 
@@ -350,10 +445,10 @@ class BaseResource extends JsonResource
         $this->setLinks();
 
         //  If the request intends to specify specific links to show
-        if( request()->filled('_includeLinks') == true ) {
+        if( request()->filled('_include_links') == true ) {
 
             //  Capture the links that we must include
-            $linksToInclude = Str::of( strtolower( Str::replace(' ', '', request()->input('_includeLinks') ) ) )->explode(',')->toArray();
+            $linksToInclude = Str::of( strtolower( Str::replace(' ', '', request()->input('_include_links') ) ) )->explode(',')->toArray();
 
             $this->resourceLinks = collect($this->resourceLinks)->filter(function($link) use ($linksToInclude) {
 
@@ -365,10 +460,10 @@ class BaseResource extends JsonResource
             })->toArray();
 
         //  If the request intends to specify specific links to exclude
-        }elseif( request()->filled('_excludeLinks') == true ) {
+        }elseif( request()->filled('_exclude_links') == true ) {
 
             //  Capture the links that we must exclude
-            $linksToExclude = Str::of( strtolower( Str::replace(' ', '', request()->input('_excludeLinks') ) ) )->explode(',')->toArray();
+            $linksToExclude = Str::of( strtolower( Str::replace(' ', '', request()->input('_exclude_links') ) ) )->explode(',')->toArray();
 
             $this->resourceLinks = collect($this->resourceLinks)->filter(function($link) use ($linksToExclude) {
 
@@ -390,10 +485,21 @@ class BaseResource extends JsonResource
     public function getRelationships()
     {
         /**
-         *  Return the model relationships that are permitted for sharing.
+         *  Lets get the available relationship names on this resource e.g
+         *  user, store, orders, carts, products, reviews, e.t.c
+         */
+        $this->resourceRelationships = collect($this->resource->getRelations())->keys()->all();
+
+        /**
+         *  Capture the model relationships that are permitted for sharing.
          *  Foreach relationship available on the current model resource,
          *  we must check if that relationship is permitted for sharing.
-         *
+         */
+        if($this->customExcludeRelationships !== null) {
+            $this->resourceRelationships = collect($this->resourceRelationships)->except($this->customExcludeRelationships);
+        }
+
+        /**
          *  The $relationship may be a single Eloquent Model or it may
          *  be an Eloquent Collection. The $relationshipName is the
          *  name of that relationship e.g orders, carts, products,
@@ -402,61 +508,55 @@ class BaseResource extends JsonResource
          *  Each relationship must be transformed according to its
          *  corresponding model repository class
          */
+        $relationships = collect($this->resource->getRelations())->filter(function($value, $key) {
 
-        if($this->customRelationships !== null) {
-            $this->resourceRelationships = collect($this->resourceRelationships)->only($this->customRelationships);
-        }
+            return collect($this->resourceRelationships)->values()->contains($key);
 
-        if($this->customIncludeRelationships !== null) {
-            $this->resourceRelationships = collect($this->resourceRelationships)->merge($this->customIncludeRelationships);
-        }
-
-        if($this->customExcludeRelationships !== null) {
-            $this->resourceRelationships = collect($this->resourceRelationships)->except($this->customExcludeRelationships);
-        }
-
-        $relationships = collect($this->resource->getRelations())->keys()->filter(function($relationshipName) {
-
-            return collect($this->resourceRelationships)->keys()->contains($relationshipName);
-
-        })->mapWithKeys(function($relationshipName) {
+        })->mapWithKeys(function($relationship, $relationshipName) {
 
             $transformedRelationship = null;
 
-            //  Foreach of the permitted resource relationships
-            foreach($this->resourceRelationships as $resourceRelationshipName => $repositoryClassName) {
+            //  If the nested relationship is a single Model
+            if($relationship instanceof Model) {
 
-                //  Check if the current relationship name matches the current permitted relationship name
-                if( $relationshipName == $resourceRelationshipName ) {
+                //  Transform the single Model
+                $transformedRelationship = resolve($this->getRepositoryClass($relationship))->setModel($relationship)->transform();
 
-                    $relationship = $this->resource->$relationshipName;
+            //  If the nested relationship is a Collection or Array of single Models
+            }else if($relationship instanceof Collection || is_array($relationship)) {
 
-                    //  If the nested relationship is a single Model
-                    if($relationship instanceof Model) {
+                //  If the relationship is an Array, convert to a Collection
+                if( is_array($relationship) ) $relationship = collect($relationship);
 
-                        //  Transform the single Model
-                        $transformedRelationship = resolve($repositoryClassName)->setModel($relationship)->transform();
+                if($relationship->count() == 0) {
 
-                    //  If the nested relationship is a Collection or Array of single Models
-                    }else if($relationship instanceof Collection || is_array($relationship)) {
+                    $transformedRelationship =  [];
 
-                        //  If the relationship is an Array, convert to a Collection
-                        if( is_array($relationship) ) $relationship = collect($relationship);
+                }else{
 
-                        //  Transform the Collection of Models
-                        $transformedRelationship = resolve($repositoryClassName)->setCollection($relationship)->transform();
+                    //  Transform the Collection of Models
+                    $transformedRelationship = resolve($this->getRepositoryClass($relationship->first()))->setCollection($relationship)->transform();
 
-                    }
                 }
 
             }
 
+            //  Remove this relationship from the resource
+            $this->resource->unsetRelation($relationshipName);
+
             return [$relationshipName => $transformedRelationship];
 
-        });
+        })->all();
 
         //  Return the relationships
         return $relationships;
 
+    }
+
+    private function getRepositoryClass($model) {
+        /**
+         *  Return a fully qualified class path e.g \App\Repositories\UserRepository
+         */
+        return '\App\Repositories\\' . class_basename($model).'Repository';
     }
 }

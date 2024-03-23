@@ -17,7 +17,12 @@ class CheckIfSuperAdmin
      */
     public function handle(Request $request, Closure $next)
     {
-        if( request()->user()->isSuperAdmin() ){
+        /**
+         *  @var User $user
+         */
+        $user = request()->auth_user;
+
+        if( $user->isSuperAdmin() ){
 
             return $next($request);
 

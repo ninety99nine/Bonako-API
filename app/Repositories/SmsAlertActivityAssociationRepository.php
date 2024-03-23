@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Store;
 use App\Traits\Base\BaseTrait;
+use App\Models\SmsAlertActivity;
 use App\Repositories\BaseRepository;
 
 class SmsAlertActivityAssociationRepository extends BaseRepository
@@ -30,23 +31,6 @@ class SmsAlertActivityAssociationRepository extends BaseRepository
         }
 
         return parent::update($request);
-    }
-
-    /**
-     *  Add the SMS Alertable store
-     *
-     *  @param Store $store
-     *  @return void
-     */
-    public function addSmsAlertableStore($store)
-    {
-        // Check if the sms alert activity requires stores
-        if($this->model->smsAlertActivity->requires_stores) {
-
-            // Add this store to this sms alert activity association
-            $this->model->stores()->syncWithoutDetaching($store);
-
-        }
     }
 
     /**

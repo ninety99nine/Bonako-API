@@ -69,122 +69,122 @@ class UserController extends BaseController
 
     public function index()
     {
-        return response($this->repository->get()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->get());
     }
 
     public function create(CreateUserRequest $request)
     {
-        return response($this->repository->create($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->repository->createUser($request), Response::HTTP_CREATED);
     }
 
     public function validateCreate(ValidateCreateUserRequest $_)
     {
-        return response(null, Response::HTTP_OK);
+        return $this->prepareOutput(null, Response::HTTP_OK);
     }
 
     public function searchUserByMobileNumber(SearchUserByMobileNumberRequest $request)
     {
-        return response($this->repository->searchUserByMobileNumber($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->searchUserByMobileNumber($request));
     }
 
     public function show(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser()));
     }
 
     public function update(UpdateUserRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateUser($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->updateUser($request));
     }
 
     public function confirmDelete(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->generateDeleteConfirmationCode(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->generateDeleteConfirmationCode());
     }
 
     public function delete(DeleteRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->delete(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->delete());
     }
 
     public function showProfilePhoto(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showProfilePhoto(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showProfilePhoto());
     }
 
     public function updateProfilePhoto(UpdateProfilePhotoRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateProfilePhoto($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->updateProfilePhoto($request), Response::HTTP_CREATED);
     }
 
     public function deleteProfilePhoto(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->removeExistingProfilePhoto(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->removeExistingProfilePhoto());
     }
 
     public function showTokens(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showTokens(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showTokens());
     }
 
     public function showTermsAndConditions(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showTermsAndConditions(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showTermsAndConditions());
     }
 
     public function acceptTermsAndConditions(AcceptTermsAndConditionsRequest $acceptTermsAndConditionsRequest, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->acceptTermsAndConditions($acceptTermsAndConditionsRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->acceptTermsAndConditions($acceptTermsAndConditionsRequest));
     }
 
     public function showMobileVerificationCode(ShowMobileVerificationCodeRequest $showMobileVerificationCodeRequest, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showMobileVerificationCode($showMobileVerificationCodeRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showMobileVerificationCode($showMobileVerificationCodeRequest));
     }
 
     public function verifyMobileVerificationCode(VerifyMobileVerificationCodeRequest $verifyMobileVerificationCodeRequest, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->verifyMobileVerificationCode($verifyMobileVerificationCodeRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->verifyMobileVerificationCode($verifyMobileVerificationCodeRequest));
     }
 
     public function generateMobileVerificationCode(GenerateMobileVerificationCodeRequest $generateMobileVerificationCodeRequest, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->generateMobileVerificationCode($generateMobileVerificationCodeRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->generateMobileVerificationCode($generateMobileVerificationCodeRequest));
     }
 
     public function logout(LogoutRequest $logoutRequest, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->logout($logoutRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->logout($logoutRequest));
     }
 
     public function showNotificationFilters(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showNotificationFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showNotificationFilters());
     }
 
     public function showNotifications(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showNotifications()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showNotifications());
     }
 
     public function countNotifications(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->countNotifications(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->countNotifications());
     }
 
     public function markNotificationsAsRead(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->markNotificationsAsRead(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->markNotificationsAsRead());
     }
 
     public function showNotification(User $user, DatabaseNotification $notification)
     {
-        return response($this->repository->setModel($this->chooseUser())->showNotification($notification)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showNotification($notification));
     }
 
     public function markNotificationAsRead(User $user, DatabaseNotification $notification)
     {
-        return response($this->repository->setModel($this->chooseUser())->markNotificationAsRead($notification), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->markNotificationAsRead($notification));
     }
 
 
@@ -194,27 +194,27 @@ class UserController extends BaseController
 
     public function showAddresses(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showAddresses()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showAddresses());
     }
 
     public function createAddress(CreateAddressRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createAddress($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->createAddress($request), Response::HTTP_CREATED);
     }
 
     public function showAddress(User $user, Address $address)
     {
-        return response($this->repository->setModel($this->chooseUser())->showAddress($address)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showAddress($address));
     }
 
     public function updateAddress(UpdateAddressRequest $request, User $user, Address $address)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateAddress($request, $address)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->updateAddress($request, $address));
     }
 
     public function deleteAddress(User $user, Address $address)
     {
-        return response($this->repository->setModel($this->chooseUser())->deleteAddress($address), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->deleteAddress($address));
     }
 
 
@@ -223,32 +223,32 @@ class UserController extends BaseController
 
     public function showFriendAndFriendGroupFilters(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendAndFriendGroupFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendAndFriendGroupFilters());
     }
 
     public function showFriends(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriends()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriends());
     }
 
     public function removeFriends(UserRemoveFriendRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->removeFriends(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->removeFriends());
     }
 
     public function createFriends(CreateFriendRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createFriends(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->createFriends());
     }
 
     public function showLastSelectedFriend(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showLastSelectedFriend()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showLastSelectedFriend());
     }
 
     public function updateLastSelectedFriends(UpdateLastSelectedFriendsRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateLastSelectedFriends($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->updateLastSelectedFriends($request));
     }
 
 
@@ -261,127 +261,127 @@ class UserController extends BaseController
 
     public function showFriendGroupFilters(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroupFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroupFilters());
     }
 
     public function showFriendGroups(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroups()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroups());
     }
 
     public function showFriendGroup(User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroup($friendGroup)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroup($friendGroup));
     }
 
     public function showFirstCreatedFriendGroup(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFirstCreatedFriendGroup(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFirstCreatedFriendGroup());
     }
 
     public function showLastSelectedFriendGroup(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showLastSelectedFriendGroup(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showLastSelectedFriendGroup());
     }
 
     public function updateLastSelectedFriendGroups(UpdateLastSelectedFriendGroupsRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateLastSelectedFriendGroups($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->updateLastSelectedFriendGroups($request));
     }
 
     public function createFriendGroup(CreateFriendGroupRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createFriendGroup($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->createFriendGroup($request), Response::HTTP_CREATED);
     }
 
     public function updateFriendGroup(UpdateFriendGroupRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateFriendGroup($request, $friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->updateFriendGroup($request, $friendGroup));
     }
 
     public function deleteFriendGroup(User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->deleteFriendGroup($friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->deleteFriendGroup($friendGroup));
     }
 
     public function deleteManyFriendGroups(DeleteFriendGroupsRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->deleteManyFriendGroups($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->deleteManyFriendGroups($request));
     }
 
     public function inviteFriendGroupMembers(InviteFriendGroupMembersRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->inviteFriendGroupMembers($friendGroup, $request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->inviteFriendGroupMembers($friendGroup, $request));
     }
 
     public function checkInvitationsToJoinFriendGroups(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->checkInvitationsToJoinFriendGroups(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->checkInvitationsToJoinFriendGroups());
     }
 
     public function acceptAllInvitationsToJoinFriendGroups(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->acceptAllInvitationsToJoinFriendGroups(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->acceptAllInvitationsToJoinFriendGroups());
     }
 
     public function declineAllInvitationsToJoinFriendGroups(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->declineAllInvitationsToJoinFriendGroups(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->declineAllInvitationsToJoinFriendGroups());
     }
 
     public function acceptInvitationToJoinFriendGroup(User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->acceptInvitationToJoinFriendGroup($friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->acceptInvitationToJoinFriendGroup($friendGroup));
     }
 
     public function declineInvitationToJoinFriendGroup(User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->declineInvitationToJoinFriendGroup($friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->declineInvitationToJoinFriendGroup($friendGroup));
     }
 
     public function removeFriendGroupMembers(RemoveFriendGroupMembersRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->removeFriendGroupMembers($friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->removeFriendGroupMembers($friendGroup));
     }
 
     public function showFriendGroupMemberFilters(User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroupMemberFilters($friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroupMemberFilters($friendGroup));
     }
 
     public function showFriendGroupMembers(User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroupMembers($friendGroup)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroupMembers($friendGroup));
     }
 
     public function showFriendGroupStoreFilters(User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroupStoreFilters($friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroupStoreFilters($friendGroup));
     }
 
     public function showFriendGroupStores(User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroupStores($friendGroup)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroupStores($friendGroup));
     }
 
     public function addFriendGroupStores(AddStoresFromFriendGroupRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->addFriendGroupStores($friendGroup, $request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->addFriendGroupStores($friendGroup, $request));
     }
 
     public function removeFriendGroupStores(RemoveStoresFromFriendGroupRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->removeFriendGroupStores($friendGroup, $request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->removeFriendGroupStores($friendGroup, $request));
     }
 
     public function showFriendGroupOrderFilters(ShowFriendGroupOrderFiltersRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroupOrderFilters($friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroupOrderFilters($friendGroup));
     }
 
     public function showFriendGroupOrders(ShowFriendGroupOrdersRequest $request, User $user, FriendGroup $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->showFriendGroupOrders($friendGroup)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showFriendGroupOrders($friendGroup));
     }
 
 
@@ -403,103 +403,103 @@ class UserController extends BaseController
 
     public function showOrderFilters(ShowUserOrderFiltersRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showUserOrderFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showUserOrderFilters());
     }
 
     public function showOrders(ShowUserOrdersRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showUserOrders()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showUserOrders());
     }
 
     public function showReviewFilters(ShowUserReviewFiltersRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showReviewFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showReviewFilters());
     }
 
     public function showReviews(ShowUserReviewsRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showReviews()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showReviews());
     }
 
     public function showFirstCreatedStore(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showUserFirstCreatedStore(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showUserFirstCreatedStore());
     }
 
     public function showStoreFilters(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showStoreFilters(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showStoreFilters());
     }
 
     public function showStores(ShowUserStoresRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showStores()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showStores());
     }
 
     public function createStore(CreateStoreRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createStore($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->createStore($request), Response::HTTP_CREATED);
     }
 
     public function joinStore(JoinStoreRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->joinStore($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->joinStore($request));
     }
 
     public function showAiAssistant(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showAiAssistant()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showAiAssistant());
     }
 
     public function showAiAssistantSubscriptions(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showAiAssistantSubscriptions()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showAiAssistantSubscriptions());
     }
 
     public function generateAiAssistantPaymentShortcode(GenerateAiAssistantPaymentShortcodeRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->generateAiAssistantPaymentShortcode($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->generateAiAssistantPaymentShortcode($request));
     }
 
     public function createAiAssistantSubscription(CreateAiAssistantSubscriptionRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createAiAssistantSubscription($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->createAiAssistantSubscription($request), Response::HTTP_CREATED);
     }
 
     public function calculateAiAccessSubscriptionAmount(CalculateAiAssistantSubscriptionRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->calculateAiAccessSubscriptionAmount($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->calculateAiAccessSubscriptionAmount($request));
     }
 
     public function showAiMessages(ShowAiMessagesRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showAiMessages($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showAiMessages($request));
     }
 
     public function createAiMessage(CreateAiMessageRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createAiMessage($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->createAiMessage($request), Response::HTTP_CREATED);
     }
 
     public function createAiMessageWhileStreaming(CreateAiMessageRequest $request, User $user)
     {
         //  Note: We do not need to return anything since we are streaming this request
-        $this->repository->setModel($this->chooseUser())->createAiMessageWhileStreaming($request);
+        $this->setModel($this->chooseUser())->createAiMessageWhileStreaming($request);
     }
 
     public function showAiMessage(User $user, AiMessage $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->showAiMessage($friendGroup)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showAiMessage($friendGroup));
     }
 
     public function updateAiMessage(UpdateAiMessageRequest $request, User $user, AiMessage $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateAiMessage($request, $friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->updateAiMessage($request, $friendGroup));
     }
 
     public function deleteAiMessage(User $user, AiMessage $friendGroup)
     {
-        return response($this->repository->setModel($this->chooseUser())->deleteAiMessage($friendGroup), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->deleteAiMessage($friendGroup));
     }
 
 
@@ -508,32 +508,32 @@ class UserController extends BaseController
 
     public function showSmsAlert(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showSmsAlert()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showSmsAlert());
     }
 
     public function generateSmsAlertPaymentShortcode(GenerateSmsAlertPaymentShortcodeRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->generateSmsAlertPaymentShortcode($request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->generateSmsAlertPaymentShortcode($request));
     }
 
     public function showSmsAlertTransactions(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showSmsAlertTransactions()->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showSmsAlertTransactions());
     }
 
     public function createSmsAlertTransaction(CreateSmsAlertTransactionRequest $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->createSmsAlertTransaction($request)->transform(), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->createSmsAlertTransaction($request), Response::HTTP_CREATED);
     }
 
     public function calculateSmsAlertTransactionAmount(CalculateSmsAlertTransactionAmount $request, User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->calculateSmsAlertTransactionAmount($request), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->calculateSmsAlertTransactionAmount($request));
     }
 
     public function updateSmsAlertActivityAssociation(UpdateSmsAlertActivityAssociationRequest $request, User $user, SmsAlertActivityAssociation $smsAlertActivityAssociation)
     {
-        return response($this->repository->setModel($this->chooseUser())->updateSmsAlertActivityAssociation($smsAlertActivityAssociation, $request)->transform(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->updateSmsAlertActivityAssociation($smsAlertActivityAssociation, $request));
     }
 
 
@@ -541,7 +541,7 @@ class UserController extends BaseController
 
     public function showResourceTotals(User $user)
     {
-        return response($this->repository->setModel($this->chooseUser())->showResourceTotals(), Response::HTTP_OK);
+        return $this->prepareOutput($this->setModel($this->chooseUser())->showResourceTotals());
     }
 
 
