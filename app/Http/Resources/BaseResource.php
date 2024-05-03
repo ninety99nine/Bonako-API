@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use App\Models\Base\BasePivot;
 use Illuminate\Database\Eloquent\Model;
 use App\Http\Resources\Helpers\ResourceLink;
+use App\Models\Base\BaseModel;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -516,8 +517,19 @@ class BaseResource extends JsonResource
 
             $transformedRelationship = null;
 
-            //  If the nested relationship is a single Model
-            if($relationship instanceof Model) {
+            //  If the nested relationship is a single BasePivot
+            if($relationship instanceof BasePivot) {
+
+                /**
+                 *  Note, you may transform Pivot models just as normal models provided
+                 *  you create the associated model classes e.g
+                 *
+                 *  $transformedRelationship = resolve($this->getRepositoryClass($relationship))->setModel($relationship)->transform();
+                 */
+                $transformedRelationship = $relationship;
+
+            //  If the nested relationship is a single BaseModel
+            }else if($relationship instanceof BaseModel) {
 
                 //  Transform the single Model
                 $transformedRelationship = resolve($this->getRepositoryClass($relationship))->setModel($relationship)->transform();

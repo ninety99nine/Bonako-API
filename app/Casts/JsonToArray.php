@@ -9,7 +9,7 @@ use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
  *  Instead of using the built in Laravel array cast e.g
  *
  *  protected $casts = [
- *      'custom_colum' => 'array'
+ *      'metadata' => 'array'
  *  ]
  *
  *  Reference 1: https://laravel.com/docs/8.x/eloquent-mutators#attribute-casting

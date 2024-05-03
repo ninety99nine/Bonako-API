@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Base;
 use Illuminate\Support\Str;
 use Illuminate\Http\Response;
 use App\Repositories\BaseRepository;
-use App\Repositories\SubscriptionRepository;
 use Illuminate\Database\Eloquent\Model;
 
 class BaseController extends Controller

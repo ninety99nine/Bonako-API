@@ -81,7 +81,6 @@ class HomeController extends Controller
         }
 
         $data = [
-            'accepted_terms_and_conditions' => $authUserExists ? $authUser->accepted_terms_and_conditions : false,
             'mobile_verification_shortcode' => UssdService::getMobileVerificationShortcode(),
             'mobile_number_extension' => MobileNumberService::getMobileNumberExtension(),
             'reserved_shortcode_range' => UssdService::getReservedShortcodeRange(),

@@ -22,7 +22,7 @@ use App\Services\Ussd\UssdService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notification;
-
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class User extends BaseAuthenticatable /* Authenticatable */
 {
@@ -42,7 +42,6 @@ class User extends BaseAuthenticatable /* Authenticatable */
     const NOTIFICATION_FILTERS = ['All', 'Read', 'Unread', 'Orders', 'Followers', 'Invitations', 'Friend Groups'];
 
     protected $casts = [
-        'accepted_terms_and_conditions' => 'boolean',
         'mobile_number_verified_at' => 'datetime',
         'mobile_number' => MobileNumber::class,
         'is_super_admin' => 'boolean',
@@ -52,7 +51,7 @@ class User extends BaseAuthenticatable /* Authenticatable */
 
     protected $fillable = [
         'first_name', 'last_name', 'about_me', 'profile_photo', 'password', 'mobile_number', 'mobile_number_verified_at',
-        'accepted_terms_and_conditions', 'last_seen_at', 'registered_by_user_id', 'is_guest', 'is_super_admin'
+        'last_seen_at', 'registered_by_user_id', 'is_guest', 'is_super_admin'
     ];
 
     protected $hidden = [
@@ -326,23 +325,24 @@ class User extends BaseAuthenticatable /* Authenticatable */
         'name', 'requires_password', 'mobile_number_shortcode'
     ];
 
-    public function getNameAttribute()
+    protected function name(): Attribute
     {
-        return trim($this->first_name.' '.$this->last_name);
+        return Attribute::make(
+            get: fn () => $this->getRawOriginal('first_name').' '.$this->getRawOriginal('last_name')
+        );
     }
 
-    public function getMobileNumberShortcodeAttribute()
+    protected function mobileNumberShortcode(): Attribute
     {
-        return UssdService::appendToMainShortcode(MobileNumberService::removeMobileNumberExtension($this->getRawOriginal('mobile_number')));
+        return Attribute::make(
+            get: fn () => MobileNumberService::removeMobileNumberExtension($this->getRawOriginal('mobile_number'))
+        );
     }
 
-    public function getRequiresPasswordAttribute()
+    protected function requiresPassword(): Attribute
     {
-        return empty($this->password);
-    }
-
-    public function getRequiresMobileNumberVerificationAttribute()
-    {
-        return empty($this->mobile_number_verified_at);
+        return Attribute::make(
+            get: fn () => empty($this->password)
+        );
     }
 }

@@ -22,7 +22,6 @@ class UserFactory extends Factory
             'mobile_number' => $this->generateBotswanaOrangeMobileNumber(),
             'last_seen_at' => $this->faker->dateTimeBetween('-21 days', 'now'),
             'mobile_number_verified_at' => $this->faker->dateTimeBetween('-1 year', $lastSeenAt),
-            'accepted_terms_and_conditions' => true,
             'is_super_admin' => false,
             'password' => bcrypt('QWEasd'),
             'remember_token' => Str::random(10),

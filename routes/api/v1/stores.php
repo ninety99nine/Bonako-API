@@ -204,6 +204,8 @@ Route::controller(StoreController::class)
         //  Payment methods
         Route::get('/supported-payment-methods', 'showSupportedPaymentMethods')->name('.supported.payment.methods.show')->whereNumber('store');
         Route::get('/available-payment-methods', 'showAvailablePaymentMethods')->name('.available.payment.methods.show')->whereNumber('store');
+        Route::get('/available-deposit-percentages', 'showAvailableDepositPercentages')->name('.available.deposit.percentages.show')->whereNumber('store');
+        Route::get('/available-installment-percentages', 'showAvailableInstallmentPercentages')->name('.available.installment.percentages.show')->whereNumber('store');
 
         //  Sharable Content
         Route::prefix('sharable-content')

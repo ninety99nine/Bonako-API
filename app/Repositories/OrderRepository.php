@@ -1959,7 +1959,7 @@ class OrderRepository extends BaseRepository
      */
     public function showMarkAsUnverifiedPaymentPaymentMethods(Store $store)
     {
-        $paymentMethods = PaymentMethod::availableOnStores()->orderBy('position', 'asc');
+        $paymentMethods = PaymentMethod::availableInStores()->orderBy('position', 'asc');
 
         return $this->paymentMethodRepository()->setModel($paymentMethods)->get();
     }

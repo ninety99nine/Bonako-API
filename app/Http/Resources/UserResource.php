@@ -169,7 +169,6 @@ class UserResource extends BaseResource
 
             //  Terms And Conditions
             new ResourceLink('show.terms.and.conditions', route($prefix.'terms.and.conditions.show', $params),'Show terms and conditions'),
-            new ResourceLink('accept.terms.and.conditions', route($prefix.'terms.and.conditions.accept', $params),'Accept terms and conditions'),
 
             //  Mobile Verification
             new ResourceLink('show.mobile.verification.code', route($prefix.'show.mobile.verification.code', $params),'Show mobile verification code'),

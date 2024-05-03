@@ -141,6 +141,16 @@ class StoreController extends BaseController
         return $this->prepareOutput($this->setModel($store)->showAvailablePaymentMethods());
     }
 
+    public function showAvailableDepositPercentages(Store $store)
+    {
+        return $this->prepareOutput($this->setModel($store)->showAvailableDepositPercentages());
+    }
+
+    public function showAvailableInstallmentPercentages(Store $store)
+    {
+        return $this->prepareOutput($this->setModel($store)->showAvailableInstallmentPercentages());
+    }
+
     public function showSharableContent(Store $store)
     {
         return $this->prepareOutput($this->setModel($store)->showSharableContent());

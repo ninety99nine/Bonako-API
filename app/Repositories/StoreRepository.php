@@ -906,7 +906,7 @@ class StoreRepository extends BaseRepository
         }
 
         //  If we have the supported payment methods
-        if($request->filled('supported_payment_methods') && !empty($request->input('supported_payment_methods'))) {
+        if($request->filled('supported_payment_methods')) {
 
             $supportedPaymentMethods = collect($request->input('supported_payment_methods'));
             $storePaymentMethodAssociations = StorePaymentMethodAssociation::where('store_id', $this->model->id)->get();
@@ -943,11 +943,8 @@ class StoreRepository extends BaseRepository
 
                     }else{
 
-                        //  Update the existing store payment method association since it was not provided
-                        $storePaymentMethodAssociation->update([
-                            'active' => false,
-                            'total_disabled' => $storePaymentMethodAssociation->total_disabled + 1,
-                        ]);
+                        //  Delete the existing store payment method association since it was not provided
+                        $storePaymentMethodAssociation->delete();
 
                     }
 
@@ -1282,8 +1279,50 @@ class StoreRepository extends BaseRepository
      */
     public function showAvailablePaymentMethods()
     {
-        $availablePaymentMethods = PaymentMethod::availableOnStores()->orderBy('position', 'asc');
+        $availablePaymentMethods = PaymentMethod::availableInStores()->orderBy('position', 'asc');
         return $this->paymentMethodRepository()->setModel($availablePaymentMethods)->get();
+    }
+
+    /**
+     *  Return the available store deposit percentages
+     *
+     *  @return array
+     */
+    public function showAvailableDepositPercentages()
+    {
+        $percentages = [];
+
+        for ($i = 5; $i <= 95; $i += 5) {
+
+          /// Add 5, 10, 15 ... 95
+          $percentages[] = $i;
+
+        }
+
+        return [
+            'percentages' => $percentages
+        ];
+    }
+
+    /**
+     *  Return the available store installment percentages
+     *
+     *  @return array
+     */
+    public function showAvailableInstallmentPercentages()
+    {
+        $percentages = [];
+
+        for ($i = 5; $i <= 95; $i += 5) {
+
+          /// Add 5, 10, 15 ... 95
+          $percentages[] = $i;
+
+        }
+
+        return [
+            'percentages' => $percentages
+        ];
     }
 
     /**

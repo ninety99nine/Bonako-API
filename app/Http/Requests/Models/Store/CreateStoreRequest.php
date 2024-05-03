@@ -104,7 +104,7 @@ class CreateStoreRequest extends FormRequest
                 'bail', 'required', 'string', 'min:'.Store::NAME_MIN_CHARACTERS, 'max:'.Store::NAME_MAX_CHARACTERS, Rule::unique('stores'),
             ],
             'call_to_action' => ['bail', 'sometimes', 'required', Rule::in($callToActionOptions)],
-            'description' => ['bail', 'sometimes', 'string', 'min:'.Store::DESCRIPTION_MIN_CHARACTERS, 'max:'.Store::DESCRIPTION_MAX_CHARACTERS],
+            'description' => ['bail', 'sometimes', 'nullable', 'min:'.Store::DESCRIPTION_MIN_CHARACTERS, 'max:'.Store::DESCRIPTION_MAX_CHARACTERS],
             'sms_sender_name' => [
                 'bail', 'sometimes', 'nullable', 'string', 'min:'.Store::SMS_SENDER_NAME_MIN_CHARACTERS, 'max:'.Store::SMS_SENDER_NAME_MAX_CHARACTERS,
             ],

@@ -6,7 +6,6 @@ use Closure;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Helpers\PayloadNamingConvention;
-use App\Exceptions\InvalidJsonFormatException;
 
 class FormatResponsePayload
 {

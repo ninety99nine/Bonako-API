@@ -69,7 +69,6 @@ class Kernel extends HttpKernel
          *  Custom Middleware -  By Julian B Tabona
          */
         'request.via.ussd' => \App\Http\Middleware\CheckIfRequestFromUssdServer::class,
-        'accepted.terms.and.conditions' => \App\Http\Middleware\AcceptedTermsAndConditions::class,
         'store.permission' => \App\Http\Middleware\CheckIfHasStorePermissions::class,
         'assigned.to.store.as.team.member' => \App\Http\Middleware\CheckIfAssignedToStoreAsTeamMember::class,
         'superadmin' => \App\Http\Middleware\CheckIfSuperAdmin::class,

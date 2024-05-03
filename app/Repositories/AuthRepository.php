@@ -22,7 +22,6 @@ use Illuminate\Validation\ValidationException;
 use App\Exceptions\ResetPasswordFailedException;
 use App\Exceptions\UpdatePasswordFailedException;
 use App\Exceptions\LogoutOfSuperAdminRestrictedException;
-use App\Exceptions\AcceptingTermsAndConditionsFailedException;
 use App\Exceptions\MobileVerificationCodeGenerationFailedException;
 
 class AuthRepository extends BaseRepository
@@ -258,38 +257,6 @@ class AuthRepository extends BaseRepository
             'button' => 'Accept',
             'items' => $items
         ]);
-    }
-
-    /**
-     *  Accept the terms and conditions. This will grant
-     *  the user access to consume routes that require
-     *  the T&C's to be accepted first.
-     *
-     *  @return array
-     */
-    public function acceptTermsAndConditions()
-    {
-        //  If the user has not accepted the terms and conditions
-        if( $this->model->accepted_terms_and_conditions == false ) {
-
-            //  Accept the terms and conditions
-            $accepted = $this->model->update([
-                'accepted_terms_and_conditions' => true
-            ]);
-
-            //  If the terms and conditions were not accepted successfully
-            if( !$accepted ) {
-
-                //  Throw an Exception - Failed to accept
-                throw new AcceptingTermsAndConditionsFailedException('Failed to accept the terms and conditions');
-
-            }
-
-        }
-
-        return [
-            'message' => 'Terms and conditions accepted successfully'
-        ];
     }
 
     /**

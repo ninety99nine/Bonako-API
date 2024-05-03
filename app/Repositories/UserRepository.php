@@ -110,7 +110,6 @@ class UserRepository extends BaseRepository
             'mobile_number' => NULL,
             'last_seen_at' => NULL,
             'mobile_number_verified_at' => NULL,
-            'accepted_terms_and_conditions' => false,
             'is_super_admin' => false,
             'is_guest' => true,
             'password' => NULL,
@@ -321,16 +320,6 @@ class UserRepository extends BaseRepository
     }
 
     /**
-     *  Accept the terms and conditions
-     *
-     *  @return array
-     */
-    public function acceptTermsAndConditions()
-    {
-        return $this->authRepository()->acceptTermsAndConditions();
-    }
-
-    /**
      *  Search for a user using the mobile number
      *
      *  @param Request $request
@@ -383,19 +372,8 @@ class UserRepository extends BaseRepository
         //  Update existing account
         parent::update($data);
 
-        /**
-         *  Incase this user is currently logged in and their account details have been cached,
-         *  we would need to clear their cached account details by acquiring this access tokens
-         *  and then forgetting any account details cached using the bearer tokens of these
-         *  access tokens.
-         */
-        $accessTokens = $this->model->tokens();
-
-        foreach($accessTokens as $accessToken) {
-
-            (new RequestAuthUser())->forgetAuthUserOnCacheUsingAccessToken($accessToken);
-
-        }
+        //  Forget cached user details
+        $this->forgetCachedUserDetails();
 
         /**
          *  When updating the user's mobile number, the user must provide the
@@ -410,6 +388,23 @@ class UserRepository extends BaseRepository
 
         //  Return the Repository Class instance.
         return $this;
+    }
+
+    /**
+     *  Incase this user is currently logged in and their account details have been cached,
+     *  we would need to clear their cached account details by acquiring this access tokens
+     *  and then forgetting any account details cached using the bearer tokens of these
+     *  access tokens.
+     */
+    public function forgetCachedUserDetails()
+    {
+        $accessTokens = $this->model->tokens()->get();
+
+        foreach($accessTokens as $accessToken) {
+
+            (new RequestAuthUser())->forgetAuthUserOnCacheUsingAccessToken($accessToken);
+
+        }
     }
 
     /**
@@ -495,6 +490,9 @@ class UserRepository extends BaseRepository
             //  Save the user changes
             parent::update(['profile_photo' => null]);
 
+            //  Forget cached user details
+            $this->forgetCachedUserDetails();
+
             return [
                 'message' => 'Profile photo deleted successfully'
             ];
@@ -558,6 +556,9 @@ class UserRepository extends BaseRepository
                 //  Save the user changes
                 $user->save();
 
+                //  Forget cached user details
+                $this->forgetCachedUserDetails();
+
             }
 
         }
@@ -565,7 +566,7 @@ class UserRepository extends BaseRepository
         if( $updatingTheUserProfilePhotoOnly ) {
 
             //  Return the profile photo image url
-            return ['profile photo' => $user->profile_photo];
+            return ['profile_photo' => $user->profile_photo];
 
         }
 

@@ -108,9 +108,9 @@ class UpdateStoreRequest extends FormRequest
             'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
             'name' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::NAME_MIN_CHARACTERS, 'max:'.Store::NAME_MAX_CHARACTERS, Rule::unique('stores')->ignore(request()->store->id)],
             'call_to_action' => ['bail', 'sometimes', 'required', Rule::in(collect($callToActionOptions))],
-            'description' => ['bail', 'sometimes', 'string', 'min:'.Store::DESCRIPTION_MIN_CHARACTERS, 'max:'.Store::DESCRIPTION_MAX_CHARACTERS],
+            'description' => ['bail', 'sometimes', 'nullable', 'min:'.Store::DESCRIPTION_MIN_CHARACTERS, 'max:'.Store::DESCRIPTION_MAX_CHARACTERS],
             'sms_sender_name' => [
-                'bail', 'sometimes', 'nullable', 'string', 'min:'.Store::SMS_SENDER_NAME_MIN_CHARACTERS, 'max:'.Store::SMS_SENDER_NAME_MAX_CHARACTERS,
+                'bail', 'sometimes', 'nullable', 'min:'.Store::SMS_SENDER_NAME_MIN_CHARACTERS, 'max:'.Store::SMS_SENDER_NAME_MAX_CHARACTERS,
             ],
             'mobile_number' => ['bail', 'sometimes', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
             'currency' => [
@@ -128,20 +128,20 @@ class UpdateStoreRequest extends FormRequest
             'offline_message' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::OFFLINE_MESSAGE_MIN_CHARACTERS, 'max:'.Store::OFFLINE_MESSAGE_MAX_CHARACTERS],
             'identified_orders' => ['bail', 'sometimes', 'required', 'boolean'],
 
-            'delivery_note' => ['bail', 'sometimes', 'string', 'min:'.Store::DELIVERY_NOTE_MIN_CHARACTERS, 'max:'.Store::DELIVERY_NOTE_MAX_CHARACTERS],
+            'delivery_note' => ['bail', 'sometimes', 'nullable', 'min:'.Store::DELIVERY_NOTE_MIN_CHARACTERS, 'max:'.Store::DELIVERY_NOTE_MAX_CHARACTERS],
             'allow_delivery' => ['bail', 'sometimes', 'required', 'boolean'],
             'allow_free_delivery' => ['bail', 'sometimes', 'required', 'boolean'],
             'delivery_flat_fee' => ['bail', 'sometimes', 'required', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'delivery_destinations' => ['bail', 'sometimes', 'required', 'array'],
+            'delivery_destinations' => ['bail', 'sometimes', 'array'],
             'delivery_destinations.*.name' => ['bail', 'required', 'string', 'min:'.Store::DELIVERY_DESTINATION_NAME_MIN_CHARACTERS, 'max:'.Store::DELIVERY_DESTINATION_NAME_MAX_CHARACTERS],
             'delivery_destinations.*.allow_free_delivery' => ['bail', 'required', 'boolean'],
             'delivery_destinations.*.cost' => ['bail', 'required', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
 
-            'pickup_note' => ['bail', 'sometimes', 'string', 'min:'.Store::PICKUP_NOTE_MIN_CHARACTERS, 'max:'.Store::PICKUP_NOTE_MAX_CHARACTERS],
+            'pickup_note' => ['bail', 'sometimes', 'nullable', 'min:'.Store::PICKUP_NOTE_MIN_CHARACTERS, 'max:'.Store::PICKUP_NOTE_MAX_CHARACTERS],
             'allow_pickup' => ['bail', 'sometimes', 'required', 'boolean'],
-            'pickup_destinations' => ['bail', 'sometimes', 'required', 'array'],
+            'pickup_destinations' => ['bail', 'sometimes', 'array'],
             'pickup_destinations.*.name' => ['bail', 'required', 'string', 'min:'.Store::PICKUP_DESTINATION_NAME_MIN_CHARACTERS, 'max:'.Store::PICKUP_DESTINATION_NAME_MAX_CHARACTERS],
-            'pickup_destinations.*.address' => ['bail', 'required', 'string', 'min:'.Store::PICKUP_DESTINATION_ADDRESS_MIN_CHARACTERS, 'max:'.Store::PICKUP_DESTINATION_ADDRESS_MAX_CHARACTERS],
+            'pickup_destinations.*.address' => ['bail', 'nullable', 'min:'.Store::PICKUP_DESTINATION_ADDRESS_MIN_CHARACTERS, 'max:'.Store::PICKUP_DESTINATION_ADDRESS_MAX_CHARACTERS],
 
             'perfect_pay_enabled' => ['bail', 'sometimes', 'required', 'boolean'],
             'orange_money_payment_enabled' => ['bail', 'sometimes', 'required', 'boolean'],
@@ -150,14 +150,14 @@ class UpdateStoreRequest extends FormRequest
             'dpo_company_token' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::DPO_COMPANY_TOKEN_MIN_CHARACTERS, 'max:'.Store::DPO_COMPANY_TOKEN_MAX_CHARACTERS],
 
             'allow_deposit_payments' => ['bail', 'required', 'boolean'],
-            'deposit_percentages' => ['bail', 'sometimes', 'required', 'array'],
+            'deposit_percentages' => ['bail', 'sometimes', 'array'],
             'deposit_percentages.*' => ['bail', 'required', 'integer', 'numeric', 'min:5', 'max:95'],
 
             'allow_installment_payments' => ['bail', 'required', 'boolean'],
-            'installment_percentages' => ['bail', 'sometimes', 'required', 'array'],
+            'installment_percentages' => ['bail', 'sometimes', 'array'],
             'installment_percentages.*' => ['bail', 'required', 'integer', 'numeric', 'min:5', 'max:95'],
 
-            'supported_payment_methods' => ['bail', 'sometimes', 'required', 'array'],
+            'supported_payment_methods' => ['bail', 'sometimes', 'array'],
             'supported_payment_methods.*.id' => [
                 'bail', 'required', 'integer', 'numeric', 'min:1', Rule::exists('payment_methods')
             ],
@@ -187,6 +187,16 @@ class UpdateStoreRequest extends FormRequest
      */
     public function attributes()
     {
-        return [];
+        return [
+            'delivery_destinations.*.name' => 'delivery destination name',
+            'delivery_destinations.*.cost' => 'delivery destination name',
+            'delivery_destinations.*.allow_free_delivery' => 'delivery destination name',
+
+            'pickup_destinations.*.name' => 'pickup destination name',
+            'pickup_destinations.*.address' => 'pickup destination address',
+
+            'deposit_percentages.*' => 'deposit percentage',
+            'installment_percentages.*' => 'installment percentage',
+        ];
     }
 }

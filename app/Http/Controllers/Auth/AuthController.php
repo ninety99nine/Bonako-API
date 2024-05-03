@@ -12,7 +12,6 @@ use App\Http\Requests\Auth\AccountExistsRequest;
 use App\Http\Requests\Models\User\CreateUserRequest;
 use App\Http\Requests\Models\User\UpdateUserRequest;
 use App\Http\Requests\Auth\ValidateResetPasswordRequest;
-use App\Http\Requests\Auth\AcceptTermsAndConditionsRequest;
 use App\Http\Requests\Models\User\ValidateCreateUserRequest;
 use App\Http\Requests\Auth\ShowMobileVerificationCodeRequest;
 use App\Http\Requests\Auth\VerifyMobileVerificationCodeRequest;

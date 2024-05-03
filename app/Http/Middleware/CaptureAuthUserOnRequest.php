@@ -2,11 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Helpers\RequestAuthUser;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
+use App\Helpers\RequestAuthUser;
 
 class CaptureAuthUserOnRequest
 {

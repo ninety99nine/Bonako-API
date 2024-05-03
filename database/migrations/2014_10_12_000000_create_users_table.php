@@ -21,7 +21,6 @@ class CreateUsersTable extends Migration
             $table->string('mobile_number', 11)->nullable()->unique();
             $table->timestamp('last_seen_at')->nullable();
             $table->timestamp('mobile_number_verified_at')->nullable();
-            $table->boolean('accepted_terms_and_conditions')->default(false);
             $table->boolean('is_super_admin')->default(false);
             $table->boolean('is_guest')->default(false);
             $table->string('password')->nullable();

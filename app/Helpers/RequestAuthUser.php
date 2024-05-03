@@ -98,12 +98,15 @@ class RequestAuthUser
      *
      *  $authUser->currentAccessToken()
      *
-     *  @param string $bearerToken
+     *  @param string|null $bearerToken
      *  @param \Laravel\Sanctum\Contracts\HasAbilities|null $accessToken
      *  @return RequestAuthUser
      */
-    public function setAuthUserOnCache($bearerToken, $accessToken = null)
+    public function setAuthUserOnCache($bearerToken = null, $accessToken = null)
     {
+        //  Get the current bearer token for the authenticated user
+        $bearerToken = $accessToken ?? request()->bearerToken();
+
         //  Get the current access token for the authenticated user
         $accessToken = $accessToken ?? $this->authUser->currentAccessToken();
 
@@ -128,8 +131,8 @@ class RequestAuthUser
         //  If the token has a remaining validity
         if(!is_null($remainingValidity)) {
 
-            // Determine the cache expiry time as the minimum of remaining validity and maximum threshold (60 * 10 = 600 seconds = 10 minutes)
-            $cacheExpiryDatetime = now()->addSeconds(min($remainingValidity, 60 * 10));
+            // Determine the cache expiry time as the minimum of remaining validity and maximum threshold
+            $cacheExpiryDatetime = now()->addSeconds(min($remainingValidity, $cacheExpiryDatetime));
 
         }
 
@@ -199,15 +202,5 @@ class RequestAuthUser
     public function cacheManagerUsingAccessToken($accessToken)
     {
         return (new cacheManager(CacheName::AUTH_USER_ON_REQUEST_BEARER_TOKEN))->append($accessToken->id);
-    }
-
-    /**
-     *  Return the authenticated user on the request
-     *
-     *  @return User|null
-     */
-    public function getAuthUserOnRequest()
-    {
-        return request()->auth_user;
     }
 }

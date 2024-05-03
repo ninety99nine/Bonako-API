@@ -83,7 +83,7 @@ class FormatRequestPayload
 
         }
 
-        $request->query->replace(
+        $request->replace(
             (new PayloadNamingConvention($request->all()))->removeDotNotation()->convertToSnakeCaseFormat()
         );
 

@@ -186,6 +186,8 @@ class StoreResource extends BaseResource
             //  Payment Methods
             new ResourceLink('show.supported.payment.methods', route($routeNamePrefix.'supported.payment.methods.show', ['store' => $this->resource->id]), 'Show supported payment methods'),
             new ResourceLink('show.available.payment.methods', route($routeNamePrefix.'available.payment.methods.show', ['store' => $this->resource->id]), 'Show available payment methods'),
+            new ResourceLink('show.available.deposit.percentages', route($routeNamePrefix.'available.deposit.percentages.show', ['store' => $this->resource->id]), 'Show available deposit percentages'),
+            new ResourceLink('show.available.installment.percentages', route($routeNamePrefix.'available.installment.percentages.show', ['store' => $this->resource->id]), 'Show available installment percentages'),
 
             //  Sharable Content
             new ResourceLink('show.sharable.content', route($routeNamePrefix.'sharable.content.show', ['store' => $this->resource->id]), 'Show sharable content'),

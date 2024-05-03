@@ -17,7 +17,6 @@ use App\Http\Requests\Models\User\ShowUserStoresRequest;
 use App\Http\Requests\Models\User\CreateFriendRequest;
 use App\Http\Requests\Models\Address\CreateAddressRequest;
 use App\Http\Requests\Models\Address\UpdateAddressRequest;
-use App\Http\Requests\Auth\AcceptTermsAndConditionsRequest;
 use App\Http\Requests\Models\User\ValidateCreateUserRequest;
 use App\Http\Requests\Auth\ShowMobileVerificationCodeRequest;
 use App\Http\Requests\Auth\VerifyMobileVerificationCodeRequest;
@@ -130,11 +129,6 @@ class UserController extends BaseController
     public function showTermsAndConditions(User $user)
     {
         return $this->prepareOutput($this->setModel($this->chooseUser())->showTermsAndConditions());
-    }
-
-    public function acceptTermsAndConditions(AcceptTermsAndConditionsRequest $acceptTermsAndConditionsRequest, User $user)
-    {
-        return $this->prepareOutput($this->setModel($this->chooseUser())->acceptTermsAndConditions($acceptTermsAndConditionsRequest));
     }
 
     public function showMobileVerificationCode(ShowMobileVerificationCodeRequest $showMobileVerificationCodeRequest, User $user)

@@ -58,7 +58,6 @@ foreach($options as $option) {
             Route::post('/logout', 'logout')->name('.logout')->whereNumber('user');
             Route::get('/tokens', 'showTokens')->name('.tokens.show')->whereNumber('user');
             Route::get('/show-terms-and-conditions', 'showTermsAndConditions')->name('.terms.and.conditions.show')->whereNumber('user');
-            Route::post('/accept-terms-and-conditions', 'acceptTermsAndConditions')->name('.terms.and.conditions.accept')->whereNumber('user');
             Route::post('/verify-mobile-verification-code', 'verifyMobileVerificationCode')->name('.verify.mobile.verification.code')->whereNumber('user');
             //  USSD Server Routes: The following route is restricted to USSD requests (See attached middleware)
             Route::post('/show-mobile-verification-code', 'showMobileVerificationCode')->middleware('request.via.ussd')->name('.show.mobile.verification.code')->whereNumber('user');

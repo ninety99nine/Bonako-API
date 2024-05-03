@@ -69,16 +69,17 @@ class Transaction extends BaseModel
      *  SCOPES                  *
      ***************************/
 
-
-
     /*
      *  Scope: Return stores that are being searched
      */
     public function scopeSearch($query, $searchWord)
     {
-        return $query->whereHas('paidByUser', function ($paidByUser) use ($searchWord) {
-            $paidByUser->search($searchWord);
-        });
+        return $query
+            ->where('owner_type', 'like', '%' . $searchWord . '%')
+            ->orWhere('description', 'like', '%' . $searchWord . '%')
+            ->orWhereHas('paidByUser', function ($paidByUser) use ($searchWord) {
+                $paidByUser->search($searchWord);
+            });
     }
 
     public function scopePaid($query)

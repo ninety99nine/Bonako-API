@@ -16,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 use App\Exceptions\DeleteConfirmationCodeInvalid;
 use App\Exceptions\RepositoryQueryFailedException;
 use App\Exceptions\RepositoryModelNotFoundException;
+use App\Models\User;
 
 abstract class BaseRepository
 {
@@ -523,39 +524,24 @@ abstract class BaseRepository
         //  If we are updating a Model
         if($this->model instanceof Model) {
 
-            //  Indicate that we cannot update this model by default
-            $canUpdate = false;
+            $attributes = collect($this->model->getAttributes())->keys();
 
-            //  Loop through the data
-            foreach ($data as $key => $value) {
+            foreach($data as $key => $value) {
 
-                // If the value of this field in the given $data is different from the value of the
-                // corresponding field in the database, we can update this repository model. Note
-                // that the serialize method makes sure that the comparison is done on a string
-                // basis.
-                if (serialize($this->model->{$key}) !== serialize($value)) {
+                if($attributes->contains($key)) {
 
-                    //  dd($key, json_encode($this->model->getRawOriginal($key)), json_encode($value), json_encode($this->model->getRawOriginal($key)) !== json_encode($value));
+                    $this->model->setAttribute($key, $value);
 
-                    $canUpdate = true;
-                    break;
                 }
-
             }
 
-            //  Set that default updated status
-            $updated = false;
+            $canUpdate = $this->model->isDirty();
 
             // If we can update the repository model
             if ($canUpdate) {
 
                 //  Update repository model
-                $updated = $this->model->update($data);
-
-            }
-
-            //  If we updated this repository model
-            if( $updated ) {
+                $this->model->update($data);
 
                 //  Set repository model
                 $this->setModel( $this->model->fresh() );

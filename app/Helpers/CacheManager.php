@@ -22,27 +22,26 @@ class CacheManager
      *  @param string|null $string
      *  @return CacheManager
      */
-    public function append($string, $convert = false)
+    public function append($string, $uppercase = false)
     {
         if(!empty($string)) {
 
             /**
-             *  Sometimes we may need to convert the string provided
-             *  into snakecase and uppercase format e.g
+             *  Sometimes we may need to uppercase the string provided e.g
              *
-             *  $string = 'Available On Ussd'
+             *  $string = 'Hello World'
              *
              *  should be converted into:
              *
-             *  $string = 'AVAILABLE_ON_USSD'
+             *  $string = 'HELLO_WORLD'
              *
              *  However other strings must not be converted e.g a bearer token string
              *
              *  $string = 1|rNaH9JZmO1iqZQgrU0upu55GYpOjc0MoPLZb8eI0981ae9ca;
              *
-             *  We can use $convert=true/false to determine the outcome
+             *  We can use $uppercase=true/false to determine the outcome
              */
-            if($convert) {
+            if($uppercase) {
 
                 $string = strtoupper(Str::snake($string));
 
