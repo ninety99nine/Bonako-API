@@ -40,6 +40,11 @@ class TransactionController extends BaseController
         return $this->prepareOutput($this->setModel($transaction)->deleteTransaction());
     }
 
+    public function renewPaymentLink(Transaction $transaction)
+    {
+        return $this->prepareOutput($this->setModel($transaction)->renewPaymentLink());
+    }
+
     public function cancel(CancelTransactionRequest $request, Transaction $transaction)
     {
         return $this->prepareOutput($this->setModel($transaction)->cancel($request));

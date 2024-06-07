@@ -266,7 +266,7 @@ trait UserTrait
      */
     public function hasStorePermissionCacheManager($storeId, $permission)
     {
-        (new CacheManager(CacheName::HAS_STORE_PERMISSION))->append($permission)->append($storeId)->append(request()->auth_user->id);
+        return (new CacheManager(CacheName::HAS_STORE_PERMISSION))->append($permission)->append($storeId)->append(request()->auth_user->id);
     }
 
     /**

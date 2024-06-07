@@ -28,26 +28,32 @@ class ShowUserReviewsRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "filter" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Customer Service" or "customerService" into "customer service"
-         */
-        if($this->has('filter')) {
-            $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
-            ]);
-        }
+        try {
 
-        /**
-         *  Convert the "user_review_association" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "teamMember" or "Team Member" into "team member"
-         */
-        if($this->has('user_review_association')) {
-            $this->merge([
-                'user_review_association' => $this->separateWordsThenLowercase($this->get('user_review_association'))
-            ]);
+            /**
+             *  Convert the "filter" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Customer Service" or "customerService" into "customer service"
+             */
+            if($this->has('filter')) {
+                $this->merge([
+                    'filter' => $this->separateWordsThenLowercase($this->get('filter'))
+                ]);
+            }
+
+            /**
+             *  Convert the "user_review_association" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "teamMember" or "Team Member" into "team member"
+             */
+            if($this->has('user_review_association')) {
+                $this->merge([
+                    'user_review_association' => $this->separateWordsThenLowercase($this->get('user_review_association'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

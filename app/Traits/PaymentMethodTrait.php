@@ -9,17 +9,17 @@ trait PaymentMethodTrait
     use BaseTrait;
 
     /**
-     *  Check if this is a card payment method
+     *  Check if this is a DPO payment method
      *
      *  @return bool
      */
-    public function isDpoCard()
+    public function isDpo()
     {
-        return strtolower($this->getRawOriginal('method')) === 'dpo card';
+        return strtolower($this->getRawOriginal('method')) === 'dpo';
     }
 
     /**
-     *  Check if this is a orange money method
+     *  Check if this is an Orange Money payment method
      *
      *  @return bool
      */

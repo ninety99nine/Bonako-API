@@ -405,7 +405,7 @@ trait OrderTrait
      *  @return string
      */
     public function craftOrderPaymentRequestMessage(Store $store, Transaction $transaction, User $requestedByUser) {
-        if($transaction->paymentMethod->isDpoCard()) {
+        if($transaction->paymentMethod->isDpo()) {
 
             if(empty($store->sms_sender_name)) {
                 return $store->name_with_emoji.', Pay for Order #'.$this->number.' using this payment link '.$transaction->dpo_payment_url.'. Valid till '.Carbon::parse($transaction->dpo_payment_url_expires_at)->format('d M Y H:i').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
@@ -436,7 +436,7 @@ trait OrderTrait
      *  @return string
      */
     public function craftOrderPaidMessage(Store $store, Transaction $transaction) {
-        if($transaction->paymentMethod->isDpoCard()) {
+        if($transaction->paymentMethod->isDpo()) {
             if(empty($store->sms_sender_name)) {
                 return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->dpo_payment_response['onVerifyPaymentResponse']['customerName'].' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }else{

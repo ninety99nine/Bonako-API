@@ -29,62 +29,68 @@ class ConvertCartRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "delivery_destination_name" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Gaborone" into "gaborone"
-         */
-        if($this->has('delivery_destination_name')) {
-            $this->merge([
-                'delivery_destination_name' => strtolower($this->get('delivery_destination_name'))
-            ]);
-        }
+        try {
 
-        /**
-         *  Convert the "pickup_destination_name" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Gaborone" into "gaborone"
-         */
-        if($this->has('pickup_destination_name')) {
-            $this->merge([
-                'pickup_destination_name' => strtolower($this->get('pickup_destination_name'))
-            ]);
-        }
+            /**
+             *  Convert the "delivery_destination_name" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Gaborone" into "gaborone"
+             */
+            if($this->has('delivery_destination_name')) {
+                $this->merge([
+                    'delivery_destination_name' => strtolower($this->get('delivery_destination_name'))
+                ]);
+            }
 
-        /**
-         *  Convert the "order_for" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Me And Friends" or "me and Friends" into "me and friends"
-         */
-        if($this->has('order_for')) {
-            $this->merge([
-                'order_for' => $this->separateWordsThenLowercase($this->get('order_for'))
-            ]);
-        }
+            /**
+             *  Convert the "pickup_destination_name" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Gaborone" into "gaborone"
+             */
+            if($this->has('pickup_destination_name')) {
+                $this->merge([
+                    'pickup_destination_name' => strtolower($this->get('pickup_destination_name'))
+                ]);
+            }
 
-        /**
-         *  Convert the "collection_type" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Deliver" or "deliver" into "deliver"
-         */
-        if($this->has('collection_type')) {
-            $this->merge([
-                'collection_type' => strtolower($this->get('collection_type'))
-            ]);
-        }
+            /**
+             *  Convert the "order_for" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Me And Friends" or "me and Friends" into "me and friends"
+             */
+            if($this->has('order_for')) {
+                $this->merge([
+                    'order_for' => $this->separateWordsThenLowercase($this->get('order_for'))
+                ]);
+            }
 
-        //  Make sure that the "cart_products" is an array if provided
-        if($this->has('cart_products') && is_string($this->request->all()['cart_products'])) {
-            $this->merge([
-                'cart_products' => json_decode($this->request->all()['cart_products'])
-            ]);
-        }
+            /**
+             *  Convert the "collection_type" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Deliver" or "deliver" into "deliver"
+             */
+            if($this->has('collection_type')) {
+                $this->merge([
+                    'collection_type' => strtolower($this->get('collection_type'))
+                ]);
+            }
 
-        //  Make sure that the "cart_coupon_codes" is an array if provided
-        if($this->has('cart_coupon_codes') && is_string($this->request->all()['cart_coupon_codes'])) {
-            $this->merge([
-                'cart_coupon_codes' => json_decode($this->request->all()['cart_coupon_codes'])
-            ]);
+            //  Make sure that the "cart_products" is an array if provided
+            if($this->has('cart_products') && is_string($this->request->all()['cart_products'])) {
+                $this->merge([
+                    'cart_products' => json_decode($this->request->all()['cart_products'])
+                ]);
+            }
+
+            //  Make sure that the "cart_coupon_codes" is an array if provided
+            if($this->has('cart_coupon_codes') && is_string($this->request->all()['cart_coupon_codes'])) {
+                $this->merge([
+                    'cart_coupon_codes' => json_decode($this->request->all()['cart_coupon_codes'])
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

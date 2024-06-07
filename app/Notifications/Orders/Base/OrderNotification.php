@@ -8,6 +8,7 @@ use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Notifications\Notification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
 class OrderNotification extends Notification implements ShouldQueue
 {

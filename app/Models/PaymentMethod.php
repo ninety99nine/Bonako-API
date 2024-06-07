@@ -98,12 +98,12 @@ class PaymentMethod extends BaseModel
      ***************************/
 
     protected $appends = [
-        'is_dpo_card', 'is_orange_money'
+        'is_dpo', 'is_orange_money'
     ];
 
-    public function getIsDpoCardAttribute()
+    public function getIsDpoAttribute()
     {
-        return $this->isDpoCard();
+        return $this->isDpo();
     }
 
     public function getIsOrangeMoneyAttribute()

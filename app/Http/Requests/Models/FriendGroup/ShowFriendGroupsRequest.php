@@ -3,12 +3,14 @@
 namespace App\Http\Requests\Models\FriendGroup;
 
 use App\Models\FriendGroup;
-use Illuminate\Support\Str;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ShowFriendGroupsRequest extends FormRequest
 {
+    use BaseTrait;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -26,15 +28,21 @@ class ShowFriendGroupsRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "filter" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "waiting" or "Waiting" into "waiting"
-         */
-        if($this->has('filter')) {
-            $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
-            ]);
+        try {
+
+            /**
+             *  Convert the "filter" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "waiting" or "Waiting" into "waiting"
+             */
+            if($this->has('filter')) {
+                $this->merge([
+                    'filter' => $this->separateWordsThenLowercase($this->get('filter'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

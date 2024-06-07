@@ -28,15 +28,21 @@ class ShowStoresRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the filter to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "popularToday" or "Popular Today" into "popular today"
-         */
-        if($this->has('filter')) {
-            $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
-            ]);
+        try {
+
+            /**
+             *  Convert the filter to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "popularToday" or "Popular Today" into "popular today"
+             */
+            if($this->has('filter')) {
+                $this->merge([
+                    'filter' => $this->separateWordsThenLowercase($this->get('filter'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

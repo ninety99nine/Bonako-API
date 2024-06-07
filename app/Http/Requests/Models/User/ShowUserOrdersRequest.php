@@ -28,25 +28,32 @@ class ShowUserOrdersRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "filter" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "waiting" or "Waiting" into "waiting"
-         */
-        if($this->has('filter')) {
-            $this->merge([
-                'filter' => $this->separateWordsThenLowercase($this->get('filter'))
-            ]);
-        }
-        /**
-         *  Convert the "user_order_association" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "teamMember" or "Team Member" into "team member"
-         */
-        if($this->has('user_order_association')) {
-            $this->merge([
-                'user_order_association' => $this->separateWordsThenLowercase($this->get('user_order_association'))
-            ]);
+        try {
+
+            /**
+             *  Convert the "filter" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "waiting" or "Waiting" into "waiting"
+             */
+            if($this->has('filter')) {
+                $this->merge([
+                    'filter' => $this->separateWordsThenLowercase($this->get('filter'))
+                ]);
+            }
+
+            /**
+             *  Convert the "user_order_association" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "teamMember" or "Team Member" into "team member"
+             */
+            if($this->has('user_order_association')) {
+                $this->merge([
+                    'user_order_association' => $this->separateWordsThenLowercase($this->get('user_order_association'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

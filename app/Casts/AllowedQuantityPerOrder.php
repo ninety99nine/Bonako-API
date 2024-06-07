@@ -17,8 +17,8 @@ class AllowedQuantityPerOrder implements CastsAttributes
      */
     public function get($model, $key, $value, $attributes)
     {
-        $description = ($value == 'limited')
-                        ? 'Limited quantity per order (Maximum is '.$attributes['maximum_allowed_quantity_per_order'].($value == 1 ? ' item' : ' items').' per order)'
+        $description = (strtolower($value) == 'limited')
+                        ? 'Limited quantity per order (Limit to '.$attributes['maximum_allowed_quantity_per_order'].($attributes['maximum_allowed_quantity_per_order'] == 1 ? ' item' : ' items').' per order)'
                         : 'Unlimited quantity per order';
 
         return [

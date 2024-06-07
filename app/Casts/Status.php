@@ -58,7 +58,7 @@ class Status implements CastsAttributes
                 break;
             case 'show_description':
                 $name = $value ? 'Yes' : 'No';
-                $description = 'This '.$descriptionName.' '.($value ? 'has' : 'does not have').' a description to show to customers';
+                $description = 'This '.$descriptionName.' description is '.($value ? 'visible' : 'hidden').' to customers';
                 break;
             case 'has_delivery_fee':
                 $name = $value ? 'Has Delivery Fee' : 'No Delivery Fee';

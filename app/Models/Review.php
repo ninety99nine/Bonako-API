@@ -29,6 +29,18 @@ class Review extends BaseModel
     protected $fillable = ['rating', 'subject', 'comment', 'store_id', 'user_id'];
 
     /****************************
+     *  SCOPES                  *
+     ***************************/
+
+    /*
+     *  Scope: Return products that are being searched using the product name
+     */
+    public function scopeSearch($query, $searchWord)
+    {
+        return $query->where('subject', 'like', "%$searchWord%")->orWhere('comment', 'like', "%$searchWord%");
+    }
+
+    /****************************
      *  RELATIONSHIPS           *
      ***************************/
 

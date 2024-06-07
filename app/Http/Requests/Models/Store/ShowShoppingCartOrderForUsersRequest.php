@@ -29,15 +29,21 @@ class ShowShoppingCartOrderForUsersRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "order_for" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Me And Friends" or "me and Friends" into "me and friends"
-         */
-        if($this->has('order_for')) {
-            $this->merge([
-                'order_for' => $this->separateWordsThenLowercase($this->get('order_for'))
-            ]);
+        try {
+
+            /**
+             *  Convert the "order_for" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Me And Friends" or "me and Friends" into "me and friends"
+             */
+            if($this->has('order_for')) {
+                $this->merge([
+                    'order_for' => $this->separateWordsThenLowercase($this->get('order_for'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

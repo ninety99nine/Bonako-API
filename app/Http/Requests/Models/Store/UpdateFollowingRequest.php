@@ -30,15 +30,21 @@ class UpdateFollowingRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "status" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "following" or "Following" into "Following"
-         */
-        if($this->has('status')) {
-            $this->merge([
-                'status' => $this->separateWordsThenLowercase($this->get('status'))
-            ]);
+        try {
+
+            /**
+             *  Convert the "status" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "following" or "Following" into "Following"
+             */
+            if($this->has('status')) {
+                $this->merge([
+                    'status' => $this->separateWordsThenLowercase($this->get('status'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

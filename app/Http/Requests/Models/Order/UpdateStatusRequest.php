@@ -11,6 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class UpdateStatusRequest extends FormRequest
 {
     use BaseTrait;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -28,15 +29,20 @@ class UpdateStatusRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "status" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "onItsWay" or "On Its Way" into "on its way"
-         */
-        if($this->has('status')) {
-            $this->merge([
-                'status' => $this->separateWordsThenLowercase($this->get('status'))
-            ]);
+        try {
+            /**
+             *  Convert the "status" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "onItsWay" or "On Its Way" into "on its way"
+             */
+            if($this->has('status')) {
+                $this->merge([
+                    'status' => $this->separateWordsThenLowercase($this->get('status'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

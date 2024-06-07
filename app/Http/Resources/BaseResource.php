@@ -245,7 +245,15 @@ class BaseResource extends JsonResource
              *
              *  Illuminate\Database\Eloquent\Concerns\HasRelationships
              */
-            $data = $this->resource->withoutRelations()->toArray();
+            $data = $this->resource->withoutRelations();
+
+            /**
+             * The setAppends([]) helps us to exclude any appended attributes.
+             * These are the non database fields.
+             */
+            $data->setAppends([]);
+
+            $data = $data->toArray();
 
         }else{
 

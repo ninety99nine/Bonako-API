@@ -3,11 +3,14 @@
 namespace App\Http\Requests\Models\Transaction;
 
 use App\Models\Transaction;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CancelTransactionRequest extends FormRequest
 {
+    use BaseTrait;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -25,15 +28,21 @@ class CancelTransactionRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "cancellation_reason" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Refund" into "refund"
-         */
-        if($this->has('cancellation_reason')) {
-            $this->merge([
-                'cancellation_reason' => $this->separateWordsThenLowercase($this->get('cancellation_reason'))
-            ]);
+        try {
+
+            /**
+             *  Convert the "cancellation_reason" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Refund" into "refund"
+             */
+            if($this->has('cancellation_reason')) {
+                $this->merge([
+                    'cancellation_reason' => $this->separateWordsThenLowercase($this->get('cancellation_reason'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

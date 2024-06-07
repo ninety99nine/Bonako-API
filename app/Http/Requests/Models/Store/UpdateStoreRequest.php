@@ -29,58 +29,64 @@ class UpdateStoreRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "call_to_action" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "buy" or "buyNow" into "buy now"
-         */
-        if($this->has('call_to_action')) {
-            $this->merge([
-                'call_to_action' => $this->separateWordsThenLowercase($this->get('call_to_action'))
-            ]);
-        }
+        try {
 
-        /**
-         *  Convert the "banking_with" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Stanbic Bank" or "stanbicBank" into "buy now"
-         */
-        if($this->has('banking_with')) {
-            $this->merge([
-                'banking_with' => $this->separateWordsThenLowercase($this->get('banking_with'))
-            ]);
-        }
+            /**
+             *  Convert the "call_to_action" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "buy" or "buyNow" into "buy now"
+             */
+            if($this->has('call_to_action')) {
+                $this->merge([
+                    'call_to_action' => $this->separateWordsThenLowercase($this->get('call_to_action'))
+                ]);
+            }
 
-        /**
-         *  Convert the "registered_with_cipa_as" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Company" or "CompanY" into "company"
-         */
-        if($this->has('registered_with_cipa_as')) {
-            $this->merge([
-                'registered_with_cipa_as' => $this->separateWordsThenLowercase($this->get('registered_with_cipa_as'))
-            ]);
-        }
+            /**
+             *  Convert the "banking_with" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Stanbic Bank" or "stanbicBank" into "buy now"
+             */
+            if($this->has('banking_with')) {
+                $this->merge([
+                    'banking_with' => $this->separateWordsThenLowercase($this->get('banking_with'))
+                ]);
+            }
 
-        /**
-         *  Convert the accepted boolean input values (such as 'true', 'false', 1, 0, "1", and "0")
-         *  into actual boolean values (true or false). This ensures consistent handling of the
-         *  boolean fields throughout the validation process.
-         *
-         *  This is useful for checking the following:
-         *
-         *  required_if:registered_with_bank,true
-         */
-        if($this->has('registered_with_bank')) {
-            $this->merge([
-                'registered_with_bank' => (bool) $this->get('registered_with_bank')
-            ]);
-        }
+            /**
+             *  Convert the "registered_with_cipa_as" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Company" or "CompanY" into "company"
+             */
+            if($this->has('registered_with_cipa_as')) {
+                $this->merge([
+                    'registered_with_cipa_as' => $this->separateWordsThenLowercase($this->get('registered_with_cipa_as'))
+                ]);
+            }
 
-        if($this->has('registered_with_cipa')) {
-            $this->merge([
-                'registered_with_cipa' => (bool) $this->get('registered_with_cipa')
-            ]);
+            /**
+             *  Convert the accepted boolean input values (such as 'true', 'false', 1, 0, "1", and "0")
+             *  into actual boolean values (true or false). This ensures consistent handling of the
+             *  boolean fields throughout the validation process.
+             *
+             *  This is useful for checking the following:
+             *
+             *  required_if:registered_with_bank,true
+             */
+            if($this->has('registered_with_bank')) {
+                $this->merge([
+                    'registered_with_bank' => (bool) $this->get('registered_with_bank')
+                ]);
+            }
+
+            if($this->has('registered_with_cipa')) {
+                $this->merge([
+                    'registered_with_cipa' => (bool) $this->get('registered_with_cipa')
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

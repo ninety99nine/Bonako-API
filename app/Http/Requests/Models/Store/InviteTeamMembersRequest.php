@@ -3,16 +3,18 @@
 namespace App\Http\Requests\Models\Store;
 
 use App\Models\Store;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class InviteTeamMembersRequest extends FormRequest
 {
+    use BaseTrait;
+
     private $permissions;
 
     public function __construct()
     {
-
         $this->permissions = collect(Store::PERMISSIONS)->map(fn($permission) => $permission['grant'])->toArray();
     }
 
@@ -33,29 +35,35 @@ class InviteTeamMembersRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        //  Make sure that the "mobile_numbers" is an array if provided
-        if($this->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
-            $this->merge([
-                'mobile_numbers' => json_decode($this->request->all()['mobile_numbers'])
-            ]);
-        }
+        try {
 
-        //  Make sure that the "permissions" is an array if provided
-        if($this->has('permissions')) {
-
-            if(is_string($this->request->all()['permissions'])) {
-
+            //  Make sure that the "mobile_numbers" is an array if provided
+            if($this->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
                 $this->merge([
-                    'permissions' => collect(json_decode($this->request->all()['permissions']))->map(fn($permission) => $this->separateWordsThenLowercase($permission))
+                    'mobile_numbers' => json_decode($this->request->all()['mobile_numbers'])
                 ]);
-
-            }else{
-
-                $this->merge([
-                    'permissions' => collect($this->request->all()['permissions'])->map(fn($permission) => $this->separateWordsThenLowercase($permission))
-                ]);
-
             }
+
+            //  Make sure that the "permissions" is an array if provided
+            if($this->has('permissions')) {
+
+                if(is_string($this->request->all()['permissions'])) {
+
+                    $this->merge([
+                        'permissions' => collect(json_decode($this->request->all()['permissions']))->map(fn($permission) => $this->separateWordsThenLowercase($permission))->toArray()
+                    ]);
+
+                }else{
+
+                    $this->merge([
+                        'permissions' => collect($this->request->all()['permissions'])->map(fn($permission) => $this->separateWordsThenLowercase($permission))->toArray()
+                    ]);
+
+                }
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

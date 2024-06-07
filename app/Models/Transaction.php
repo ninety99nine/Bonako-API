@@ -6,6 +6,7 @@ use App\Casts\Money;
 use App\Casts\Currency;
 use App\Casts\Percentage;
 use App\Casts\JsonToArray;
+use Illuminate\Support\Str;
 use App\Models\Base\BaseModel;
 use App\Traits\TransactionTrait;
 use App\Casts\TransactionPaymentStatus;
@@ -59,6 +60,9 @@ class Transaction extends BaseModel
 
         /*  Cancellation Information  */
         'is_cancelled', 'cancellation_reason', 'cancelled_by_user_id',
+
+        /*  Store Details  */
+        'store_id',
 
         /*  Owenership Details  */
         'owner_id', 'owner_type'
@@ -184,10 +188,10 @@ class Transaction extends BaseModel
      ***************************/
 
     protected $appends = [
-        'number', 'is_paid', 'is_pending_payment',
-        'is_verified_by_user', 'is_verified_by_system',
+        'number', 'is_paid', 'is_pending_payment', 'is_verified_by_user', 'is_verified_by_system',
         'is_subject_to_user_verification', 'is_subject_to_system_verification',
-        'dpo_payment_link_has_expired'
+        'dpo_payment_link_has_expired', 'dpo_transaction_token',
+        'can_pay_using_dpo'
     ];
 
     public function getNumberAttribute()
@@ -268,5 +272,22 @@ class Transaction extends BaseModel
         }
     }
 
+    public function getDpoTransactionTokenAttribute()
+    {
+        if( $this->dpo_payment_url ) {
+
+            return Str::after($this->dpo_payment_url, '?ID=');
+
+        }else{
+
+            return null;
+
+        }
+    }
+
+    public function getCanPayUsingDpoAttribute()
+    {
+        return $this->is_pending_payment && !is_null($this->dpo_payment_url) && !$this->dpo_payment_link_has_expired;
+    }
 
 }

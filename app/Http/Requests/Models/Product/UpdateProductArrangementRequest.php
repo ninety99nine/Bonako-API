@@ -23,11 +23,16 @@ class UpdateProductArrangementRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        //  Make sure that the "arrangement" is an array if provided
-        if($this->has('arrangement') && is_string($this->request->all()['arrangement'])) {
-            $this->merge([
-                'arrangement' => json_decode($this->request->all()['arrangement'])
-            ]);
+        try {
+            //  Make sure that the "arrangement" is an array if provided
+            if($this->has('arrangement') && is_string($this->request->all()['arrangement'])) {
+                $this->merge([
+                    'arrangement' => json_decode($this->request->all()['arrangement'])
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

@@ -334,9 +334,9 @@ class Order extends BaseModel
 
     protected $appends = [
         'customer_name', 'customer_display_name', 'collection_by_user_name', 'collection_verified_by_user_name', 'number', 'dial_to_show_collection_code', 'follow_up_statuses',
-        'can_mark_as_paid', 'can_request_payment', 'payable_amounts', 'is_paid', 'is_unpaid', 'is_partially_paid', 'is_pending_payment', 'is_waiting', 'is_on_its_way', 'is_ready_for_pickup', 'is_cancelled',
-        'is_completed', 'is_ordering_for_me', 'is_ordering_for_me_and_friends', 'is_ordering_for_friends_only', 'is_ordering_for_business',
-        'other_associated_friends'
+        'can_cancel', 'can_uncancel', 'can_delete', 'can_mark_as_paid', 'can_request_payment', 'payable_amounts', 'is_paid', 'is_unpaid', 'is_partially_paid', 'is_pending_payment',
+        'is_waiting', 'is_on_its_way', 'is_ready_for_pickup', 'is_cancelled', 'is_completed', 'is_ordering_for_me', 'is_ordering_for_me_and_friends',
+        'is_ordering_for_friends_only', 'is_ordering_for_business', 'other_associated_friends'
     ];
 
     /**
@@ -472,6 +472,11 @@ class Order extends BaseModel
         return trim($this->customer_first_name.' '.$this->customer_last_name);
     }
 
+    public function setCancellationReasonAttribute($value)
+    {
+        $this->attributes['cancellation_reason'] = ucwords($value);
+    }
+
     public function setCustomerNameAttribute($value)
     {
         /**
@@ -496,7 +501,7 @@ class Order extends BaseModel
     public function setCustomerDisplayNameAttribute($value)
     {
         /**
-         *  This allows us to modify the "customer_display_name" e.gsetting the value to "Me"
+         *  This allows us to modify the "customer_display_name" e.g setting the value to "Me"
          *  when transforming the order depending on whether or not the authenticated user
          *  placed this order. We use this to determine how the customer, friend, store
          *  team members and general public see this order.
@@ -541,7 +546,7 @@ class Order extends BaseModel
             $customer = $this->customer;
             $customerName = $customer->first_name;
             $mobileNumberWithoutExtension = $customer->mobile_number->withoutExtension;
-            $instruction = 'Ask '.$customerName.' to dial '.$code.' on '. $mobileNumberWithoutExtension . ' to show the code to complete this order';
+            $instruction = 'Ask '.$customerName.' to dial '.$code.' on '. $mobileNumberWithoutExtension . ', then enter the 6 digit code that appears on screen to complete this order';
 
         }else{
 
@@ -590,6 +595,30 @@ class Order extends BaseModel
                 'description' => $description[$status]
             ];
         })->toArray();
+    }
+
+    public function getCanCancelAttribute()
+    {
+        /**
+         *  This order can only be cancelled if it has not already been cancelled
+         */
+        return !$this->is_cancelled;
+    }
+
+    public function getCanUncancelAttribute()
+    {
+        /**
+         *  This order can only be uncancelled if it has already been cancelled
+         */
+        return $this->is_cancelled;
+    }
+
+    public function getCanDeleteAttribute()
+    {
+        /**
+         *  This order can only be deleted if it has been cancelled
+         */
+        return $this->is_cancelled;
     }
 
     public function getCanMarkAsPaidAttribute()
@@ -653,6 +682,7 @@ class Order extends BaseModel
                      *  @var UserOrderCollectionAssociation $userOrderCollectionAssociation
                      */
                     $userOrderCollectionAssociation = $this->getUserOrderCollectionAssociation();
+
 
                     //  Check if the user and order collection association is provided to determine if we can request payment
                     if(!is_null($userOrderCollectionAssociation)) {

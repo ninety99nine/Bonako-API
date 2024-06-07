@@ -108,7 +108,7 @@ class DirectPayOnlineService
 
         $services = '<Service>
                         <ServiceType>3854</ServiceType>
-                        <ServiceDescription>'.$transaction->description.' - '.$order->summary.'</ServiceDescription>
+                        <ServiceDescription>'.$transaction->description.' - Total '.$transaction->amount->amountWithCurrency.'</ServiceDescription>
                         <ServiceDate>'.$order->created_at.'</ServiceDate>
                     </Service>';
 
@@ -133,9 +133,9 @@ class DirectPayOnlineService
                     <customerDialCode>'.config('app.DPO_COUNTRY_CODE').'</customerDialCode>
                     <customerCountry>'.config('app.DPO_COUNTRY_CODE').'</customerCountry>
                     <CustomerZip>0000</CustomerZip>
-                    <RedirectURL>'.route('payment.success.page', ['transaction' => $transaction->id]).'</RedirectURL>
-                    <BackURL>'.route('perfect.pay.advertisement.page').'</BackURL>
-                    <TransactionType>Pending Payment</TransactionType>
+                    '//<RedirectURL>'.route('payment.success.page', ['transaction' => $transaction->id]).'</RedirectURL>
+                     //<BackURL>'.route('perfect.pay.advertisement.page').'</BackURL>
+                    .'<TransactionType>Pending Payment</TransactionType>
                     <TransactionSource>Marketplace</TransactionSource>
                     <DefaultPayment>CC</DefaultPayment>
                 </Transaction>
@@ -145,7 +145,10 @@ class DirectPayOnlineService
         try {
 
             $client = new Client();
-            $response = $client->post(config('app.DPO_CREATE_TOKEN_URL'), [
+
+            $url = config('app.DPO_CREATE_TOKEN_URL');
+
+            $response = $client->post($url, [
                 'headers' => [
                     'Content-Type' => 'application/xml',
                 ],
@@ -176,7 +179,7 @@ class DirectPayOnlineService
             }else{
 
                 // Handle any exceptions or errors that occurred during the API request
-                // ...
+                throw new Exception($resultExplanation);
 
             }
 
@@ -185,7 +188,6 @@ class DirectPayOnlineService
         } catch (Exception $e) {
 
             // Handle any exceptions or errors that occurred during the API request
-            // ...
             throw $e;
 
         }
@@ -281,52 +283,49 @@ class DirectPayOnlineService
             $transactionRollingReserveDate = (string) $xmlResponse->TransactionRollingReserveDate;
             $transactionRollingReserveAmount = (string) $xmlResponse->TransactionRollingReserveAmount;
 
-            //  Set the payment status of this transaction
-            $paymentStatus = $result === '000' ? 'Paid' : $transaction->payment_status;
+            //  If the payment was verified successfully
+            if($result === '000') {
 
-            $dpoPaymentResponse = [
-                'onProcessPaymentResponse' => [
-                    'pnrID' => $pnrID,
-                    'transID' => $transID,
-                    'companyRef' => $companyRef,
-                    'ccdApproval' => $ccdApproval,
-                    'transactionToken' => $transactionToken,
-                ],
-                'onVerifyPaymentResponse' => [
-                    'result' => $result,
-                    'accRef' => $accRef,
-                    'fraudAlert' => $fraudAlert,
-                    'customerZip' => $customerZip,
-                    'customerName' => $customerName,
-                    'customerCity' => $customerCity,
-                    'customerPhone' => $customerPhone,
-                    'customerCredit' => $customerCredit,
-                    'fraudExplnation' => $fraudExplnation,
-                    'customerCountry' => $customerCountry,
-                    'customerAddress' => $customerAddress,
-                    'resultExplanation' => $resultExplanation,
-                    'transactionAmount' => $transactionAmount,
-                    'customerCreditType' => $customerCreditType,
-                    'transactionApproval' => $transactionApproval,
-                    'transactionCurrency' => $transactionCurrency,
-                    'transactionNetAmount' => $transactionNetAmount,
-                    'mobilePaymentRequest' => $mobilePaymentRequest,
-                    'transactionFinalAmount' => $transactionFinalAmount,
-                    'transactionFinalCurrency' => $transactionFinalCurrency,
-                    'transactionSettlementDate' => $transactionSettlementDate,
-                    'transactionRollingReserveDate' => $transactionRollingReserveDate,
-                    'transactionRollingReserveAmount' => $transactionRollingReserveAmount,
-                ],
-            ];
+                $dpoPaymentResponse = [
+                    'onProcessPaymentResponse' => [
+                        'pnrID' => $pnrID,
+                        'transID' => $transID,
+                        'companyRef' => $companyRef,
+                        'ccdApproval' => $ccdApproval,
+                        'transactionToken' => $transactionToken,
+                    ],
+                    'onVerifyPaymentResponse' => [
+                        'result' => $result,
+                        'accRef' => $accRef,
+                        'fraudAlert' => $fraudAlert,
+                        'customerZip' => $customerZip,
+                        'customerName' => $customerName,
+                        'customerCity' => $customerCity,
+                        'customerPhone' => $customerPhone,
+                        'customerCredit' => $customerCredit,
+                        'fraudExplnation' => $fraudExplnation,
+                        'customerCountry' => $customerCountry,
+                        'customerAddress' => $customerAddress,
+                        'resultExplanation' => $resultExplanation,
+                        'transactionAmount' => $transactionAmount,
+                        'customerCreditType' => $customerCreditType,
+                        'transactionApproval' => $transactionApproval,
+                        'transactionCurrency' => $transactionCurrency,
+                        'transactionNetAmount' => $transactionNetAmount,
+                        'mobilePaymentRequest' => $mobilePaymentRequest,
+                        'transactionFinalAmount' => $transactionFinalAmount,
+                        'transactionFinalCurrency' => $transactionFinalCurrency,
+                        'transactionSettlementDate' => $transactionSettlementDate,
+                        'transactionRollingReserveDate' => $transactionRollingReserveDate,
+                        'transactionRollingReserveAmount' => $transactionRollingReserveAmount,
+                    ],
+                ];
 
-            //  Capture the response information on this transaction
-            $transaction->update([
-                'payment_status' => $paymentStatus,
-                'dpo_payment_response' => $dpoPaymentResponse
-            ]);
-
-            //  If this order is paid
-            if($paymentStatus == 'Paid') {
+                //  Capture the response information on this transaction
+                $transaction->update([
+                    'payment_status' => 'Paid',
+                    'dpo_payment_response' => $dpoPaymentResponse
+                ]);
 
                 //  Update the order amount balance
                 self::orderRepository()->setModel($order)->updateOrderAmountBalance();
@@ -371,6 +370,9 @@ class DirectPayOnlineService
 
             }else{
 
+                // Handle any exceptions or errors that occurred during the API request
+                throw new Exception($resultExplanation);
+
             }
 
             return $transaction;
@@ -378,10 +380,88 @@ class DirectPayOnlineService
         } catch (Exception $e) {
 
             // Handle any exceptions or errors that occurred during the API request
-            // ...
             throw $e;
 
         }
 
+    }
+
+    /**
+     *  Cancel the payment link
+     *
+     * @param Transaction $transaction
+     *
+     * @return Transaction
+     */
+    public static function cancelPaymentLink(Transaction $transaction)
+    {
+        $client = new Client();
+
+        /**
+         *  @var Order $order
+         */
+        $order = $transaction->owner;
+
+        /**
+         *  @var Store $store
+         */
+        $store = $order->store;
+        $companyToken = $store->dpo_company_token;
+
+        $transactionToken = $transaction->dpo_transaction_token;
+
+        if(!empty($transactionToken)) {
+
+            //  Construct Direct Pay Online (DPO) XML request
+            $xmlRequest = '
+                <?xml version="1.0" encoding="utf-8"?>
+                <API3G>
+                    <Request>cancelToken</Request>
+                    <CompanyToken>'.$companyToken.'</CompanyToken>
+                    <TransactionToken>'.$transactionToken.'</TransactionToken>
+                </API3G>';
+
+            try {
+
+                $url = config('app.DPO_CANCEL_TOKEN_URL');
+
+                $response = $client->post($url, [
+                    'headers' => [
+                        'Content-Type' => 'application/xml',
+                    ],
+                    'body' => $xmlRequest
+                ]);
+
+                // Parse the XML response
+                $xmlResponse = simplexml_load_string($response->getBody());
+
+                // Extract the necessary information from the response
+                $result = (string) $xmlResponse->Result;
+                $resultExplanation = (string) $xmlResponse->ResultExplanation;
+
+                //  If the payment was verified successfully
+                if($result === '000') {
+
+                }else{
+
+                    // Handle any exceptions or errors that occurred during the API request
+                    throw new Exception($resultExplanation);
+
+                }
+
+                return $transaction;
+
+            } catch (Exception $e) {
+
+                // Handle any exceptions or errors that occurred during the API request
+                throw $e;
+
+            }
+
+        }else{
+
+            return $transaction;
+
+        }
     }
 }

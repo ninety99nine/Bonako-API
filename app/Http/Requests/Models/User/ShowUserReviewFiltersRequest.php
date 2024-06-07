@@ -28,15 +28,21 @@ class ShowUserReviewFiltersRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "user_review_association" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "teamMember" or "Team Member" into "team member"
-         */
-        if($this->has('user_review_association')) {
-            $this->merge([
-                'user_review_association' => $this->separateWordsThenLowercase($this->get('user_review_association'))
-            ]);
+        try {
+
+            /**
+             *  Convert the "user_review_association" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "teamMember" or "Team Member" into "team member"
+             */
+            if($this->has('user_review_association')) {
+                $this->merge([
+                    'user_review_association' => $this->separateWordsThenLowercase($this->get('user_review_association'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

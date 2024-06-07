@@ -3,11 +3,14 @@
 namespace App\Http\Requests\Models\Product;
 
 use App\Models\Product;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateProductRequest extends FormRequest
 {
+    use BaseTrait;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -25,26 +28,31 @@ class UpdateProductRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "allowed_quantity_per_order" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "unlimited" into "Unlimited"
-         */
-        if($this->has('allowed_quantity_per_order')) {
-            $this->merge([
-                'allowed_quantity_per_order' => strtolower($this->get('allowed_quantity_per_order'))
-            ]);
-        }
+        try {
+            /**
+             *  Convert the "allowed_quantity_per_order" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "unlimited" into "Unlimited"
+             */
+            if($this->has('allowed_quantity_per_order')) {
+                $this->merge([
+                    'allowed_quantity_per_order' => strtolower($this->get('allowed_quantity_per_order'))
+                ]);
+            }
 
-        /**
-         *  Convert the "stock_quantity_type" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "unlimited" into "Unlimited"
-         */
-        if($this->has('stock_quantity_type')) {
-            $this->merge([
-                'stock_quantity_type' => strtolower($this->get('stock_quantity_type'))
-            ]);
+            /**
+             *  Convert the "stock_quantity_type" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "unlimited" into "Unlimited"
+             */
+            if($this->has('stock_quantity_type')) {
+                $this->merge([
+                    'stock_quantity_type' => strtolower($this->get('stock_quantity_type'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();
@@ -60,6 +68,7 @@ class UpdateProductRequest extends FormRequest
         $moneyRules = ['bail', 'required', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'];
         $stockQuantityType = collect(Product::STOCK_QUANTITY_TYPE)->map(fn($option) => strtolower($option));
         $allowedQuantityPerOrder = collect(Product::ALLOWED_QUANTITY_PER_ORDER)->map(fn($option) => strtolower($option));
+        $wantsToShowDescription = request()->filled('show_description') && $this->isTruthy(request()->input('show_description'));
 
         return [
 
@@ -74,11 +83,11 @@ class UpdateProductRequest extends FormRequest
             ],
             'visible' => ['bail', 'sometimes', 'required', 'boolean'],
             'show_description' => ['bail', 'sometimes', 'required', 'boolean'],
-            'description' => ['bail', 'sometimes', 'required', 'string', 'min:'.Product::DESCRIPTION_MIN_CHARACTERS, 'max:'.Product::DESCRIPTION_MAX_CHARACTERS],
+            'description' => ['bail', 'sometimes', Rule::requiredIf($wantsToShowDescription), 'nullable', 'min:'.Product::DESCRIPTION_MIN_CHARACTERS, 'max:'.Product::DESCRIPTION_MAX_CHARACTERS],
 
             /*  Tracking Information  */
-            'sku' => ['bail', 'sometimes', 'required', 'string', 'min:'.Product::SKU_MIN_CHARACTERS, 'max:'.Product::SKU_MAX_CHARACTERS],
-            'barcode' => ['bail', 'sometimes', 'required', 'string', 'min:'.Product::BARCODE_MIN_CHARACTERS, 'max:'.Product::BARCODE_MAX_CHARACTERS],
+            'sku' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.Product::SKU_MIN_CHARACTERS, 'max:'.Product::SKU_MAX_CHARACTERS],
+            'barcode' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.Product::BARCODE_MIN_CHARACTERS, 'max:'.Product::BARCODE_MAX_CHARACTERS],
 
             /*  Variation Information
              *

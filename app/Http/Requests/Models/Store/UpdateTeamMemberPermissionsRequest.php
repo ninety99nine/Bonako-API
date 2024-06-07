@@ -3,11 +3,14 @@
 namespace App\Http\Requests\Models\Store;
 
 use App\Models\Store;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTeamMemberPermissionsRequest extends FormRequest
 {
+    use BaseTrait;
+
     private $permissions;
 
     public function __construct()
@@ -32,22 +35,30 @@ class UpdateTeamMemberPermissionsRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        //  Make sure that the "permissions" is an array if provided
-        if($this->has('permissions')) {
+        try {
 
-            if(is_string($this->get('permissions'))) {
+            //  Make sure that the "permissions" is an array if provided
+            if($this->has('permissions')) {
 
-                $this->merge([
-                    'permissions' => collect(json_decode($this->get('permissions')))->map(fn($permission) => $this->separateWordsThenLowercase($permission))
-                ]);
+                if(is_string($this->get('permissions'))) {
 
-            }else{
+                    $this->merge([
+                        'permissions' => collect(json_decode($this->get('permissions')))->map(fn($permission) => $this->separateWordsThenLowercase($permission))->toArray()
+                    ]);
 
-                $this->merge([
-                    'permissions' => collect($this->get('permissions'))->map(fn($permission) => $this->separateWordsThenLowercase($permission))
-                ]);
+                }else{
 
+                    $this->merge([
+                        'permissions' => collect($this->get('permissions'))->map(fn($permission) => $this->separateWordsThenLowercase($permission))->toArray()
+                    ]);
+
+                }
             }
+
+            return parent::getValidatorInstance();
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

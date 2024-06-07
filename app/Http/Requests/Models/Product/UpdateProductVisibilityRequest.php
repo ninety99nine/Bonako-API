@@ -23,11 +23,16 @@ class UpdateProductVisibilityRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        //  Make sure that the "visibility" is an array if provided
-        if($this->has('visibility') && is_string($this->request->all()['visibility'])) {
-            $this->merge([
-                'visibility' => json_decode($this->request->all()['visibility'])
-            ]);
+        try {
+            //  Make sure that the "visibility" is an array if provided
+            if($this->has('visibility') && is_string($this->request->all()['visibility'])) {
+                $this->merge([
+                    'visibility' => json_decode($this->request->all()['visibility'])
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

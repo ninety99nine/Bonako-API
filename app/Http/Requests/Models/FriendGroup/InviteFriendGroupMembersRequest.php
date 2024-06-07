@@ -28,22 +28,27 @@ class InviteFriendGroupMembersRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "role" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Admin" into "admin"
-         */
-        if($this->has('role')) {
-            $this->merge([
-                'role' => $this->separateWordsThenLowercase($this->get('role'))
-            ]);
-        }
+        try {
+            /**
+             *  Convert the "role" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Admin" into "admin"
+             */
+            if($this->has('role')) {
+                $this->merge([
+                    'role' => $this->separateWordsThenLowercase($this->get('role'))
+                ]);
+            }
 
-        //  Make sure that the "mobile_numbers" is an array if provided
-        if($this->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
-            $this->merge([
-                'mobile_numbers' => json_decode($this->request->all()['mobile_numbers'])
-            ]);
+            //  Make sure that the "mobile_numbers" is an array if provided
+            if($this->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
+                $this->merge([
+                    'mobile_numbers' => json_decode($this->request->all()['mobile_numbers'])
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

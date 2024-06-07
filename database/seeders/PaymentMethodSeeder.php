@@ -123,7 +123,7 @@ class PaymentMethodSeeder extends Seeder
             ],
             [
                 'name' => 'Credit/Debit Card',
-                'method' => 'DPO Card',
+                'method' => 'DPO',
                 'category' => 'Card',
                 'description' => 'Payment using credit or debit card',
                 'available_on_perfect_pay' => 1,

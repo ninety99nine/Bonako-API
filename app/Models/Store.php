@@ -462,6 +462,14 @@ class Store extends BaseModel
     }
 
     /**
+     *  Returns the transactions to this store
+     */
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class)->latest();
+    }
+
+    /**
      *  Get the Friend Groups of this Store
      *
      *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany

@@ -170,7 +170,7 @@ class OrderController extends BaseController
         return $this->prepareOutput($this->setModel($order)->generateDeleteConfirmationCode());
     }
 
-    public function delete(DeleteRequest $request, Store $store, Order $order)
+    public function delete(Store $store, Order $order)
     {
         return $this->prepareOutput($this->setModel($order)->delete());
     }

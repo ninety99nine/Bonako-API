@@ -27,6 +27,7 @@ class TransactionResource extends BaseResource
         $this->resourceLinks = [
             new ResourceLink('self', route($routeNamePrefix.'show', $params), 'The transaction'),
             new ResourceLink('delete.transaction', route($routeNamePrefix.'delete', $params), 'Delete transaction'),
+            new ResourceLink('renew.payment.link', route($routeNamePrefix.'renew.payment.link', $params), 'Renew payment link'),
             new ResourceLink('show.proof.of.payment.photo', route($routeNamePrefix.'proof.of.payment.photo.show', $params), 'Show transaction proof of payment photo'),
             new ResourceLink('update.proof.of.payment.photo', route($routeNamePrefix.'proof.of.payment.photo.update', $params), 'Update transaction proof of payment photo'),
             new ResourceLink('delete.proof.of.payment.photo', route($routeNamePrefix.'proof.of.payment.photo.delete', $params), 'Delete transaction proof of payment photo'),

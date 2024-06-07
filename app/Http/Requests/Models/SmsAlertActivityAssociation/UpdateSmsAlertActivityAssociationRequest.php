@@ -23,11 +23,17 @@ class UpdateSmsAlertActivityAssociationRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        //  Make sure that the "store_ids" is an array if provided
-        if($this->has('store_ids') && is_string($this->request->all()['store_ids'])) {
-            $this->merge([
-                'store_ids' => json_decode($this->request->all()['store_ids'])
-            ]);
+        try {
+
+            //  Make sure that the "store_ids" is an array if provided
+            if($this->has('store_ids') && is_string($this->request->all()['store_ids'])) {
+                $this->merge([
+                    'store_ids' => json_decode($this->request->all()['store_ids'])
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

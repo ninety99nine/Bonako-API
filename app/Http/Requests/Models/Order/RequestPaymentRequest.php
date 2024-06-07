@@ -32,7 +32,7 @@ class RequestPaymentRequest extends FormRequest
             'embed' => ['bail', 'sometimes', 'required', 'boolean'],
             'percentage' => ['bail', 'required_without:amount', 'numeric', 'min:1', 'max:100'],
             'payment_method_id' => ['bail', 'required', 'numeric', 'min:1',
-                Rule::exists('payment_methods', 'id')->whereIn('method', ['Orange Money', 'DPO Card']),
+                Rule::exists('payment_methods', 'id')->whereIn('method', ['Orange Money', 'DPO']),
             ],
             'amount' => ['bail', 'required_without:percentage', 'min:0', 'not_in:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
             'mobile_number' => ['bail', 'sometimes', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11', 'exists:users,mobile_number'],
@@ -51,7 +51,7 @@ class RequestPaymentRequest extends FormRequest
         return [
             'mobile_number.regex' => 'The mobile number must only contain numbers',
             'mobile_number.exists' => 'The account using the mobile number '.$mobileNumberWithoutExtension.' does not exist.',
-            'payment_method_id.exists' => 'Answer "'.collect(PaymentMethod::whereIn('method', ['Orange Money', 'DPO Card'])->orderBy('position', 'asc')->pluck('id'))->join('", "', '" or "').' to indicate the payment method',
+            'payment_method_id.exists' => 'Answer "'.collect(PaymentMethod::whereIn('method', ['Orange Money', 'DPO'])->orderBy('position', 'asc')->pluck('id'))->join('", "', '" or "').' to indicate the payment method',
         ];
     }
 

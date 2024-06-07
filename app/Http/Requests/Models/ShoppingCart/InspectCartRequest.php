@@ -25,29 +25,35 @@ class InspectCartRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "delivery_destination_name" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "Gaborone" into "gaborone"
-         */
-        if($this->has('delivery_destination_name')) {
-            $this->merge([
-                'delivery_destination_name' => strtolower($this->get('delivery_destination_name'))
-            ]);
-        }
+        try {
 
-        //  Make sure that the "cart_products" is an array if provided
-        if($this->has('cart_products') && is_string($this->request->all()['cart_products'])) {
-            $this->merge([
-                'cart_products' => json_decode($this->request->all()['cart_products'])
-            ]);
-        }
+            /**
+             *  Convert the "delivery_destination_name" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Gaborone" into "gaborone"
+             */
+            if($this->has('delivery_destination_name')) {
+                $this->merge([
+                    'delivery_destination_name' => strtolower($this->get('delivery_destination_name'))
+                ]);
+            }
 
-        //  Make sure that the "cart_coupon_codes" is an array if provided
-        if($this->has('cart_coupon_codes') && is_string($this->request->all()['cart_coupon_codes'])) {
-            $this->merge([
-                'cart_coupon_codes' => json_decode($this->request->all()['cart_coupon_codes'])
-            ]);
+            //  Make sure that the "cart_products" is an array if provided
+            if($this->has('cart_products') && is_string($this->request->all()['cart_products'])) {
+                $this->merge([
+                    'cart_products' => json_decode($this->request->all()['cart_products'])
+                ]);
+            }
+
+            //  Make sure that the "cart_coupon_codes" is an array if provided
+            if($this->has('cart_coupon_codes') && is_string($this->request->all()['cart_coupon_codes'])) {
+                $this->merge([
+                    'cart_coupon_codes' => json_decode($this->request->all()['cart_coupon_codes'])
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

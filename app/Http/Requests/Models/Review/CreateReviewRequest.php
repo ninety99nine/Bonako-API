@@ -29,15 +29,20 @@ class CreateReviewRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        /**
-         *  Convert the "subject" to the correct format if it has been set on the request inputs
-         *
-         *  Example: convert "customerSupport" or "Customer Support" into "customer support"
-         */
-        if($this->has('subject')) {
-            $this->merge([
-                'subject' => $this->separateWordsThenLowercase($this->get('subject'))
-            ]);
+        try {
+            /**
+             *  Convert the "subject" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "customerSupport" or "Customer Support" into "customer support"
+             */
+            if($this->has('subject')) {
+                $this->merge([
+                    'subject' => $this->separateWordsThenLowercase($this->get('subject'))
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();

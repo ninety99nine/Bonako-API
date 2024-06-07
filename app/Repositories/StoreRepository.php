@@ -157,6 +157,16 @@ class StoreRepository extends BaseRepository
     }
 
     /**
+     *  Return the TransactionRepository instance
+     *
+     *  @return TransactionRepository
+     */
+    public function transactionRepository()
+    {
+        return resolve(TransactionRepository::class);
+    }
+
+    /**
      *  Return the PaymentMethodRepository instance
      *
      *  @return PaymentMethodRepository
@@ -1255,6 +1265,21 @@ class StoreRepository extends BaseRepository
         }
 
         return $this->subscriptionRepository()->setModel($subscriptions)->get();
+    }
+
+    /**
+     *  Return the store transactions
+     *
+     *  @return TransactionRepository
+     */
+    public function showTransactions()
+    {
+        /**
+         *  @var Store $store
+         */
+        $store = $this->model;
+
+        return $this->transactionRepository()->showStoreTransactions($store)->get();
     }
 
     /**
@@ -3416,7 +3441,7 @@ class StoreRepository extends BaseRepository
         $filter = $this->separateWordsThenLowercase(request()->input('filter'));
 
         //  Order by the last seen date and time
-        $users = $users->orderByPivot('user_store_association.last_seen_at', 'DESC');
+        $users = $users->orderByPivot('user_store_association.updated_at', 'DESC');
 
         //  If we have the filter
         if( !empty($filter) ) {
@@ -3474,12 +3499,14 @@ class StoreRepository extends BaseRepository
         if( $user ) {
 
             $teamMemberRole = $user->user_store_association->team_member_role;
+            $hasFullPermissions = $user->user_store_association->has_full_permissions;
             $teamMemberPermissions = $user->user_store_association->team_member_permissions;
 
             return [
                 'team_member_role' => $teamMemberRole,
-                'team_member_permissions' => $this->extractPermissions($teamMemberPermissions),
-                'message' => 'You are a team member of this store'
+                'has_full_permissions' => $hasFullPermissions,
+                'message' => 'You are a team member of this store',
+                'team_member_permissions' => $teamMemberPermissions,
             ];
 
         }else{
@@ -4745,9 +4772,9 @@ class StoreRepository extends BaseRepository
                 $records[] = $record;
 
                 //  Clear cache
-                $this->clearCacheOnAssociationAsFollower($user->id);
-                $this->clearCacheOnAssociationAsTeamMember($user->id);
-                $this->clearCacheOnAssociationAsRecentVisitor($user->id);
+                $this->clearCacheOnAssociationAsFollower($userId);
+                $this->clearCacheOnAssociationAsTeamMember($userId);
+                $this->clearCacheOnAssociationAsRecentVisitor($userId);
 
             }
 
@@ -4963,11 +4990,12 @@ class StoreRepository extends BaseRepository
 
         //  Get the users that are assigned to this store that match the specified mobile numbers
         $assignedUsers = $store->teamMembers()
-            //  Matches non-existing user by mobile number
-            ->whereIn('user_store_association.mobile_number', $mobileNumbers)
-            //  Matches existing user by mobile number
-            ->orWhereIn('users.mobile_number', $mobileNumbers)
-            ->get();
+            ->where(function (Builder $query) use($mobileNumbers) {
+                //  Matches non-existing user by mobile number
+                $query->whereIn('user_store_association.mobile_number', $mobileNumbers)
+                      //  Matches existing user by mobile number
+                      ->orWhereIn('users.mobile_number', $mobileNumbers);
+            })->get();
 
         //  If we have one or more users to remove
         if( !empty($assignedUsers) ) {

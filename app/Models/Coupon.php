@@ -8,13 +8,14 @@ use App\Casts\Status;
 use App\Casts\Currency;
 use App\Casts\Percentage;
 use App\Casts\JsonToArray;
+use App\Traits\CouponTrait;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Coupon extends BaseModel
 {
-    use HasFactory;
+    use HasFactory, CouponTrait;
 
     const DISCOUNT_TYPES = ['Percentage', 'Fixed'];
     const FILTERS = ['All', 'Active', 'Inactive'];
@@ -111,6 +112,14 @@ class Coupon extends BaseModel
     /****************************
      *  SCOPES                  *
      ***************************/
+
+    /*
+     *  Scope: Return products that are being searched using the product name
+     */
+    public function scopeSearch($query, $searchWord)
+    {
+        return $query->where('name', 'like', "%$searchWord%");
+    }
 
     /**
      *  Scope coupons for a given store

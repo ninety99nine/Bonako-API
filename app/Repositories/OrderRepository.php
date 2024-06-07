@@ -14,31 +14,17 @@ use Illuminate\Http\Request;
 use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use App\Repositories\BaseRepository;
 use Illuminate\Database\Eloquent\Collection;
 use App\Repositories\PaymentMethodRepository;
-use App\Exceptions\OrderFullyPaidException;
 use App\Exceptions\CannotUpdateOrderException;
 use App\Exceptions\CartRequiresProductsException;
-use App\Exceptions\DPOCompanyTokenNotProvidedException;
-use Illuminate\Validation\ValidationException;
 use App\Services\ShoppingCart\ShoppingCartService;
-use App\Exceptions\OrderHasNoAmountOutstandingException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Exceptions\OrderCollectionCodeInvalid;
-use App\Exceptions\OrderCollectionVerificationCodeInvalid;
 use App\Exceptions\OrderAlreadyCollectedException;
-use App\Exceptions\OrderCannotBeUpdatedAfterBeingCancelledException;
 use App\Exceptions\OrderCannotRequestPaymentException;
 use App\Exceptions\OrderDoesNotHavePayableAmountException;
 use App\Exceptions\OrderHasNoPendingPaymentException;
-use App\Exceptions\OrderProhibitsTransactionsWhenCancelledException;
-use App\Exceptions\OrderWithPaidTransactionsCannotBeUpdatedException;
-use App\Exceptions\OrderProhibitsMultiplePendingPaymentByUserException;
-use App\Exceptions\OrderWithPaidTransactionsCannotBeCancelledException;
-use App\Exceptions\OrderWithPendingTransactionsCannotBeUpdatedException;
-use App\Exceptions\OrderWithPendingTransactionsCannotBeCancelledException;
 use App\Jobs\SendSms;
 use App\Models\Address;
 use App\Models\DeliveryAddress;
@@ -61,19 +47,19 @@ use App\Services\CodeGenerator\CodeGeneratorService;
 use App\Services\DirectPayOnline\DirectPayOnlineService;
 use App\Services\OrangeMoney\OrangeMoneyService;
 use App\Services\QrCode\QrCodeService;
-use App\Services\Sms\SmsService;
-use App\Services\Ussd\UssdService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class OrderRepository extends BaseRepository
 {
     use BaseTrait;
 
-    protected $requiresConfirmationBeforeDelete = true;
+    /**
+     *  Deleting orders does not require confirmation.
+     */
+    protected $requiresConfirmationBeforeDelete = false;
 
     /**
      *  Return the ShoppingCartService instance
@@ -1802,17 +1788,6 @@ class OrderRepository extends BaseRepository
      */
     public function cancelOrder(Request $request)
     {
-        /**
-         *  @var Order $order
-         */
-        $order = $this->model;
-
-        //  This order cannot be cancelled because it has received payments
-        if($order->amount_paid->amount > 0) throw new OrderWithPaidTransactionsCannotBeCancelledException;
-
-        //  This order cannot be cancelled because it has pending payments
-        if($order->amount_pending->amount > 0) throw new OrderWithPendingTransactionsCannotBeCancelledException;
-
         //  Cancel the repository model instance
         return parent::update(['status' => 'Cancelled', 'cancellation_reason' => $request->input('cancellation_reason')]);
     }
@@ -1838,7 +1813,7 @@ class OrderRepository extends BaseRepository
         $methods = [];
 
         if($store->perfect_pay_enabled || $store->dpo_payment_enabled) {
-            array_push($methods, 'DPO Card');
+            array_push($methods, 'DPO');
         }
 
         if($store->perfect_pay_enabled || $store->orange_money_payment_enabled) {
@@ -1885,11 +1860,11 @@ class OrderRepository extends BaseRepository
                  */
                 $transaction = $transactionRepository->model;
 
-                //  Check if this is a DPO Card payment method or an Orange Money payment method
-                if($paymentMethod->isDpoCard() || $paymentMethod->isOrangeMoney()) {
+                //  Check if this is a DPO payment method or an Orange Money payment method
+                if($paymentMethod->isDpo() || $paymentMethod->isOrangeMoney()) {
 
                     //  Check if this is a card payment method
-                    if($paymentMethod->isDpoCard()) {
+                    if($paymentMethod->isDpo()) {
 
                         //  Create a new order payment link and attach it to this transaction
                         $transaction = DirectPayOnlineService::createOrderPaymentLink($transaction);
@@ -2594,7 +2569,11 @@ class OrderRepository extends BaseRepository
         if(request()->input('with_latest_transaction')) {
 
             $paidByUsers->with(['latestTransactionAsPayer' => function($query) use ($order) {
-                return $query->where('owner_type', 'order')->where('owner_id', $order->id)->latest();
+                $query = $query->where('owner_type', 'order')->where('owner_id', $order->id)->latest();
+
+                if(request()->input('with_payment_method')) {
+                    $query->with(['paymentMethod']);
+                }
             }]);
 
         }

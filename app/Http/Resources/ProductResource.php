@@ -49,5 +49,13 @@ class ProductResource extends BaseResource
             new ResourceLink('show.variations', route($routeNamePrefix.'variations.show', ['store' => $storeId, 'product' => $productId]), 'Show variations'),
             new ResourceLink('create.variations', route($routeNamePrefix.'variations.create', ['store' => $storeId, 'product' => $productId]), 'Show variations'),
         ];
+
+        if(!is_null($this->resource->parent_product_id)) {
+
+            array_push($this->resourceLinks, ...[
+                new ResourceLink('show.parent.product', route($routeNamePrefix.'show', ['store' => $storeId, 'product' => $this->resource->parent_product_id]), 'Show parent product'),
+            ]);
+
+        }
     }
 }

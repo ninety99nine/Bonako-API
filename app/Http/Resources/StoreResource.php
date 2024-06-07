@@ -147,6 +147,7 @@ class StoreResource extends BaseResource
             new ResourceLink('show.team.members', route($routeNamePrefix.'team.members.show', ['store' => $this->resource->id]), 'The store team members'),
             new ResourceLink('invite.team.members', route($routeNamePrefix.'team.members.invite', ['store' => $this->resource->id]), 'The store route to invite team members'),
             new ResourceLink('remove.team.members', route($routeNamePrefix.'team.members.remove', ['store' => $this->resource->id]), 'The store route to remove team members'),
+            new ResourceLink('remove.team.members', route($routeNamePrefix.'team.members.remove', ['store' => $this->resource->id]), 'The store route to remove team members'),
             new ResourceLink('accept.invitation.to.join.team', route($routeNamePrefix.'accept.invitation.to.join.team', ['store' => $this->resource->id]), 'The route to accept invitation to join team'),
             new ResourceLink('decline.invitation.to.join.team', route($routeNamePrefix.'decline.invitation.to.join.team', ['store' => $this->resource->id]), 'The route to decline invitation to join team'),
             new ResourceLink('show.my.permissions', route($routeNamePrefix.'permissions.show', ['store' => $this->resource->id]), 'The route to show my permissions'),
@@ -159,6 +160,9 @@ class StoreResource extends BaseResource
             new ResourceLink('show.my.subscriptions', route($routeNamePrefix.'subscriptions.show', ['store' => $this->resource->id]), 'Show my subscriptions'),
             new ResourceLink('create.store.access.subscriptions', route($routeNamePrefix.'subscriptions.create', ['store' => $this->resource->id]), 'Create store access subscription'),
             new ResourceLink('calculate.store.access.subscription.amount', route($routeNamePrefix.'subscriptions.calculate.amount', ['store' => $this->resource->id]), 'Calculate store access subscription'),
+
+            //  Transactions
+            new ResourceLink('show.transactions', route($routeNamePrefix.'transactions.show', ['store' => $this->resource->id]), 'Show transactions'),
 
             //  Friend Groups
             new ResourceLink('add.to.friend.groups', route($routeNamePrefix.'friend.groups.add', ['store' => $this->resource->id]), 'Add store to friend groups'),

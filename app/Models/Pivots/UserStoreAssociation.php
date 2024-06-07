@@ -113,8 +113,19 @@ class UserStoreAssociation extends BasePivot
         'is_team_member_who_has_joined', 'is_team_member_who_has_left', 'is_team_member_who_is_invited', 'is_team_member_who_has_declined',
         'is_team_member_as_creator_or_admin', 'is_team_member_as_creator', 'is_team_member_as_admin',
         'can_manage_everything', 'can_manage_orders', 'can_manage_products', 'can_manage_coupons', 'can_manage_customers',
-        'can_manage_team_members', 'can_manage_instant_carts', 'can_manage_settings'
+        'can_manage_team_members', 'can_manage_instant_carts', 'can_manage_settings',
+        'has_full_permissions'
     ];
+
+    /**
+     *  Check if this user is classified as a follower
+    */
+    protected function hasFullPermissions(): Attribute
+    {
+        return new Attribute(
+            get: fn () => collect(json_decode($this->getRawOriginal('team_member_permissions')))->contains('*')
+        );
+    }
 
     /**
      *  Check if this user is classified as a follower

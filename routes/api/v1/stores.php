@@ -175,6 +175,14 @@ Route::controller(StoreController::class)
 
         });
 
+        //  Transactions
+        Route::prefix('transactions')
+            ->name('.transactions')->group(function () {
+
+            Route::get('/', 'showTransactions')->name('.show')->whereNumber('store');
+
+        });
+
         //  Friend Groups
         Route::post('/add-to-friend-groups', 'addStoreToFriendGroups')->name('.friend.groups.add')->whereNumber('store');
         Route::delete('/remove-from-friend-group', 'removeStoreFromFriendGroup')->name('.friend.groups.remove')->whereNumber('store');

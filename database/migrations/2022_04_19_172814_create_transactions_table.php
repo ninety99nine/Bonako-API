@@ -55,6 +55,9 @@ class CreateTransactionsTable extends Migration
             $table->foreignId('cancelled_by_user_id')->nullable();
 
             /*  Owenership Information  */
+            $table->foreignId('store_id')->nullable();
+
+            /*  Owenership Information  */
             $table->string('owner_type');
             $table->foreignId('owner_id');
 
@@ -69,6 +72,7 @@ class CreateTransactionsTable extends Migration
             $table->index('cancelled_by_user_id');
 
             /* Foreign Key Constraints */
+            $table->foreign('store_id')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('paid_by_user_id')->references('id')->on('users')->nullOnDelete();
             $table->foreign('verified_by_user_id')->references('id')->on('users')->nullOnDelete();
             $table->foreign('requested_by_user_id')->references('id')->on('users')->nullOnDelete();

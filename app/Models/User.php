@@ -101,7 +101,7 @@ class User extends BaseAuthenticatable /* Authenticatable */
     public function scopeSearch($query, $searchWord)
     {
         return $query->whereRaw('concat(first_name," ",last_name) like ?', "%{$searchWord}%")
-                     ->orWhere('mobile_number', 'like', "%{$searchWord}%");
+                     ->orWhere('users.mobile_number', 'like', "%{$searchWord}%");
 
         //  If the search word contains numbers, then search by shortcode
     }

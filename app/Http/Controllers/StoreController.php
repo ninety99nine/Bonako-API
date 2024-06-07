@@ -181,6 +181,11 @@ class StoreController extends BaseController
         return $this->prepareOutput($this->setModel($store)->showMySubscriptions($request));
     }
 
+    public function showTransactions(Store $store)
+    {
+        return $this->prepareOutput($this->setModel($store)->showTransactions());
+    }
+
     public function showVisitShortcode(Store $store)
     {
         return $this->prepareOutput($this->setModel($store)->showVisitShortcode());

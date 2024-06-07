@@ -2,29 +2,31 @@
 
 namespace App\Repositories;
 
-use App\Enums\CanSaveChanges;
-use App\Enums\UserVerfiedTransaction;
-use App\Exceptions\CannotDeleteTransactionException;
-use App\Exceptions\OrderFullyPaidException;
-use App\Exceptions\OrderHasNoAmountOutstandingException;
-use App\Exceptions\OrderProhibitsMultiplePendingPaymentByUserException;
-use App\Exceptions\OrderProhibitsTransactionsWhenCancelledException;
+use App\Models\User;
 use App\Models\Order;
 use App\Models\Store;
-use Illuminate\Support\Str;
+use App\Models\SmsAlert;
+use App\Models\AiAssistant;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
-use App\Traits\Base\BaseTrait;
-use App\Repositories\BaseRepository;
-use App\Exceptions\TransactionCannotBeUnCancelledException;
-use App\Models\AiAssistant;
-use App\Models\SmsAlert;
 use App\Models\Subscription;
+use App\Models\PaymentMethod;
+use App\Enums\CanSaveChanges;
+use App\Traits\Base\BaseTrait;
 use App\Models\SubscriptionPlan;
-use App\Models\User;
 use App\Services\AWS\AWSService;
+use App\Repositories\BaseRepository;
+use App\Enums\UserVerfiedTransaction;
 use Illuminate\Database\Eloquent\Model;
+use App\Exceptions\OrderFullyPaidException;
 use Illuminate\Validation\ValidationException;
+use App\Exceptions\CannotDeleteTransactionException;
+use App\Exceptions\OrderHasNoAmountOutstandingException;
+use App\Exceptions\TransactionCannotBeUnCancelledException;
+use App\Exceptions\OrderProhibitsTransactionsWhenCancelledException;
+use App\Exceptions\OrderProhibitsMultiplePendingPaymentByUserException;
+use App\Services\DirectPayOnline\DirectPayOnlineService;
+use App\Services\OrangeMoney\OrangeMoneyService;
 
 class TransactionRepository extends BaseRepository
 {
@@ -102,6 +104,14 @@ class TransactionRepository extends BaseRepository
 
             //  Additionally we can eager load the payment method on this transaction
             array_push($relationships, 'paymentMethod');
+
+        }
+
+        //  Check if we want to eager load the owner on this transaction
+        if( request()->input('with_owner') ) {
+
+            //  Additionally we can eager load the owner on this transaction
+            array_push($relationships, 'owner');
 
         }
 
@@ -457,6 +467,56 @@ class TransactionRepository extends BaseRepository
     }
 
     /**
+     *  Show the transactions
+     *
+     *  @param Store $store
+     *  @return TransactionRepository
+     */
+    public function showStoreTransactions(Store $store)
+    {
+        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
+        $transactions = $this->queryStoreTransactionsByFilter($store, $filter)->orderBy('updated_at', 'desc');
+        return $this->eagerLoadTransactionRelationships($transactions);
+    }
+
+    /**
+     *  Query the store transactions by the specified filter
+     *
+     *  @param Store $store
+     *  @param string $filter - The filter to query the transactions e.g Paid, Pending Payment, e.t.c
+     *  @return \Illuminate\Database\Eloquent\Relations\MorphMany
+     */
+    public function queryStoreTransactionsByFilter(Store $store, $filter)
+    {
+        //  Get the store transaction
+        $transactions = $store->transactions();
+
+        //  Normalize the filter
+        $filter = $this->separateWordsThenLowercase($filter);
+
+        //  Get the payer user id
+        $payerUserId = request()->input('paid_by_user_id');
+
+        if($payerUserId) {
+
+            //  Query the store transactions mathcing the payer user id
+            $transactions = $transactions->where('paid_by_user_id', $payerUserId);
+
+        }
+
+        //  Check if this filter is a type of transaction payment status
+        if(collect(array_map('strtolower', Transaction::STATUSES))->contains($filter)) {
+
+            //  Filter by transaction payment status
+            $transactions = $transactions->where('payment_status', $filter);
+
+        }
+
+        //  Return the transactions query
+        return $transactions;
+    }
+
+    /**
      *  Show the order transaction filters
      *
      *  @param Order $order
@@ -510,7 +570,7 @@ class TransactionRepository extends BaseRepository
     {
         $filter = $this->separateWordsThenLowercase(request()->input('filter'));
         $transactions = $this->queryOrderTransactionsByFilter($order, $filter)->orderBy('updated_at', 'desc');
-        return $this->eagerLoadTransactionRelationships($transactions)->get();
+        return $this->eagerLoadTransactionRelationships($transactions);
     }
 
     /**
@@ -599,6 +659,12 @@ class TransactionRepository extends BaseRepository
 
         }
 
+        if(($order = $model) instanceof Order) {
+
+            $storeId = $order->store_id;
+
+        }
+
         //  Create a new transaction
         return $this->create([
             'percentage' => 100,
@@ -622,10 +688,49 @@ class TransactionRepository extends BaseRepository
             'paid_by_user_id' => $this->chooseUser()->id,
             'requested_by_user_id' => request()->auth_user->id,
 
+            'store_id' => $storeId ?? null,
+
             'owner_id' => $model->id,
             'owner_type' => $model->getResourceName()
         ]);
 
+    }
+
+    /**
+     *  Renew transaction payment link
+     *
+     *  @return TransactionRepository
+     */
+    public function renewPaymentLink()
+    {
+        /**
+         *  @var Transaction $transaction
+         */
+        $transaction = $this->model;
+
+        /**
+         *  @var PaymentMethod $paymentMethod
+         */
+        $paymentMethod = $transaction->paymentMethod;
+
+        //  Check if this is a card payment method
+        if($paymentMethod->isDpo()) {
+
+            //  Cancel the current payment link
+            $transaction = DirectPayOnlineService::cancelPaymentLink($transaction);
+
+            //  Create a new order payment link and attach it to this transaction
+            $transaction = DirectPayOnlineService::createOrderPaymentLink($transaction);
+
+        //  Check if this is a mobile wallet method
+        }else if($paymentMethod->isOrangeMoney()) {
+
+            //  Create a new order payment link and attach it to this transaction
+            $transaction = OrangeMoneyService::createOrderPaymentLink($transaction);
+
+        }
+
+        return $this->setModel($transaction);
     }
 
     /**
@@ -940,6 +1045,18 @@ class TransactionRepository extends BaseRepository
          *  @var Transaction $transaction
          */
         $transaction = $this->model;
+
+        /**
+         *  @var PaymentMethod $paymentMethod
+         */
+        $paymentMethod = $transaction->paymentMethod;
+
+        //  Check if this is a card payment method
+        if($paymentMethod->isDpo()) {
+
+            //  Cancel the current payment link
+            $transaction = DirectPayOnlineService::cancelPaymentLink($transaction);
+        }
 
         /**
          *  Determine if this is an order transaction

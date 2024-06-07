@@ -41,7 +41,7 @@ class Product extends BaseModel
     const BARCODE_MIN_CHARACTERS = 3;
     const BARCODE_MAX_CHARACTERS = 100;
 
-    const STOCK_QUANTITY_MIN = 1;
+    const STOCK_QUANTITY_MIN = 0;
     const STOCK_QUANTITY_MAX = 16777215;                    //  since we use unsignedMediumInteger() table schema
 
     const MAXIMUM_ALLOWED_QUANTITY_PER_ORDER_MIN = 1;

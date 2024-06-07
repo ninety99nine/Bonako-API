@@ -75,9 +75,9 @@ class CreateProductsTable extends Migration
             $table->unsignedSmallInteger('maximum_allowed_quantity_per_order')->default(1);
 
             /*  Stock Information  */
-            $table->boolean('has_stock')->default(false);
+            $table->boolean('has_stock')->default(true);
             $table->enum('stock_quantity_type', Product::STOCK_QUANTITY_TYPE)->default(Arr::last(Product::STOCK_QUANTITY_TYPE));
-            $table->unsignedMediumInteger('stock_quantity')->default(10);
+            $table->unsignedMediumInteger('stock_quantity')->default(100);
 
             /*  Arrangement Information  */
             $table->unsignedTinyInteger('position')->nullable();

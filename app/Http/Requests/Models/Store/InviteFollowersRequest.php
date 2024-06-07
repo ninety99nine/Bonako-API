@@ -23,11 +23,17 @@ class InviteFollowersRequest extends FormRequest
      */
     public function getValidatorInstance()
     {
-        //  Make sure that the "mobile_numbers" is an array if provided
-        if($this->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
-            $this->merge([
-                'mobile_numbers' => json_decode($this->request->all()['mobile_numbers'])
-            ]);
+        try {
+
+            //  Make sure that the "mobile_numbers" is an array if provided
+            if($this->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
+                $this->merge([
+                    'mobile_numbers' => json_decode($this->request->all()['mobile_numbers'])
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
         }
 
         return parent::getValidatorInstance();
