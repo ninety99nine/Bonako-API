@@ -406,6 +406,8 @@ class TransactionRepository extends BaseRepository
             'verified_by_user_id' => $verifiedByUserId,
             'verified_by' => $verifiedBy,
 
+            'store_id' => $order->store_id,
+
             'owner_id' => $order->id,
             'owner_type' => $order->getResourceName()
         ]);

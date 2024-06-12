@@ -62,6 +62,7 @@ Route::controller(StoreController::class)
 
         //  You need to be assigned to this store as an admin or creator to do any of the following actions
         Route::middleware('assigned.to.store.as.team.member:admin,creator')->group(function() {
+
             Route::put('/', 'update')->name('.update')->whereNumber('store');
             Route::get('/logo', 'showLogo')->name('.logo.show')->whereNumber('store');
             Route::post('/logo', 'updateLogo')->name('.logo.update')->whereNumber('store');
@@ -73,6 +74,8 @@ Route::controller(StoreController::class)
             Route::get('/cover-photo', 'showCoverPhoto')->name('.cover.photo.show')->whereNumber('store');
             Route::post('/cover-photo', 'updateCoverPhoto')->name('.cover.photo.update')->whereNumber('store');
             Route::delete('/cover-photo', 'deleteCoverPhoto')->name('.cover.photo.delete')->whereNumber('store');
+            Route::get('/quick-start-guide', 'showQuickStartGuide')->name('.quick.start.guide.show')->whereNumber('store');
+
         });
 
         //  You need to be assigned to this store as a creator to do any of the following actions

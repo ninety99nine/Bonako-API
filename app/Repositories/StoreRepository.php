@@ -5298,6 +5298,68 @@ class StoreRepository extends BaseRepository
     }
 
     /**
+     *  Return the store quick start guide
+     *
+     *  @return array
+     */
+    public function showQuickStartGuide()
+    {
+        /**
+         *  @var Store $store
+         */
+        $store = $this->model;
+        $totalOrders = $store->orders()->exists();
+        $lastSeenOnUssdAt = $store->user_store_association->last_seen_on_ussd_at;
+        $totalProducts = $store->products()->isNotVariation()->visible()->count();
+        $lastSubscriptionEndAt = $store->user_store_association->last_subscription_end_at;
+
+        $milestones = [
+            [
+                'title' => 'Store created',
+                'type' => 'created store',
+                'status' => true,
+                'created_at' => $store->created_at,
+            ],
+            [
+                'title' => $totalProducts == 0 ? 'Add products' : 'Added ' . $totalProducts . ' ' . ($totalProducts == 1 ? 'product' : 'products'),
+                'type' => 'added products',
+                'status' => $totalProducts > 0,
+                'total_products' => $totalProducts,
+            ],
+            [
+                'title' => (is_null($lastSeenOnUssdAt) ? 'Dial' : 'Dialed'). ' your store on ' . request()->auth_user->mobile_number_shortcode,
+                'type' => 'dialed store',
+                'status' => !is_null($lastSeenOnUssdAt),
+                'last_seen_on_ussd_at' => $lastSeenOnUssdAt,
+                'mobile_number_shortcode' => request()->auth_user->mobile_number_shortcode,
+            ],
+            [
+                'title' => is_null($lastSubscriptionEndAt) ? 'Open for business by Subscribing' : 'Subscribed until ' . $lastSubscriptionEndAt->format('d M Y @ H:i'),
+                'type' => 'subscribed',
+                'status' => !is_null($lastSubscriptionEndAt) && $lastSubscriptionEndAt->isFuture(),
+                'subscription_end_at' => $lastSubscriptionEndAt,
+            ],
+            [
+                'title' => $totalOrders == 0 ? 'Receive your first order' : 'Received ' . $totalOrders . ' ' . ($totalOrders == 1 ? 'order' : 'orders'),
+                'type' => 'received orders',
+                'status' => $totalOrders > 0,
+                'total_orders' => $totalOrders,
+            ],
+        ];
+
+        $completedMilestones = array_filter($milestones, fn($milestone) => $milestone['status']);
+        $completedCount = count($completedMilestones);
+        $totalMilestones = count($milestones);
+
+        return [
+            'title' => "Here's a guide to get you selling in minutes.",
+            'completed_milestones' => $completedCount,
+            'total_milestones' => $totalMilestones,
+            'milestones' => $milestones
+        ];
+    }
+
+    /**
      *  Show the user resource totals
      *
      *  @return array

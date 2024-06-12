@@ -26,7 +26,7 @@ trait SubscriptionTrait
 
         if(($store = $model) instanceof Store) {
 
-            return 'Hi '.$user->first_name.', your subscription for '.$store->name.' has been paid successfully. Valid till '.Carbon::parse($this->end_at)->format('d M Y H:i').'. Dial '.(UssdService::appendToMainShortcode($user->mobile_number->withoutExtension)).' to access your store! Enjoy 😉';
+            return 'Hi '.$user->first_name.', your subscription for '.$store->name.' has been paid successfully. Valid till '.Carbon::parse($this->end_at)->format('d M Y H:i').'. Dial '.$user->mobile_number_shortcode.' to access your store! Enjoy 😉';
 
         }else if($model instanceof AiAssistant) {
 

@@ -335,7 +335,7 @@ class User extends BaseAuthenticatable /* Authenticatable */
     protected function mobileNumberShortcode(): Attribute
     {
         return Attribute::make(
-            get: fn () => MobileNumberService::removeMobileNumberExtension($this->getRawOriginal('mobile_number'))
+            get: fn () => (UssdService::appendToMainShortcode($this->mobile_number->withoutExtension))
         );
     }
 

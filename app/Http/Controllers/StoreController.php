@@ -291,6 +291,11 @@ class StoreController extends BaseController
         return $this->prepareOutput($this->setModel($store)->removeExistingCoverPhoto());
     }
 
+    public function showQuickStartGuide(Store $store)
+    {
+        return $this->prepareOutput($this->setModel($store)->showQuickStartGuide());
+    }
+
     public function showReviewFilters(Store $store)
     {
         return $this->prepareOutput($this->setModel($store)->showReviewFilters());

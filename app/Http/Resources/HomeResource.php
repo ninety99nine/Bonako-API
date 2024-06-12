@@ -64,6 +64,8 @@ class HomeResource extends BaseResource
 
             new ResourceLink('search.user.by.mobile.number', route('users.search.by.mobile.number')),
             new ResourceLink('show.terms.and.conditions', route('terms.and.conditions.show')),
+
+            new ResourceLink('launch.ussd', route('launch.ussd')),
         ];
     }
 }

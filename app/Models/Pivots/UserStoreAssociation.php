@@ -114,8 +114,18 @@ class UserStoreAssociation extends BasePivot
         'is_team_member_as_creator_or_admin', 'is_team_member_as_creator', 'is_team_member_as_admin',
         'can_manage_everything', 'can_manage_orders', 'can_manage_products', 'can_manage_coupons', 'can_manage_customers',
         'can_manage_team_members', 'can_manage_instant_carts', 'can_manage_settings',
-        'has_full_permissions'
+        'has_full_permissions', 'last_subscription_has_expired'
     ];
+
+    /**
+     *  Check if this user last subscription has expired
+    */
+    protected function lastSubscriptionHasExpired(): Attribute
+    {
+        return new Attribute(
+            get: fn () => $this->getRawOriginal('last_subscription_end_at') == null ? null : \Carbon\Carbon::parse($this->getRawOriginal('last_subscription_end_at'))->isBefore(now())
+        );
+    }
 
     /**
      *  Check if this user is classified as a follower

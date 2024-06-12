@@ -109,6 +109,7 @@ class StoreResource extends BaseResource
             new ResourceLink('create.advert', route($routeNamePrefix.'adverts.create', ['store' => $this->resource->id]), 'Create store advert'),
             new ResourceLink('update.advert', route($routeNamePrefix.'adverts.update', ['store' => $this->resource->id]), 'Update store advert'),
             new ResourceLink('delete.advert', route($routeNamePrefix.'adverts.delete', ['store' => $this->resource->id]), 'Delete store advert'),
+            new ResourceLink('show.quick.start.guide', route($routeNamePrefix.'quick.start.guide.show', ['store' => $this->resource->id]), 'Show quick start guide'),
 
             //  Products
             new ResourceLink('show.product.filters', route($routeNamePrefix.'product.filters.show', ['store' => $this->resource->id]), 'The store product filters'),

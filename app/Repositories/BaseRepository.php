@@ -750,7 +750,7 @@ abstract class BaseRepository
      */
     public function getDeleteConfirmationCodeCacheManager()
     {
-        (new CacheManager(CacheName::DELETE_CONFIRMATION_CODE))->appendModel($this->model);
+        return (new CacheManager(CacheName::DELETE_CONFIRMATION_CODE))->appendModel($this->model);
     }
 
     /**
