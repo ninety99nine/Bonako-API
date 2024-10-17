@@ -18,7 +18,7 @@ class StoreDeleted extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 
-    public int $storeId;
+    public string $storeId;
     public User $deletedByUser;
     public string $storeNameWithEmoji;
 

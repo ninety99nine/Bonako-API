@@ -15,7 +15,6 @@ class ShowMobileNumberStoresRequest extends FormRequest
      */
     public function authorize()
     {
-        //  Everyone is authorized to make this request
         return true;
     }
 
@@ -27,7 +26,7 @@ class ShowMobileNumberStoresRequest extends FormRequest
     public function rules()
     {
         return [
-            'mobile_number' => ['bail', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11']
+            'mobile_number' => ['bail', 'required', 'phone']
         ];
     }
 
@@ -38,9 +37,7 @@ class ShowMobileNumberStoresRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-            'mobile_number.regex' => 'The mobile number must only contain numbers'
-        ];
+        return [];
     }
 
     /**
@@ -50,8 +47,6 @@ class ShowMobileNumberStoresRequest extends FormRequest
      */
     public function attributes()
     {
-        return [
-
-        ];
+        return [];
     }
 }

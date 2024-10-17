@@ -21,13 +21,13 @@ use NotificationChannels\OneSignal\OneSignalMessage;
  * the OrderNotification class contains additional custom methods
  * specific for order notifications.
  */
-class OrderPaidUsingDPO extends OrderNotification
+class OrderPaidUsingDPO extends OrderNotification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 
     public Order $order;
     public Store $store;
-    public User $verifiedByUser;
+    public User $manuallyVerifiedByUser;
     public Transaction $transaction;
     public PaymentMethod $paymentMethod;
 
@@ -66,11 +66,10 @@ class OrderPaidUsingDPO extends OrderNotification
         $store = $this->store;
         $transaction = $this->transaction;
         $paymentMethod = $this->paymentMethod;
-        $isAssociatedAsFriend = $this->checkIfAssociatedAsFriend($order, $notifiable);
         $isAssociatedAsCustomer = $this->checkIfAssociatedAsCustomer($order, $notifiable);
-        $dpoCustomerName = $transaction->dpo_payment_response['onVerifyPaymentResponse']['customerName'];
-        $dpoCustomerPhone = $transaction->dpo_payment_response['onVerifyPaymentResponse']['customerPhone'];
-        $paidByYou = $notifiable->id == $transaction->payer_id && $notifiable->mobile_number->withExtension == $dpoCustomerPhone;
+        $dpoCustomerName = $transaction->metadata['dpo_payment_response']['onVerifyPaymentResponse']['customerName'];
+        $dpoCustomerPhone = $transaction->metadata['dpo_payment_response']['onVerifyPaymentResponse']['customerPhone'];
+        $paidByYou = $notifiable->id == $transaction->payer_id && $notifiable->mobile_number->formatE164() == $dpoCustomerPhone;
 
         return [
             'store' => [
@@ -80,7 +79,6 @@ class OrderPaidUsingDPO extends OrderNotification
             'order' => [
                 'id' => $order->id,
                 'number' => $order->number,
-                'isAssociatedAsFriend' => $isAssociatedAsFriend,
                 'isAssociatedAsCustomer' => $isAssociatedAsCustomer,
             ],
             'paymentMethod' => [

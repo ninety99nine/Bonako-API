@@ -3,6 +3,6 @@
 namespace App\Enums;
 
 enum InvitationResponse:int {
-    case Accepted = 1;
-    case Declined = 0;
+    case ACCEPTED = 1;
+    case DECLINED = 0;
 }

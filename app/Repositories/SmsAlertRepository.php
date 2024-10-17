@@ -73,7 +73,7 @@ class SmsAlertRepository extends BaseRepository
         if(is_null($smsAlert)) {
             return $this->createSmsAlert($user);
         }else{
-            return $this->setModel($smsAlert);
+            return $smsAlert;
         }
     }
 

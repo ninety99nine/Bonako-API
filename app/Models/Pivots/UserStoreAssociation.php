@@ -2,12 +2,14 @@
 
 namespace App\Models\Pivots;
 
-use App\Casts\MobileNumber;
-use App\Casts\TeamMemberPermissions;
 use App\Models\User;
 use App\Models\Store;
+use App\Enums\FollowerStatus;
+use App\Enums\TeamMemberRole;
 use App\Models\Base\BasePivot;
-use App\Models\UserStoreOrderStatistic;
+use App\Enums\TeamMemberStatus;
+use App\Casts\E164PhoneNumberCast;
+use App\Casts\TeamMemberPermissions;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -15,31 +17,32 @@ class UserStoreAssociation extends BasePivot
 {
     use HasFactory;
 
-    protected $casts = [
-        'is_assigned' => 'boolean',
+    public static function FOLLOWER_STATUSES(): array
+    {
+        return array_map(fn($status) => $status->value, FollowerStatus::cases());
+    }
 
+    public static function TEAM_MEMBER_ROLES(): array
+    {
+        return array_map(fn($status) => $status->value, TeamMemberRole::cases());
+    }
+
+    public static function TEAM_MEMBER_STATUSES(): array
+    {
+        return array_map(fn($status) => $status->value, TeamMemberStatus::cases());
+    }
+
+    protected $casts = [
         'last_seen_at' => 'datetime',
         'last_seen_on_ussd_at' => 'datetime',
         'last_seen_on_web_app_at' => 'datetime',
         'last_seen_on_mobile_app_at' => 'datetime',
 
-        'mobile_number' => MobileNumber::class,
         'is_associated_as_customer' => 'boolean',
         'last_subscription_end_at' => 'datetime',
+        'mobile_number' => E164PhoneNumberCast::class,
         'team_member_permissions' => TeamMemberPermissions::class,
     ];
-
-    const TEAM_MEMBER_FILTERS = ['All', ...self::TEAM_MEMBER_STATUSES];
-
-    const TEAM_MEMBER_STATUSES = ['Joined', 'Left', 'Invited', 'Declined'];
-
-    const TEAM_MEMBER_ROLES = ['Creator', 'Admin', 'Team Member'];
-
-    const FOLLOWER_FILTERS = ['All', ...self::FOLLOWER_STATUSES];
-
-    const FOLLOWER_STATUSES = ['Following', 'Unfollowed', 'Invited', 'Declined'];
-
-    const CUSTOMER_FILTERS = ['All', 'Loyal'];
 
     const VISIBLE_COLUMNS = [
 
@@ -49,16 +52,13 @@ class UserStoreAssociation extends BasePivot
         'mobile_number',
 
         /*  Team Member Information  */
-        'team_member_status', 'team_member_role', 'team_member_permissions', 'team_member_join_code', 'invited_to_join_team_by_user_id', 'last_subscription_end_at',
+        'team_member_status', 'team_member_role', 'team_member_permissions', 'invited_to_join_team_by_user_id', 'last_subscription_end_at',
 
         /*  Follower Information  */
         'follower_status', 'invited_to_follow_by_user_id',
 
         /*  Customer Information  */
         'is_associated_as_customer',
-
-        /*  Assigned Information  */
-        'is_assigned', 'assigned_position',
 
         /*  Timestamps  */
         'last_seen_on_mobile_app_at',
@@ -92,16 +92,6 @@ class UserStoreAssociation extends BasePivot
     public function userWhoInvitedToJoinTeam()
     {
         return $this->belongsTo(User::class, 'invited_to_join_team_by_user_id');
-    }
-
-    /**
-     *  Returns the user store association statistic
-     *
-     *  @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function userStoreOrderStatistic()
-    {
-        return $this->hasOne(UserStoreOrderStatistic::class, 'user_store_association_id');
     }
 
     /****************************
@@ -143,7 +133,7 @@ class UserStoreAssociation extends BasePivot
     protected function isFollower(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('follower_status')) === 'following'
+            get: fn () => strtolower($this->getRawOriginal('follower_status')) === strtolower(FollowerStatus::FOLLOWING->value)
         );
     }
 
@@ -153,7 +143,7 @@ class UserStoreAssociation extends BasePivot
     protected function isUnfollower(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('follower_status')) === 'unfollowed'
+            get: fn () => strtolower($this->getRawOriginal('follower_status')) === strtolower(FollowerStatus::UNFOLLOWED->value)
         );
     }
 
@@ -163,7 +153,7 @@ class UserStoreAssociation extends BasePivot
     protected function isFollowerWhoIsInvited(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('follower_status')) === 'invited'
+            get: fn () => strtolower($this->getRawOriginal('follower_status')) === strtolower(FollowerStatus::INVITED->value)
         );
     }
 
@@ -173,7 +163,7 @@ class UserStoreAssociation extends BasePivot
     protected function isFollowerWhoHasDeclined(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('follower_status')) === 'declined'
+            get: fn () => strtolower($this->getRawOriginal('follower_status')) === strtolower(FollowerStatus::DECLINED->value)
         );
     }
 
@@ -183,7 +173,7 @@ class UserStoreAssociation extends BasePivot
     protected function isTeamMemberWhoHasJoined(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('team_member_status')) === 'joined'
+            get: fn () => strtolower($this->getRawOriginal('team_member_status')) === strtolower(TeamMemberStatus::JOINED->value)
         );
     }
 
@@ -193,7 +183,7 @@ class UserStoreAssociation extends BasePivot
     protected function isTeamMemberWhoHasLeft(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('team_member_status')) === 'left'
+            get: fn () => strtolower($this->getRawOriginal('team_member_status')) === strtolower(TeamMemberStatus::LEFT->value)
         );
     }
 
@@ -203,7 +193,7 @@ class UserStoreAssociation extends BasePivot
     protected function isTeamMemberWhoIsInvited(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('team_member_status')) === 'invited'
+            get: fn () => strtolower($this->getRawOriginal('team_member_status')) === strtolower(TeamMemberStatus::INVITED->value)
         );
     }
 
@@ -213,7 +203,7 @@ class UserStoreAssociation extends BasePivot
     protected function isTeamMemberWhoHasDeclined(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('team_member_status')) === 'declined'
+            get: fn () => strtolower($this->getRawOriginal('team_member_status')) === strtolower(TeamMemberStatus::DECLINED->value)
         );
     }
 
@@ -233,7 +223,7 @@ class UserStoreAssociation extends BasePivot
     protected function isTeamMemberAsCreator(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('team_member_role')) === 'creator'
+            get: fn () => strtolower($this->getRawOriginal('team_member_role')) === strtolower(TeamMemberRole::CREATOR->value)
         );
     }
 
@@ -243,7 +233,7 @@ class UserStoreAssociation extends BasePivot
     protected function isTeamMemberAsAdmin(): Attribute
     {
         return new Attribute(
-            get: fn () => strtolower($this->getRawOriginal('team_member_role')) === 'admin'
+            get: fn () => strtolower($this->getRawOriginal('team_member_role')) === strtolower(TeamMemberRole::ADMIN->value)
         );
     }
 
@@ -336,7 +326,7 @@ class UserStoreAssociation extends BasePivot
         if($this->is_team_member_who_has_joined) {
 
             //  Set to empty array if these permissions are null
-            $permissions = $this->team_member_permissions->map(fn($permission) => $permission['grant'])->toArray() ?? [];
+            $permissions = collect($this->team_member_permissions)->map(fn($permission) => $permission['grant'])->toArray() ?? [];
 
             //  Check if we have all permissions
             if (in_array('*', $permissions ?? [], true)) return true;

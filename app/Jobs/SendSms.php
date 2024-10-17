@@ -32,7 +32,7 @@ class SendSms implements ShouldQueue
      *
      * @return void
      */
-    public function __construct($content, $recipientMobileNumber, $senderName, $senderMobileNumber, $clientCredentials)
+    public function __construct($content, $recipientMobileNumber, $senderName = null, $senderMobileNumber = null, $clientCredentials = null)
     {
         $this->content = $content;
         $this->senderName = $senderName;

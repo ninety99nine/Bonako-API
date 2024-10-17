@@ -2,50 +2,61 @@
 
 namespace App\Repositories;
 
+use App\Models\Product;
 use App\Models\Variable;
-use App\Repositories\BaseRepository;
+use App\Traits\AuthTrait;
+use App\Traits\Base\BaseTrait;
+use App\Services\Filter\FilterService;
+use App\Http\Resources\VariableResources;
 
 class VariableRepository extends BaseRepository
 {
-    protected $requiresConfirmationBeforeDelete = false;
+    use AuthTrait, BaseTrait;
 
     /**
-     *  Eager load relationships on the given model
+     * Show variables.
      *
-     *  @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Builder $model
-     *  @return VariableRepository
+     * @param array $data
+     * @return VariableResources|array
      */
-    public function eagerLoadVariableRelationships($model) {
+    public function showVariables(array $data = []): VariableResources|array
+    {
+        if($this->getQuery() == null) {
 
-        $relationships = [];
-        $countableRelationships = [];
+            $productId = isset($data['product_id']) ? $data['product_id'] : null;
 
-        //  Check if we want to eager load the variables on this product
-        if( request()->input('with_product') ) {
-
-            //  Additionally we can eager load the product on this variable
-            array_push($relationships, 'product');
-
+            if($productId) {
+                $product = Product::find($productId);
+                if($product) {
+                    $this->setQuery($product->variables());
+                }else{
+                    return ['message' => 'This product does not exist'];
+                }
+            }else {
+                if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show variables'];
+                $this->setQuery(Variable::query());
+            }
         }
 
-        if( !empty($relationships) ) {
-
-            $model = ($model instanceof Variable)
-                ? $model->load($relationships)->loadCount($countableRelationships)
-                : $model->with($relationships)->withCount($countableRelationships);
-
-        }
-
-        $this->setModel($model);
-
-        return $this;
+        return $this->applyFiltersOnQuery()->getOrCountResources();
     }
 
     /**
-     *  Show the variable
+     * Show variable.
+     *
+     * @param string $variableId
+     * @return Variable|array|null
      */
-    public function showVariable()
+    public function showVariable(string $variableId): Variable|array|null
     {
-        return $this->eagerLoadVariableRelationships($this->model)->get();
+        $query = Variable::whereId($variableId);
+        $this->setQuery($query)->applyEagerLoadingOnQuery();
+        $variable = $this->query->first();
+
+        return $this->showResourceExistence($variable);
     }
+
+    /***********************************************
+     *             MISCELLANEOUS METHODS           *
+     **********************************************/
 }

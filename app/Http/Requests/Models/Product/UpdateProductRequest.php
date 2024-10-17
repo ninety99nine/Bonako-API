@@ -71,6 +71,7 @@ class UpdateProductRequest extends FormRequest
         $wantsToShowDescription = request()->filled('show_description') && $this->isTruthy(request()->input('show_description'));
 
         return [
+            'return' => ['sometimes', 'boolean'],
 
             /*  General Information  */
             'name' => [
@@ -79,7 +80,7 @@ class UpdateProductRequest extends FormRequest
                  *  Make sure that this product name does not already exist on the same store
                  *  (Except for the same product)
                  */
-                Rule::unique('products')->where('store_id', request()->product->store_id)->ignore(request()->product->id)
+                Rule::unique('products')->where('store_id', request()->storeId)->ignore(request()->productId)
             ],
             'visible' => ['bail', 'sometimes', 'required', 'boolean'],
             'show_description' => ['bail', 'sometimes', 'required', 'boolean'],
@@ -113,14 +114,14 @@ class UpdateProductRequest extends FormRequest
             /*  Quantity Information  */
             'allowed_quantity_per_order' => ['bail', 'sometimes', 'required', 'string', Rule::in($allowedQuantityPerOrder)],
             'maximum_allowed_quantity_per_order' => [
-                'bail', 'sometimes', 'integer', 'numeric', 'min:'.Product::MAXIMUM_ALLOWED_QUANTITY_PER_ORDER_MIN, 'max:'.Product::MAXIMUM_ALLOWED_QUANTITY_PER_ORDER_MAX,
+                'bail', 'sometimes', 'integer', 'min:'.Product::MAXIMUM_ALLOWED_QUANTITY_PER_ORDER_MIN, 'max:'.Product::MAXIMUM_ALLOWED_QUANTITY_PER_ORDER_MAX,
                 Rule::requiredIf(fn() => request()->input('allowed_quantity_per_order') === 'limited')
             ],
 
             /*  Stock Information  */
             'stock_quantity_type' => ['bail', 'sometimes', 'required', 'string', Rule::in($stockQuantityType)],
             'stock_quantity' => [
-                'bail', 'sometimes', 'integer', 'numeric', 'min:'.Product::STOCK_QUANTITY_MIN, 'max:'.Product::STOCK_QUANTITY_MAX,
+                'bail', 'sometimes', 'integer', 'min:'.Product::STOCK_QUANTITY_MIN, 'max:'.Product::STOCK_QUANTITY_MAX,
                 Rule::requiredIf(fn() => strtolower(request()->input('stock_quantity_type')) === 'limited')
             ],
         ];

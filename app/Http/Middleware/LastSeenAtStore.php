@@ -18,16 +18,8 @@ class LastSeenAtStore
      */
     public function handle(Request $request, Closure $next)
     {
-        //  If we have the store via the request
-        if( $request->store ) {
-
-            /**
-             * @var User $user
-             */
-            $user = $request->user();
-
-            $user->updateLastSeenAtStore($request->store);
-
+        if($request->store) {
+            $request->current_user->updateLastSeenAtStore($request->store);
         }
 
         return $next($request);

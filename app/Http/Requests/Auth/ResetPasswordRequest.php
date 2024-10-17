@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\MobileVerification;
 use App\Models\User;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Services\PhoneNumber\PhoneNumberService;
 
 class ResetPasswordRequest extends FormRequest
 {
@@ -17,7 +19,6 @@ class ResetPasswordRequest extends FormRequest
      */
     public function authorize()
     {
-        //  Everyone is authorized to make this request
         return true;
     }
 
@@ -29,8 +30,8 @@ class ResetPasswordRequest extends FormRequest
     public function rules()
     {
         return [
-            'mobile_number' => ['bail', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11', 'exists:users,mobile_number'],
-            'verification_code' => ['bail', 'required', 'string', 'size:6', 'regex:/^[0-9]+$/',
+            'mobile_number' => ['bail', 'required', 'phone', 'exists:users,mobile_number'],
+            'verification_code' => ['bail', 'required', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS,
                 Rule::exists('mobile_verifications', 'code')->where('mobile_number', request()->input('mobile_number')),
             ],
             'password' => ['bail', 'required', 'string', 'min:'.User::PASSWORD_MIN_CHARACTERS, 'confirmed'],
@@ -45,12 +46,10 @@ class ResetPasswordRequest extends FormRequest
 
     public function messages()
     {
-        $mobileNumberWithoutExtension = $this->convertToMobileNumberFormat(request()->input('mobile_number'))->withoutExtension;
+        $mobileNumber = PhoneNumberService::getNationalPhoneNumberWithoutSpaces(request()->input('mobile_number'));
 
         return [
-            'mobile_number.regex' => 'The mobile number must only contain numbers',
-            'mobile_number.exists' => 'The account using the mobile number '.$mobileNumberWithoutExtension.' does not exist.',
-            'verification_code.required' => 'The verification code is required to verify ownership of the mobile number ' . request()->input('mobile_number'),
+            'verification_code.required' => 'The verification code is required to verify ownership of the mobile number ' . $mobileNumber,
             'verification_code.regex' => 'The verification code must only contain numbers',
             'verification_code.exists' => 'The verification code is not valid.',
         ];

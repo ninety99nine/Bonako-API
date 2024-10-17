@@ -3,69 +3,137 @@
 namespace App\Http\Controllers\Auth;
 
 use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
 use App\Repositories\AuthRepository;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Http\Requests\Auth\LogoutRequest;
 use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\AccountExistsRequest;
 use App\Http\Requests\Models\User\CreateUserRequest;
-use App\Http\Requests\Models\User\UpdateUserRequest;
 use App\Http\Requests\Auth\ValidateResetPasswordRequest;
 use App\Http\Requests\Models\User\ValidateCreateUserRequest;
-use App\Http\Requests\Auth\ShowMobileVerificationCodeRequest;
 use App\Http\Requests\Auth\VerifyMobileVerificationCodeRequest;
 use App\Http\Requests\Auth\GenerateMobileVerificationCodeRequest;
 
 class AuthController extends BaseController
 {
+    protected AuthRepository $repository;
+
     /**
-     *  @var AuthRepository
+     * AuthController constructor.
+     *
+     * @param AuthRepository $repository
      */
-    protected $repository;
-
-    public function login(LoginRequest $loginRequest)
+    public function __construct(AuthRepository $repository)
     {
-        return response($this->repository->login($loginRequest), Response::HTTP_OK);
+        $this->repository = $repository;
     }
 
-    public function register(CreateUserRequest $createUserRequest)
+    /**
+     * Handle login request.
+     *
+     * @param LoginRequest $loginRequest
+     * @return JsonResponse
+     */
+    public function login(LoginRequest $request): JsonResponse
     {
-        return response()->json($this->repository->register($createUserRequest), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->repository->login($request->all()));
     }
 
-    public function validateRegister(ValidateCreateUserRequest $_)
+    /**
+     * Handle user registration request.
+     *
+     * @param CreateUserRequest $createUserRequest
+     * @return JsonResponse
+     */
+    public function register(CreateUserRequest $request): JsonResponse
     {
-        return response(null, Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->register($request->all()), Response::HTTP_CREATED);
     }
 
-    public function accountExists(AccountExistsRequest $accountExistsRequest)
+    /**
+     * Check if an account exists.
+     *
+     * @param AccountExistsRequest $accountExistsRequest
+     * @return JsonResponse
+     */
+    public function accountExists(AccountExistsRequest $request): JsonResponse
     {
-        return response($this->repository->accountExists($accountExistsRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->accountExists($request->all()));
     }
 
-    public function resetPassword(ResetPasswordRequest $resetPasswordRequest)
+    /**
+     * Handle reset password request.
+     *
+     * @param ResetPasswordRequest $resetPasswordRequest
+     * @return JsonResponse
+     */
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        return response($this->repository->resetPassword($resetPasswordRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->resetPassword($request->all()));
     }
 
-    public function validateResetPassword(ValidateResetPasswordRequest $_)
+    /**
+     * Validate user registration data.
+     *
+     * @param ValidateCreateUserRequest $_
+     * @return JsonResponse
+     */
+    public function validateRegistration(ValidateCreateUserRequest $_): JsonResponse
     {
-        return response(null, Response::HTTP_OK);
+        return $this->prepareOutput(null);
     }
 
-    public function showMobileVerificationCode(ShowMobileVerificationCodeRequest $showMobileVerificationCodeRequest)
+    /**
+     * Validate reset password request data.
+     *
+     * @param ValidateResetPasswordRequest $_
+     * @return JsonResponse
+     */
+    public function validateResetPassword(ValidateResetPasswordRequest $_): JsonResponse
     {
-        return response($this->repository->showMobileVerificationCode($showMobileVerificationCodeRequest), Response::HTTP_OK);
+        return $this->prepareOutput(null);
     }
 
-    public function verifyMobileVerificationCode(VerifyMobileVerificationCodeRequest $verifyMobileVerificationCodeRequest)
+    /**
+     * Verify mobile verification code.
+     *
+     * @param VerifyMobileVerificationCodeRequest $verifyMobileVerificationCodeRequest
+     * @return JsonResponse
+     */
+    public function verifyMobileVerificationCode(VerifyMobileVerificationCodeRequest $request): JsonResponse
     {
-        return response($this->repository->verifyMobileVerificationCode($verifyMobileVerificationCodeRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->verifyMobileVerificationCode($request->input('mobile_number'), $request->input('verification_code')));
     }
 
-    public function generateMobileVerificationCode(GenerateMobileVerificationCodeRequest $generateMobileVerificationCodeRequest)
+    /**
+     * Generate mobile verification code.
+     *
+     * @param GenerateMobileVerificationCodeRequest $generateMobileVerificationCodeRequest
+     * @return JsonResponse
+     */
+    public function generateMobileVerificationCode(GenerateMobileVerificationCodeRequest $request): JsonResponse
     {
-        return response($this->repository->generateMobileVerificationCode($generateMobileVerificationCodeRequest), Response::HTTP_OK);
+        return $this->prepareOutput($this->repository->generateMobileVerificationCode($request->input('mobile_number')));
+    }
+
+    /**
+     * Show terms and conditions.
+     *
+     * @return JsonResponse
+     */
+    public function showTermsAndConditions(): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showTermsAndConditions());
+    }
+
+    /**
+     * Show terms and conditions takeaways.
+     *
+     * @return JsonResponse
+     */
+    public function showTermsAndConditionsTakeaways(): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showTermsAndConditionsTakeaways());
     }
 }

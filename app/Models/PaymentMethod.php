@@ -2,112 +2,97 @@
 
 namespace App\Models;
 
-use App\Casts\Money;
-use App\Casts\Currency;
-use App\Casts\Percentage;
-use App\Enums\PaymentMethodFilter;
+use App\Casts\JsonToArray;
 use App\Models\Base\BaseModel;
 use App\Traits\Base\BaseTrait;
+use App\Enums\PaymentMethodType;
 use App\Traits\PaymentMethodTrait;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Enums\PaymentMethodCategory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class PaymentMethod extends BaseModel
 {
     use HasFactory, BaseTrait, PaymentMethodTrait;
 
-    const FILTERS = [
-        PaymentMethodFilter::All->value,
-        PaymentMethodFilter::Active->value,
-        PaymentMethodFilter::Inactive->value
-    ];
+    /**
+     *  Magic Numbers
+     */
+    const NAME_MIN_CHARACTERS = 3;
+    const NAME_MAX_CHARACTERS = 40;
+    const TYPE_MIN_CHARACTERS = 3;
+    const TYPE_MAX_CHARACTERS = 40;
+    const DESCRIPTION_MIN_CHARACTERS = 3;
+    const DESCRIPTION_MAX_CHARACTERS = 200;
+
+    public static function PAYMENT_METHOD_TYPES(): array
+    {
+        return array_map(fn($method) => $method->value, PaymentMethodType::cases());
+    }
+
+    public static function PAYMENT_METHOD_CATEGORIES(): array
+    {
+        return array_map(fn($method) => $method->value, PaymentMethodCategory::cases());
+    }
 
     protected $casts = [
         'active' => 'boolean',
-        'amount' => Money::class,
-        'available_on_ussd' => 'boolean',
-        'available_in_stores' => 'boolean',
-        'available_on_perfect_pay' => 'boolean',
+        'metadata' => JsonToArray::class,
+        'countries' => JsonToArray::class
     ];
 
-    protected $tranformableCasts = [
-        'currency' => Currency::class,
-        'percentage' => Percentage::class
-    ];
+    protected $tranformableCasts = [];
 
     protected $fillable = [
-        'name', 'method', 'category', 'description',
-        'available_on_perfect_pay', 'available_in_stores', 'available_on_ussd',  'active', 'position'
+        'active', 'name', 'type', 'category', 'description', 'countries', 'metadata', 'can_pay_later',
+        'require_proof_of_payment', 'automatically_mark_as_paid', 'position', 'store_id'
     ];
 
     /****************************
      *  SCOPES                  *
      ***************************/
 
-    /*
-     *  Scope: Return payment methods that are being searched
-     */
     public function scopeSearch($query, $searchWord)
     {
         return $query->where('name', 'like', "%$searchWord%")
-                     ->orWhere('method', 'like', "%$searchWord%")
-                     ->orWhere('category', 'like', "%$searchWord%");
+                     ->orWhere('type', 'like', "%$searchWord%");
     }
 
-    /**
-     *  Scope payment methods available for perfect pay
-     *  These are payment methods that allow store owners the ability
-     *  to choose the payment method of choice when placing an order
-     *  on a given store using perfect pay supported payment methods
-     */
-    public function scopeAvailableOnPerfectPay($query)
-    {
-        return $query->active()->where('available_on_perfect_pay', '1');
-    }
-
-    /**
-     *  Scope payment methods available for stores
-     *  These are payment methods that allow subscribers the ability
-     *  to choose the payment method of choice when placing an order
-     *  on a given store
-     */
-    public function scopeAvailableInStores($query)
-    {
-        return $query->active()->where('available_in_stores', '1');
-    }
-
-    /**
-     *  Scope payment methods available for USSD
-     *  These are payment methods that allow subscribers the ability to pay on USSD
-     */
-    public function scopeAvailableOnUssd($query)
-    {
-        return $query->active()->where('available_on_ussd', '1');
-    }
-
-    /**
-     *  Scope active payment methods
-     */
     public function scopeActive($query)
     {
         return $query->where('active', '1');
     }
 
-    /****************************
-     *  ACCESSORS               *
-     ***************************/
-
-    protected $appends = [
-        'is_dpo', 'is_orange_money'
-    ];
-
-    public function getIsDpoAttribute()
+    public function scopeLocal($query)
     {
-        return $this->isDpo();
+        return $query->where('category', PaymentMethodCategory::LOCAL->value);
     }
 
-    public function getIsOrangeMoneyAttribute()
+    public function scopeManual($query)
     {
-        return $this->isOrangeMoney();
+        return $query->where('category', PaymentMethodCategory::MANUAL->value);
+    }
+
+    public function scopeAutomated($query)
+    {
+        return $query->where('category', PaymentMethodCategory::AUTOMATED->value);
+    }
+
+    /********************
+     *  RELATIONSHIPS   *
+     *******************/
+
+    public function store()
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

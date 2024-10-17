@@ -3,8 +3,6 @@
 namespace App\Services\QrCode;
 
 use App\Services\AWS\AWSService;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class QrCodeService

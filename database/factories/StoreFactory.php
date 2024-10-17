@@ -32,12 +32,6 @@ class StoreFactory extends Factory
      */
     public function definition()
     {
-        $registeredWithBank = $this->faker->randomElement([0, 1, 'null']);
-        $registeredWithCipa = $this->faker->randomElement([0, 1, 'null']);
-
-        $registeredWithBank = $this->convertNullValue($registeredWithBank);
-        $registeredWithCipa = $this->convertNullValue($registeredWithCipa);
-
         $deliveryNotes = [
             "We cannot deliver to PO boxes",
             "Delivery is free for orders over P50",
@@ -144,43 +138,24 @@ class StoreFactory extends Factory
             $description = $this->faker->catchPhrase;
         }
 
-        $registeredWithCipaAs = $this->faker->randomElement(Store::REGISTERED_WITH_CIPA_AS);
-        $companyUIN = $this->faker->unique()->numerify('BW###########');
-
-        $isBrandStore = $this->faker->boolean(10);
-        $isInfluencerStore = $isBrandStore ? false : $this->faker->boolean(10);
-
-        $hasLogo = ($isBrandStore || $isInfluencerStore) ? true : $this->faker->boolean(50);
-        $hasCoverPhoto = ($isBrandStore || $isInfluencerStore) ? true : $this->faker->boolean(50);
-
         return [
             'name' => $name,
             'currency' => Store::CURRENCY,
             'description' => $description,
-            'is_brand_store' => $isBrandStore,
             'online' => $this->faker->boolean(90),
-            'is_influencer_store' => $isInfluencerStore,
+            'verified' => $this->faker->boolean(20),
             'allow_pickup' => $this->faker->boolean(30),
             'allow_delivery' => $this->faker->boolean(30),
             'offline_message' => $this->faker->sentence(),
-            'registered_with_bank' => $registeredWithBank,
-            'registered_with_cipa' => $registeredWithCipa,
             'allow_free_delivery' => $this->faker->boolean(30),
             'pickup_destinations' => $selectedPickupDestinations,
             'delivery_destinations' => $selectedDeliveryDestinations,
             'pickup_note' => $this->faker->randomElement($pickupNotes),
             'delivery_flat_fee' => $this->faker->randomFloat(2, 0, 100),
             'delivery_note' => $this->faker->randomElement($deliveryNotes),
-            //'adverts' => [$this->faker->imageUrl(), $this->faker->imageUrl()],
-            //'logo' => $hasLogo ? $this->faker->imageUrl(640, 480, 'cats') : null,
-            'company_uin' => $registeredWithCipaAs == 'Company' ? $companyUIN : null,
             'last_subscription_end_at' => $this->faker->dateTimeBetween('-30 days', now()),
-            'call_to_action' => $this->faker->randomElement(Store::CALL_TO_ACTION_OPTIONS),
-            'verified' => $isBrandStore || $isInfluencerStore ? true : $this->faker->boolean(20),
-            //'cover_photo' => $hasCoverPhoto ? $this->faker->imageUrl(1000, 500, 'dogs') : null,
-            'registered_with_cipa_as' => $registeredWithCipa == 1 ? $registeredWithCipaAs : null,
-            'number_of_employees' => $this->faker->randomElement([$this->faker->numberBetween(1, 100), null]),
-            'banking_with' => $registeredWithBank == 1 ? $this->faker->randomElement(Store::BANKING_WITH) : null,
+            'call_to_action' => $this->faker->randomElement(Store::CALL_TO_ACTION_OPTIONS()),
+            'number_of_employees' => $this->faker->randomElement([$this->faker->numberBetween(1, 100), null])
         ];
     }
 }

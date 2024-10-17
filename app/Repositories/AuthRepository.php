@@ -5,700 +5,412 @@ namespace App\Repositories;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Jobs\SendSms;
-use App\Enums\CacheName;
-use App\Enums\AccessToken;
+use App\Traits\AuthTrait;
 use App\Events\LoginSuccess;
-use Illuminate\Http\Request;
-use App\Helpers\CacheManager;
 use App\Traits\Base\BaseTrait;
+use App\Enums\ReturnAccessToken;
 use App\Helpers\RequestAuthUser;
-use App\Services\Sms\SmsService;
 use App\Models\MobileVerification;
 use App\Services\Ussd\UssdService;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Resources\UserResource;
-use App\Http\Resources\CustomResource;
 use Illuminate\Validation\ValidationException;
 use App\Exceptions\ResetPasswordFailedException;
 use App\Exceptions\UpdatePasswordFailedException;
-use App\Exceptions\LogoutOfSuperAdminRestrictedException;
-use App\Exceptions\MobileVerificationCodeGenerationFailedException;
+use App\Services\CodeGenerator\CodeGeneratorService;
 
+/**
+ * Class AuthRepository
+ *
+ * Handles authentication-related tasks such as login, registration, and password reset.
+ */
 class AuthRepository extends BaseRepository
 {
-    use BaseTrait;
-
-    protected $modelName = 'user';
-    protected $modelClass = User::class;
-    protected $resourceClass = UserResource::class;
-    protected $requiresConfirmationBeforeDelete = true;
-
-    public function __construct(Request $request)
-    {
-        //  Run the base constructor
-        parent::__construct();
-
-        //  Set the authenticated user as the model
-        $this->setModel( $this->getAuthUser() );
-    }
+    use AuthTrait, BaseTrait;
 
     /**
-     *  Return the current authenticated user.
+     * Login.
      *
-     *  This user may or may not be available e.g When logging in, its possible that
-     *  the user may not be available, however when registering the user may be
-     *  available e.g Super Admin creating an account on behalf of another user
-     *
-     *  @return User|null - Current authenticated user
+     * @param array $data
+     * @return array
      */
-    public function getAuthUser()
+    public function login(array $data): array
     {
-        return request()->auth_user;
-    }
+        $user = $this->getUserByMobileNumber($data['mobile_number']);
 
-    /**
-     *  Check if the current authenticated user exists
-     *
-     *  This user may or may not be available e.g When logging in, its possible that
-     *  the user may not be available, however when registering the user may be
-     *  available e.g Super Admin creating an account on behalf of another user
-     *
-     *  @return bool
-     */
-    public function hasAuthUser()
-    {
-        return request()->auth_user_exists;
-    }
+        if (UssdService::verifyIfRequestFromUssdServer()) {
+            return $this->getUserAndAccessToken($user);
+        }
 
-    /**
-     *  Login without credentials for Requests originating from the USSD platform
-     *  otherwise login with the mobile number and password for every other
-     *  platform and return the user account and access token,
-     *
-     *  or ...
-     *
-     *  Set a new password for the existing account and return
-     *  the existing user account and access token.
-     *
-     *  @param Request $request
-     *  @return array
-     */
-    public function login(Request $request)
-    {
-        //  Set the user matching the given mobile number
-        $this->setModel($this->getUserFromMobileNumber());
-
-        //  If the request is coming from the Ussd server then we do not need to verify the password
-        if( UssdService::verifyIfRequestFromUssdServer() ) {
-
-            //  Return user account and access token
-            return $this->getUserAndAccessToken();
-
-        }else{
-
-            //  Check if the user already has a password
-            if( $this->model->password ) {
-
-                //  Get request password
-                $password = $request->input('password');
-
-                //  Check if we have a matching password for the user account
-                if( Hash::check($password, $this->model->password) ) {
-
-                    //  Get user account and access token
-                    $userAndAccessToken = $this->getUserAndAccessToken();
-
-                    //  Notify other devices on login success
-                    broadcast(new LoginSuccess($userAndAccessToken['access_token']))->toOthers();
-
-                    //  Return user account and access token
-                    return $userAndAccessToken;
-
-                }else {
-
-                    //  Throw an Exception - Password does not match
-                    throw ValidationException::withMessages(['password' => 'The password provided is incorrect.']);
-
-                }
-
-            //  Otherwise the user must update their user account password
-            }else{
-
-                $this->updateAccountPassword($request);
-
-                //  Return user account and access token
-                return $this->getUserAndAccessToken();
-
+        if ($user->password) {
+            if (Hash::check($data['password'], $user->password)) {
+                $userAndAccessToken = $this->getUserAndAccessToken($user);
+                broadcast(new LoginSuccess($userAndAccessToken['access_token']))->toOthers();
+                return $userAndAccessToken;
             }
-
+            throw ValidationException::withMessages(['password' => 'The password provided is incorrect.']);
         }
+
+        $this->updateAccountPassword($user, $data['password']);
+        return $this->getUserAndAccessToken($user);
     }
 
     /**
-     *  Register a new user account and return the
-     *  user account and access token or just the
-     *  user account without the access token.
+     * Register.
      *
-     *  @param Request $request
-     *  @param AccessToken $withAccessToken - Whether to return the access token after user account creation
-     *  @return AuthRepository|UserResource
+     * @param array $data
+     * @param ReturnAccessToken $returnAccessToken
+     * @return UserResource|array
      */
-    public function register(Request $request, $withAccessToken = AccessToken::RETURN_ACCESS_TOKEN)
+    public function register(array $data, ReturnAccessToken $returnAccessToken = ReturnAccessToken::YES): UserResource|array
     {
-        /**
-         *  Sometimes when registering we may include / exclude the password,
-         *  depending on who is creating an account. Normally users on the
-         *  USSD platform are not required to provide a password, however
-         *  users using any other platform are required to provide their
-         *  password.
-         */
-        if( $request->filled('password') ) {
+        if ($this->hasAuthUser()) $data['registered_by_user_id'] = $this->getAuthUser()->id;
+        if (isset($data['password'])) $data['password'] = $this->getEncryptedRequestPassword($data['password']);
 
-            //  Encrypt the password (If provided)
-            $request->merge(['password' => $this->getEncryptedRequestPassword($request)]);
+        $createdUser = User::create($data);
+        $this->revokeUserMobileVerificationCode($createdUser);
 
-        }
-
-        /**
-         *  If this user account is being created by an authenticated user.
-         *  Remember that registration can be requested by a guest user
-         *  (non-authenticated user) creating their own user account or
-         *  by an authenticated user creating a user account on behalf
-         *  of another user e.g user accounts created by a Super Admin
-         *
-         *  We therefore can check if this request is performed by an
-         *  authenticated user so that we can capture information
-         *  about this user performing this action.
-         */
-        if($this->hasAuthUser()) {
-
-            //  Set the user id of the authenticated user
-            $request->merge(['registered_by_user_id' => $this->getAuthUser()->id]);
-
-        }
-
-        //  Create a new user account
-        parent::create($request);
-
-        /**
-         *  When creating the user's account, the user must provide the
-         *  verification code of the new mobile number that they would
-         *  like to associate their account with. This confirms that
-         *  they own the mobile number specified. If the request is
-         *  performed on the USSD platform or by a Super Admin,
-         *  then we do not need to provide a verification code
-         *  to verify this mobile number.
-         *
-         *  Revoke the mobile verification code (if provided).
-         */
-        $this->revokeRequestMobileVerificationCode($request);
-
-        /**
-         *  If we should return the access token.
-         *  -------------------------------------
-         *  This is applicable for cases when someone is creating
-         *  an account themselves and therefore needs the access
-         *  token to use as a means of authenticating further
-         *  requests
-         */
-        if ($withAccessToken == AccessToken::RETURN_ACCESS_TOKEN) {
-
-            // Return the user account and access token
-            $result = $this->getUserAndAccessToken();
-
-        /**
-         *  If we should not return the access token.
-         *  -----------------------------------------
-         *  This is applicable for cases when a user e.g Super Admin
-         *  is creating an account on behalf of another user and
-         *  therefore does not require the access token since
-         *  this would not be useful to this user.
-         */
+        if ($returnAccessToken == ReturnAccessToken::YES) {
+            $result = $this->getUserAndAccessToken($createdUser);
         } else {
-
-            // Return the user account only
-            $result = $this->transform();
-
+            $result = new UserResource($createdUser);
         }
 
-        /**
-         *  @var User $createdUser
-         */
-        $createdUser = $this->model;
-
-        // Send sms to user that their account was created
         SendSms::dispatch(
             $createdUser->craftAccountCreatedSmsMessageForUser(),
-            $createdUser->mobile_number->withExtension,
-            null, null, null
+            $createdUser->mobile_number->formatE164()
         );
 
         return $result;
     }
 
     /**
-     *  Show the terms and conditions
+     * Check account exists.
      *
-     *  @return array
+     * @param array $data
+     * @return array
      */
-    public function showTermsAndConditions()
+    public function accountExists(array $data): array
     {
-        $items = [
-            [
-                'name' => 'Accept Terms Of Service' ,
-                'href' => route('terms.and.conditions.show')
-            ],
-        ];
-
-        return new CustomResource([
-            'title' => 'Terms & Conditions',
-            'instruction' => 'Accept the following terms of service to continue using Perfect Order services',
-            'confirmation' => 'I agree and accept these terms of service by proceeding to use this service.',
-            'button' => 'Accept',
-            'items' => $items
-        ]);
-    }
-
-    /**
-     *  Return the current user tokens - This could be the
-     *  current authenticated user access tokens or the
-     *  access tokens of the user being accessed by the
-     *  Super Admin via the UserRepository class
-     *
-     *  @return array
-     */
-    public function showTokens()
-    {
-        //  Get the user tokens
-        $tokens = $this->model->tokens;
-
-        //  Get the user tokens with limited information
-        $tranformedTokens = collect($tokens)->map(fn($token) => $token->only(['name', 'last_used_at', 'created_at']))->toArray();
+        $user = $this->getUserByMobileNumber($data['mobile_number']);
 
         return [
-            'tokens' => $tranformedTokens
+            'exists' => !is_null($user),
+            'account_summary' => $user ? collect($user)->only(['mobile_number', 'requires_password']) : null
         ];
     }
 
     /**
-     *  Check if user account exists
+     * Reset password.
      *
-     *  @return array
+     * @param array $data
+     * @return array
      */
-    public function accountExists()
+    public function resetPassword(array $data): array
     {
-        //  Set the user matching the given mobile number
-        $user = $this->getUserFromMobileNumber();
-
-        //  Return user account
-        return new CustomResource([
-            'exists' => !is_null($user),
-            'accountSummary' => $user ? collect($user)->only(['mobile_number', 'requires_password']) : null
-        ]);
-    }
-
-    /**
-     *  Reset the account password and return the
-     *  user account and access token
-     *
-     *  @param Request $request
-     *  @return array
-     */
-    public function resetPassword(Request $request)
-    {
-        //  Set the user matching the given mobile number
-        $this->setModel($this->getUserFromMobileNumber());
+        $user = $this->getUserByMobileNumber($data['mobile_number']);
 
         try {
-
-            $this->updateAccountPassword($request);
-
-            //  Return user account and access token
-            return $this->getUserAndAccessToken();
-
+            $this->updateAccountPassword($user, $data['password']);
+            return $this->getUserAndAccessToken($user);
         } catch (UpdatePasswordFailedException $e) {
-
-            //  Throw an Exception - Account password reset failed
-            throw new ResetPasswordFailedException;
-
+            throw new ResetPasswordFailedException();
         }
     }
 
     /**
-     *  Generate mobile verification code
+     * Show terms and conditions.
      *
-     *  @param Request $request
-     *  @return array
+     * @return array
      */
-    public function generateMobileVerificationCode(Request $request)
+    public function showTermsAndConditions(): array
     {
-        $mobileNumber = $request->input('mobile_number');
+        return [
+            'title' => 'Terms & Conditions',
+            'instruction' => 'Accept the following terms of service to continue using Perfect Order services',
+            'confirmation' => 'I agree and accept these terms of service by proceeding to use this service.',
+            'button' => 'Accept',
+            'items' => [
+                [
+                    'name' => 'Accept Terms Of Service',
+                    'href' => route('show.terms.and.conditions')
+                ]
+            ]
+        ];
+    }
 
-        //  Generate random 6 digit number
-        $code = $this->generateRandomSixDigitCode();
+    /**
+     * Show terms and conditions takeaways.
+     *
+     * @return array
+     */
+    public function showTermsAndConditionsTakeaways(): array
+    {
 
-        //  Update existing or create a new verification code
+        return [
+            'buyer' => [
+                'title' => 'Buyer Takeaways',
+                'instruction' => 'As a buyer on '.config('app.name').', here are the key terms you must accept:',
+                'takeaways' => 'As a buyer on '.config('app.name').', you must create an account with accurate details and keep your login information secure. Before purchasing, carefully review product descriptions, images, and store details, and ensure you buy from trusted sellers. It is crucial to provide a correct delivery address and contact information, as '.config('app.name').' is not responsible for undelivered or misrepresented orders. Please note that '.config('app.name').' does not offer refunds. Payments include the agreed price and any applicable fees. If issues arise, communicate with sellers respectfully, and they are expected to resolve matters promptly. You can leave honest reviews to help future buyers. Your data is protected, and we comply with applicable privacy laws. For disputes, you should first try to resolve them directly with the seller, but '.config('app.name').' can mediate if necessary. Additionally, always adhere to our platform\'s code of conduct, which emphasizes respectful and lawful behavior. For the full terms and conditions, please visit our website at '.route('show.terms.and.conditions')
+            ],
+            'seller' => [
+                'title' => 'Seller Takeaways',
+                'instruction' => 'As a seller on '.config('app.name').', here are the key terms you must accept:',
+                'takeaways' => 'As a seller on '.config('app.name').', you need to register with accurate and authorized business details. Ensure your product listings are accurate, up-to-date, and comply with relevant laws. Update your product availability regularly to avoid disappointing customers. Fulfill orders promptly and ensure the quality of your products before delivery. Set transparent and fair prices, and note that '.config('app.name').' may deduct fees—review the fee structure on our platform. Respond to customer inquiries promptly and professionally. You are responsible for safeguarding customer data and using it solely for order fulfillment or communication via '.config('app.name').'. Improper use of data can lead to penalties. Customer feedback through reviews and ratings is essential for improving your business. In case of disputes, try to resolve them directly with the buyer, but '.config('app.name').' can mediate if necessary. Unethical behavior or violation of the terms may lead to the suspension or termination of your account. Additionally, the shortcodes provided by '.config('app.name').' remain our property and may be reassigned if your subscription ends. For the full terms and conditions, please visit our website at '.route('show.terms.and.conditions')
+            ]
+        ];
+    }
+
+    /**
+     * Generate mobile verification code.
+     *
+     * @param string $mobileNumber
+     * @return array
+     */
+    public function generateMobileVerificationCode(string $mobileNumber): array
+    {
+        $code = CodeGeneratorService::generateRandomSixDigitNumber();
+
         $successful = MobileVerification::updateOrCreate(
             ['mobile_number' => $mobileNumber],
             ['mobile_number' => $mobileNumber, 'code' => $code]
         );
 
-        if( $successful ) {
-
+        if ($successful) {
             return [
+                'message' => 'Mobile verification code generated',
+                'generated' => true,
                 'code' => $code
             ];
-
         }else{
-
-            //  Throw an Exception - Mobile verification code generation failed
-            throw new MobileVerificationCodeGenerationFailedException;
-
+            return [
+                'message' => 'The mobile verification code could not be generated',
+                'generated' => false,
+            ];
         }
     }
 
     /**
-     *  Verify mobile verification code validity
+     * Verify mobile verification code.
      *
-     *  @param Request $request
-     *  @return array
+     * @param string $mobileNumber
+     * @param string $code
+     * @return array
      */
-    public function verifyMobileVerificationCode(Request $request)
+    public function verifyMobileVerificationCode(string $mobileNumber, string $code): array
     {
-        $code = $request->input('verification_code');
-        $mobileNumber = $request->input('mobile_number');
         $isValid = MobileVerification::where('mobile_number', $mobileNumber)->where('code', $code)->exists();
 
+        return ['is_valid' => $isValid];
+    }
+
+    /**
+     * Revoke user mobile verification code.
+     *
+     * @param User $user
+     * @return void
+     */
+    public static function revokeUserMobileVerificationCode(User $user): void
+    {
+        self::revokeMobileVerificationCode($user->mobile_number->formatE164());
+    }
+
+    /**
+     * Revoke mobile verification code.
+     *
+     * @param string $mobileNumber
+     * @return void
+     */
+    public static function revokeMobileVerificationCode(string $mobileNumber): void
+    {
+        MobileVerification::where('mobile_number', $mobileNumber)->update(['code' => null]);
+    }
+
+    /**
+     * Logout authenticated user.
+     *
+     * @param User $user
+     * @param array $data
+     * @return array
+     */
+    public function logout(User $user, array $data = []): array
+    {
+        $superAdminIsLoggingOutSomeoneElse = ($this->getAuthUser()->isSuperAdmin() && $this->getAuthUser()->id != $user->id);
+        $logoutAllDevices = isset($data['everyone']) && $this->isTruthy($data['everyone']);
+        $logoutOtherDevices = isset($data['others']) && $this->isTruthy($data['others']);
+
+        if ($logoutAllDevices || $superAdminIsLoggingOutSomeoneElse) {
+            if ($superAdminIsLoggingOutSomeoneElse && $user->isSuperAdmin()) {
+                return ['logout' => false, 'message' => 'You do not have permissions to logout this Super Admin'];
+            }
+
+            $this->revokeAllAccessTokens($user);
+        } elseif ($logoutOtherDevices) {
+            $this->revokeAllAccessTokensExceptTheCurrentAccessToken($user);
+        } else {
+            $this->revokeCurrentAccessToken($user);
+        }
+
         return [
-            'is_valid' => $isValid
+            'message' => 'Signed out successfully',
+            'logout' => true
         ];
     }
 
     /**
-     *  Show mobile verification code
+     * Update account password.
      *
-     *  @param Request $request
-     *  @return array
+     * @param User $user
+     * @param string $password
+     * @return void
      */
-    public function showMobileVerificationCode(Request $request)
+    private function updateAccountPassword(User $user, string $password): void
     {
-        $mobileNumber = $request->input('mobile_number');
-
-        //  Get the matching mobile verification
-        $mobileVerification = MobileVerification::where('mobile_number', $mobileNumber)->first();
-
-        //  Return the mobile verification with limited information
-        $data = collect($mobileVerification)->only(['code'])->toArray();
-
-        return new CustomResource([
-            'exists' => !empty($data),
-            'code' => $data['code'] ?? null
-        ]);
-    }
-
-    /**
-     *  Reset the mobile verification code so that
-     *  the same code cannot be used again
-     *
-     *  @param Request $request
-     *  @return void
-     */
-    public static function revokeRequestMobileVerificationCode(Request $request)
-    {
-        //  If this is not a request from the USSD platform
-        if( !UssdService::verifyIfRequestFromUssdServer() ) {
-
-            $hasProvidedMobileNumber = $request->filled('mobile_number');
-
-            if( $hasProvidedMobileNumber ){
-
-                $mobileNumber = $request->input('mobile_number');
-
-                //  Revoke the mobile verificaiton code
-                MobileVerification::where('mobile_number', $mobileNumber)->update(['code' => null]);
-
-            }
-
-        }
-    }
-
-    /**
-     *  Reset the mobile verification code so that
-     *  the same code cannot be used again
-     *
-     *  @param User $user
-     *  @return void
-     */
-    public static function revokeUserMobileVerificationCode(User $user)
-    {
-        //  Revoke the mobile verificaiton code
-        MobileVerification::where('mobile_number', $user->mobile_number->withExtension)->update(['code' => null]);
-    }
-
-    /**
-     *  Logout authenticated user
-     *
-     *  Understand that "$this->model" could represent the current authenticated user
-     *  or any other user model that was set using the UserRepository class to allow
-     *  the Super Admin to logout that specific user. Refer to the logout() method
-     *  of the UserRepository class. This means we can use this method to logout
-     *  the current authenticated user or the current authenticated user can
-     *  logout other users via by logout method provided by the
-     *  UserRepository class if they have the right permissions
-     *
-     *  @return array
-     */
-    public function logout()
-    {
-        //  Check if the Super Admin is trying to logout someone else
-        $superAdminIsLoggingOutSomeoneElse = ($this->getAuthUser()->isSuperAdmin() && $this->getAuthUser()->id != $this->model->id);
-
-        //  Check if we want to logout all devices
-        $logoutAllDevices = request()->filled('everyone') && in_array(request()->input('everyone'), [true, 'true', 1, '1']);
-
-        //  Check if we want to logout other devices
-        $logoutOtherDevices = request()->filled('others') && in_array(request()->input('others'), [true, 'true', 1, '1']);
-
-        //  If we want to logout from all devices or the Super Admin is logging out someone else
-        if( $logoutAllDevices || $superAdminIsLoggingOutSomeoneElse ) {
-
-            //  If the user that we are trying to logout is also a Super Admin
-            if( $superAdminIsLoggingOutSomeoneElse && $this->model->isSuperAdmin() ){
-
-                //  Restrict this logout action
-                throw new LogoutOfSuperAdminRestrictedException;
-
-            }
-
-            // Revoke all tokens (Including current access token)
-            $this->revokeAccessTokens();
-
-        //  If we want to logout other devices except the current device
-        }elseif( $logoutOtherDevices ) {
-
-            // Revoke all tokens (Except the current access token)
-            $this->revokeAccessTokensExceptTheCurrentAccessToken();
-
-        //  If we want to logout the current device
-        }else{
-
-            //  Revoke the token that was used to authenticate the current request
-            $this->revokeCurrentAccessToken();
-
-        }
-
-        return [
-            'message' => 'Signed out successfully'
-        ];
-    }
-
-    /**
-     *  Update the account password using the password
-     *  provided on the request body
-     *
-     *  @param Request $request
-     *  @return void
-     */
-    private function updateAccountPassword(Request $request)
-    {
-        //  The selected fields are allowed to update account password
         $data = [
-
-            //  Encrypt the password
-            'password' => $this->getEncryptedRequestPassword($request),
-
-            //  Set the mobile number verification datetime
+            'password' => $this->getEncryptedRequestPassword($password),
             'mobile_number_verified_at' => Carbon::now()
-
         ];
 
-        if( $this->model->update($data) ) {
-
-            //  Revoke the mobile verification code
-            $this->revokeRequestMobileVerificationCode($request);
-
-        }else{
-
-            //  Throw an Exception - Update account password failed
-            throw new UpdatePasswordFailedException;
-
+        if (!$user->update($data)) {
+            throw new UpdatePasswordFailedException();
         }
+
+        $this->revokeUserMobileVerificationCode($user);
     }
 
     /**
-     *  Get and encrypt the request password
+     * Get encrypted request password.
      *
-     *  @param Request $request
-     *  @return string
+     * @param string $password
+     * @return string
      */
-    public static function getEncryptedRequestPassword(Request $request)
+    public static function getEncryptedRequestPassword(string $password): string
     {
-        return bcrypt($request->input('password'));
+        return bcrypt($password);
     }
 
     /**
-     *  Get the user and access token response
+     * Show user tokens.
      *
-     *  @return array
+     * @param User $user
+     * @return array
      */
-    private function getUserAndAccessToken()
+    public function showTokens(User $user): array
     {
-        //  Check if the request is coming from the USSD server
-        if( UssdService::verifyIfRequestFromUssdServer() ) {
+        $tokens = $user->tokens->map(function ($token) {
+            return $token->only(['name', 'last_used_at', 'created_at']);
+        })->toArray();
 
-            //  Create the access token
-            $newAccessTokenInstance = $this->createAccessToken();
+        return ['tokens' => $tokens];
+    }
 
-        }else{
+    /**
+     * Get user and access token.
+     *
+     * @param User $user
+     * @return array
+     */
+    private function getUserAndAccessToken(User $user): array
+    {
+        $newAccessTokenInstance = UssdService::verifyIfRequestFromUssdServer()
+            ? $this->createAccessToken($user)
+            : $this->createAccessTokenWhileRevokingPreviousAccessTokens($user);
 
-            //  Create the access token while revoking previous access tokens i.e single device sign in
-            $newAccessTokenInstance = $this->createAccessTokenWhileRevokingPreviousAccessTokens();
-
-        }
-
-        //  Get the plain text token
         $plainTextToken = $newAccessTokenInstance->plainTextToken;
-
-        //  Get the access token model
         $accessToken = $newAccessTokenInstance->accessToken;
 
-        /**
-         *  Temporarily login as this user so that we can make use of the auth()->user()
-         *  method from the UserResource when transforming this authenticated user.
-         *  We can archieve this by attaching the access token to the current
-         *  request.
-         */
         request()->headers->set('Authorization', 'Bearer ' . $plainTextToken);
+        (new RequestAuthUser($user))->setAuthUserOnCache($plainTextToken, $accessToken)->setAuthUserOnRequest();
 
-        /**
-         *  Set this authenticated user on the cache and the request payload.
-         *
-         *  (1) Setting this authenticated user on the cache means that we won't have to query
-         *      the database to find out if the user is authenticated for each and every follow
-         *      up request. This allows the API to be more responsive and to reduce the number
-         *      of database queries that could slow down the API.
-         *
-         *  (2) Setting this authenticated user on the Request is important since transforming
-         *      the User payload using the UserResource transformer requires access to the
-         *      request()->auth_user. We must therefore make sure that this user is made
-         *      present on the request property "auth_user".
-         */
-        (new RequestAuthUser($this->model))->setAuthUserOnCache($plainTextToken, $accessToken)->setAuthUserOnRequest();
-
-        return new CustomResource([
-            'message' => 'Signed in successfullly',
+        return [
             'access_token' => $plainTextToken,
-            'user' => parent::transform(),
-        ]);
+            'message' => 'Signed in successfully',
+            'user' => new UserResource($user),
+        ];
     }
 
     /**
-     *  Return the user matching the request mobile number
+     * Get user by mobile number.
      *
-     *  @return User|null
+     * @param string $mobileNumber
+     * @return User|null
      */
-    private function getUserFromMobileNumber()
+    private function getUserByMobileNumber(string $mobileNumber)
     {
-        $mobileNumber = request()->input('mobile_number');
-
-        //  Check if we have a matching user
-        return $this->model->searchMobileNumber($mobileNumber)->first();
+        return User::searchMobileNumber($mobileNumber)->first();
     }
 
     /**
-     *  Create a new access token while revoking previous access tokens i.e single device sign in
+     * Create access token while revoking previous access tokens.
      *
-     *  Single device sign-in, also known as single session or single active session,
-     *  refers to a security feature that allows a user to be logged in from only one
-     *  device or session at a time. When a user logs in from a new device or session,
-     *  any existing sessions are automatically invalidated, requiring the user to
-     *  authenticate again on the new device.
-     *
-     *  @return string
+     * @param User $user
+     * @return \Laravel\Sanctum\NewAccessToken
      */
-    private function createAccessTokenWhileRevokingPreviousAccessTokens()
+    private function createAccessTokenWhileRevokingPreviousAccessTokens(User $user)
     {
-        /**
-         *  To ensure that a user can only log into one device at a time,
-         *  we can revoke the user's existing tokens before generating a
-         *  new access token.
-         */
-        $this->revokeAccessTokens();
-
-        //  Generate and return a new access token
-        return $this->createAccessToken();
+        $this->revokeAllAccessTokens($user);
+        return $this->createAccessToken($user);
     }
 
     /**
-     *  Revoke all tokens (Including current access token)
+     * Revoke all tokens.
      *
-     *  @return void
+     * @param User $user
+     * @return void
      */
-    private function revokeAccessTokens()
+    private function revokeAllAccessTokens(User $user): void
+    {
+        $this->removeTokensFromDatabaseAndCache($user->tokens());
+    }
+
+    /**
+     * Revoke current access token.
+     *
+     * @param User $user
+     * @return void
+     */
+    private function revokeCurrentAccessToken(User $user): void
+    {
+        $this->removeTokensFromDatabaseAndCache($user->currentAccessToken());
+    }
+
+    /**
+     * Revoke all tokens except the current access token.
+     *
+     * @param User $user
+     * @return void
+     */
+    private function revokeAllAccessTokensExceptTheCurrentAccessToken(User $user): void
     {
         $this->removeTokensFromDatabaseAndCache(
-            $this->model->tokens()
+            $user->tokens()->where('id', '!=', $user->currentAccessToken()->id)
         );
     }
 
     /**
-     *  Revoke the current access token that was used
-     *  to authenticate the current request
+     * Remove tokens from database and cache.
      *
-     *  @return void
+     * @param mixed $tokenInstance
+     * @return void
      */
-    private function revokeCurrentAccessToken()
+    private function removeTokensFromDatabaseAndCache($tokenInstance): void
     {
-        $this->removeTokensFromDatabaseAndCache(
-            $this->model->currentAccessToken()
-        );
-    }
-
-    /**
-     *  Revoke all tokens (Except the current access token)
-     *
-     *  @return void
-     */
-    private function revokeAccessTokensExceptTheCurrentAccessToken()
-    {
-        $this->removeTokensFromDatabaseAndCache(
-            $this->model->tokens()->where('id', '!=', $this->model->currentAccessToken()->id)
-        );
-    }
-
-    /**
-     *  Remove tokens by deleting from database and clearing the cache
-     *
-     *  @return void
-     */
-    private function removeTokensFromDatabaseAndCache($tokenInstance)
-    {
-        foreach($tokenInstance->get() as $accessToken) {
-
+        foreach ($tokenInstance->get() as $accessToken) {
             (new RequestAuthUser())->forgetAuthUserOnCacheUsingAccessToken($accessToken);
-
         }
 
         $tokenInstance->delete();
     }
 
     /**
-     *  Create a new personal access token for the user.
+     * Create a new personal access token.
      *
-     *  @return \Laravel\Sanctum\NewAccessToken
+     * @param User $user
+     * @return \Laravel\Sanctum\NewAccessToken
      */
-    private function createAccessToken()
+    private function createAccessToken(User $user)
     {
-        /**
-         *  Check if we have the device name provided on the
-         *  request e.g "John's Iphone", otherwise use the
-         *  current user's name e.g "John Doe"
-         */
-        $tokenName = (request()->filled('device_name'))
-                     ? request()->input('device_name')
-                     : $this->model->name;
-
-        return $this->model->createToken($tokenName);
+        $tokenName = $user->name;
+        return $user->createToken($tokenName);
     }
-
 }

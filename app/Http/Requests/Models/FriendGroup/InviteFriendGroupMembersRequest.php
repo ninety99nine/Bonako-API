@@ -5,7 +5,7 @@ namespace App\Http\Requests\Models\FriendGroup;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
-use App\Models\Pivots\UserFriendGroupAssociation;
+use App\Models\Pivots\FriendGroupUserAssociation;
 
 class InviteFriendGroupMembersRequest extends FormRequest
 {
@@ -61,7 +61,7 @@ class InviteFriendGroupMembersRequest extends FormRequest
      */
     public function getRoles()
     {
-        return collect(UserFriendGroupAssociation::ROLES)->reject((fn($role) => $role == 'Creator'))->map(fn($role) => $this->separateWordsThenLowercase($role));
+        return collect(FriendGroupUserAssociation::ROLES)->reject((fn($role) => $role == 'Creator'))->map(fn($role) => $this->separateWordsThenLowercase($role));
     }
 
     /**
@@ -73,8 +73,8 @@ class InviteFriendGroupMembersRequest extends FormRequest
     {
         return [
             'mobile_numbers' => ['required', 'array'],
-            'role' => ['required', 'string', Rule::in($this->getRoles())],
-            'mobile_numbers.*' => ['bail', 'string', 'distinct', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
+            'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
+            'role' => ['bail', 'sometimes', 'required', 'string', Rule::in($this->getRoles())],
         ];
     }
 
@@ -86,7 +86,6 @@ class InviteFriendGroupMembersRequest extends FormRequest
     public function messages()
     {
         return [
-            'mobile_numbers.*.regex' => 'The mobile number must only contain numbers',
             'role.in' => 'Answer "'.collect($this->getRoles())->join('", "', '" or "').' to indicate the role',
         ];
     }

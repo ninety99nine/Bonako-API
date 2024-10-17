@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Models\AiMessage;
 
+use App\Enums\Association;
 use App\Traits\Base\BaseTrait;
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ShowAiMessagesRequest extends FormRequest
@@ -27,7 +29,10 @@ class ShowAiMessagesRequest extends FormRequest
     public function rules()
     {
         return [
-            'category_id' => ['bail', 'sometimes', 'required', 'numeric', 'min:1', 'exists:ai_message_categories,id'],
+            'ai_assistant_id' => ['bail', 'sometimes', 'required', 'uuid'],
+            'association' => ['bail', 'sometimes', 'nullable', Rule::in(
+                Association::SUPER_ADMIN->value
+            )],
         ];
     }
 

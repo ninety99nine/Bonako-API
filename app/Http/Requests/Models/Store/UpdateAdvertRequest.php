@@ -26,7 +26,7 @@ class UpdateAdvertRequest extends FormRequest
     {
         return [
             'advert' => ['bail', 'required', 'mimetypes:image/jpeg,image/png,image/jpg,image/gif,image/bmp', 'max:4096'],
-            'position' => ['bail', 'required', 'integer', 'numeric', 'min:1', 'max:'.Store::MAXIMUM_ADVERTS],
+            'position' => ['bail', 'required', 'integer', 'min:1', 'max:'.Store::MAXIMUM_ADVERTS],
         ];
     }
 

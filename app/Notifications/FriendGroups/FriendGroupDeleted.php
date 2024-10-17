@@ -18,8 +18,8 @@ class FriendGroupDeleted extends Notification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 
-    public int $friendGroupId;
     public User $deletedByUser;
+    public string $friendGroupId;
     public string $friendGroupNameWithEmoji;
 
     /**
@@ -27,7 +27,7 @@ class FriendGroupDeleted extends Notification implements ShouldQueue
      *
      * @return void
      */
-    public function __construct($friendGroupId, $friendGroupNameWithEmoji, User $deletedByUser)
+    public function __construct(string $friendGroupId, string $friendGroupNameWithEmoji, User $deletedByUser)
     {
         /**
          *  We cannot pass the store Model itself since Laravel would attempt to resolve

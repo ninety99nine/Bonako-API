@@ -4,7 +4,6 @@ namespace App\Http\Requests\Models\AiMessage;
 
 use App\Models\AiMessage;
 use App\Traits\Base\BaseTrait;
-use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAiMessageRequest extends FormRequest
@@ -29,8 +28,8 @@ class UpdateAiMessageRequest extends FormRequest
     public function rules()
     {
         return [
+            'return' => ['sometimes', 'boolean'],
             'user_content' => ['bail', 'required', 'string', 'min:'.AiMessage::USER_CONTENT_MIN_CHARACTERS, 'max:'.AiMessage::USER_CONTENT_MAX_CHARACTERS],
-            'assistant_content' => ['bail', 'required', 'string', 'min:'.AiMessage::ASSISTANT_CONTENT_MIN_CHARACTERS, 'max:'.AiMessage::ASSISTANT_CONTENT_MAX_CHARACTERS],
         ];
     }
 

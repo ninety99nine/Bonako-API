@@ -2,24 +2,53 @@
 
 namespace App\Services\MobileNumber;
 
-use App\Models\User;
-use App\Repositories\StoreRepository;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Propaganistas\LaravelPhone\PhoneNumber;
 
 class MobileNumberService
 {
     /**
+     * Check if the Orange mobile number is valid.
+     *
+     * @param string $mobileNumber
+     * @return bool
+     */
+    public static function isValidOrangeMobileNumber($mobileNumber): bool
+    {
+        return self::getMobileNetworkName($mobileNumber) === "orange";
+    }
+
+    /**
+     * Check if the Mascom mobile number is valid.
+     *
+     * @param string $mobileNumber
+     * @return bool
+     */
+    public static function isValidMascomMobileNumber($mobileNumber): bool
+    {
+        return self::getMobileNetworkName($mobileNumber) === "mascom";
+    }
+
+    /**
+     * Check if the Btc mobile number is valid.
+     *
+     * @param string $mobileNumber
+     * @return bool
+     */
+    public static function isValidBtcMobileNumber($mobileNumber): bool
+    {
+        return self::getMobileNetworkName($mobileNumber) === "btc";
+    }
+    /**
      * Get the mobile network by name.
+     *
+     * @param string $mobileNumber
+     * @return bool
+     *
      * Reference: https://en.wikipedia.org/wiki/Telephone_numbers_in_Botswana
      */
-    public static function getMobileNetworkName($mobileNumber)
+    public static function getMobileNetworkName(string $mobileNumber): bool
     {
-        $mobileNumber = self::simplify($mobileNumber);
-
-        if (!is_numeric($mobileNumber)) {
-            return null;
-        }
-
+        if (!is_numeric($mobileNumber)) return null;
         $number = (int) $mobileNumber;
 
         $isMascomRange =
@@ -62,79 +91,5 @@ class MobileNumberService
         } else {
             return null;
         }
-    }
-
-    /**
-     * Removes mobile number extension and characters that are not digits.
-     */
-    public static function simplify($mobileNumber)
-    {
-        $mobileNumber = self::removeNonDigits($mobileNumber);
-        return self::removeMobileNumberExtension($mobileNumber);
-    }
-
-    /**
-     * Removes non digits.
-     */
-    public static function removeNonDigits($string)
-    {
-        return preg_replace('/\D/', '', $string);
-    }
-
-    /**
-     * Gets the mobile number extension.
-     */
-    public static function getMobileNumberExtension()
-    {
-        return config('app.MOBILE_NUMBER_EXTENSION');
-    }
-
-    /**
-     * Adds the mobile number extension.
-     */
-    public static function addMobileNumberExtension($mobileNumber)
-    {
-        $mobileNumber = self::simplify($mobileNumber);
-        return self::getMobileNumberExtension() . $mobileNumber;
-    }
-
-    /**
-     * Removes characters that match the mobile number extension.
-     */
-    public static function removeMobileNumberExtension($mobileNumber)
-    {
-        return preg_replace('/^' . preg_quote(self::getMobileNumberExtension(), '/') . '/', '', $mobileNumber);
-    }
-
-    /**
-     * Check if the mobile number is valid.
-     */
-    public static function isValidMobileNumber($mobileNumber)
-    {
-        return self::getMobileNetworkName($mobileNumber) !== null;
-    }
-
-    /**
-     * Check if the Orange mobile number is valid.
-     */
-    public static function isValidOrangeMobileNumber($mobileNumber)
-    {
-        return self::getMobileNetworkName($mobileNumber) === "orange";
-    }
-
-    /**
-     * Check if the Mascom mobile number is valid.
-     */
-    public static function isValidMascomMobileNumber($mobileNumber)
-    {
-        return self::getMobileNetworkName($mobileNumber) === "mascom";
-    }
-
-    /**
-     * Check if the Btc mobile number is valid.
-     */
-    public static function isValidBtcMobileNumber($mobileNumber)
-    {
-        return self::getMobileNetworkName($mobileNumber) === "btc";
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Helpers;
 
+use App\Enums\PlatformType;
 
 class PlatformManager
 {
@@ -9,19 +10,22 @@ class PlatformManager
 
     public function __construct()
     {
-        //  Get the platform e.g web, ussd or mobile
         $this->platform = strtolower(request()->header('X-Platform'));
     }
 
     public function isWeb() {
-        return $this->platform == 'web';
+        return $this->platform == PlatformType::WEB->value;
+    }
+
+    public function isSms() {
+        return $this->platform == PlatformType::SMS->value;
     }
 
     public function isUssd() {
-        return $this->platform == 'ussd';
+        return $this->platform == PlatformType::USSD->value;
     }
 
     public function isMobile() {
-        return $this->platform == 'mobile';
+        return $this->platform == PlatformType::MOBILE->value;
     }
 }

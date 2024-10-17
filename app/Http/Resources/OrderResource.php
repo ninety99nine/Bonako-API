@@ -183,46 +183,35 @@ class OrderResource extends BaseResource
 
     public function setLinks()
     {
-        $routeNamePrefix = 'order.';
-        $orderId = $this->resource->id;
-        $storeId = $this->resource->store_id;
+        $order = $this->resource;
 
         $this->resourceLinks = [
-
-            new ResourceLink('self', route($routeNamePrefix.'show', ['store' => $storeId, 'order' => $orderId]), 'Show order'),
-            new ResourceLink('update.order', route($routeNamePrefix.'update', ['store' => $storeId, 'order' => $orderId]), 'Update order'),
-            new ResourceLink('confirm.delete.order', route($routeNamePrefix.'confirm.delete', ['store' => $storeId, 'order' => $orderId]), 'Confirm delete order'),
-            new ResourceLink('delete.order', route($routeNamePrefix.'delete', ['store' => $storeId, 'order' => $orderId]), 'Delete order'),
-
-            new ResourceLink('cancel.order', route($routeNamePrefix.'cancel', ['store' => $storeId, 'order' => $orderId]), 'Cancel order'),
-            new ResourceLink('uncancel.order', route($routeNamePrefix.'uncancel', ['store' => $storeId, 'order' => $orderId]), 'Uncancel order'),
-            new ResourceLink('show.cancellation.reasons', route($routeNamePrefix.'show.cancellation.reasons', ['store' => $storeId, 'order' => $orderId]), 'Show order cancellation reasons'),
-
-            new ResourceLink('generate.collection.code', route($routeNamePrefix.'generate.collection.code', ['store' => $storeId, 'order' => $orderId]), 'The route to generate the collection code'),
-            new ResourceLink('revoke.collection.code', route($routeNamePrefix.'revoke.collection.code', ['store' => $storeId, 'order' => $orderId]), 'The route to revoke the collection code'),
-
-            new ResourceLink('show.request.payment.payment.methods', route($routeNamePrefix.'request.payment.payment.methods.show', ['store' => $storeId, 'order' => $orderId]), 'The route to show the payment methods available to request payment this order'),
-            new ResourceLink('request.payment', route($routeNamePrefix.'request.payment', ['store' => $storeId, 'order' => $orderId]), 'The route to request payment this order'),
-
-            new ResourceLink('show.mark.as.unverified.payment.payment.methods', route($routeNamePrefix.'mark.as.unverified.payment.payment.methods.show', ['store' => $storeId, 'order' => $orderId]), 'The route to show the payment methods available to mark this order as an unverfied payment'),
-            new ResourceLink('mark.as.unverified.payment', route($routeNamePrefix.'mark.as.unverified.payment', ['store' => $storeId, 'order' => $orderId]), 'The route to mark this order as an unverfied payment'),
-
-            new ResourceLink('mark.as.verified.payment', route($routeNamePrefix.'mark.as.verified.payment', ['store' => $storeId, 'order' => $orderId]), 'The route to mark this order as an verfied payment'),
-
-            new ResourceLink('update.status', route($routeNamePrefix.'status.update', ['store' => $storeId, 'order' => $orderId]), 'The route to update the order status'),
-            new ResourceLink('show.viewers', route($routeNamePrefix.'viewers.show', ['store' => $storeId, 'order' => $orderId]), 'The route to update the order status'),
-
-            //  Paying User
-            new ResourceLink('show.order.paying.users', route($routeNamePrefix.'paying.users.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order transactions'),
-
-            new ResourceLink('show.transaction.filters', route($routeNamePrefix.'transaction.filters.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order transaction filters'),
-            new ResourceLink('show.transactions', route($routeNamePrefix.'transactions.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order transactions'),
-            new ResourceLink('show.cart', route($routeNamePrefix.'cart.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order cart'),
-            new ResourceLink('show.occasion', route($routeNamePrefix.'occasion.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order occasion'),
-            new ResourceLink('show.customer', route($routeNamePrefix.'customer.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order customer'),
-            new ResourceLink('show.users', route($routeNamePrefix.'users.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order users'),
-            new ResourceLink('show.delivery.address', route($routeNamePrefix.'delivery.address.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order delivery address'),
-            new ResourceLink('show.transactions.count', route($routeNamePrefix.'transactions.count.show', ['store' => $storeId, 'order' => $orderId]), 'Show the order transactions count'),
+            new ResourceLink('show.order', route('show.order', ['orderId' => $order->id])),
+            new ResourceLink('update.order', route('update.order', ['orderId' => $order->id])),
+            new ResourceLink('delete.order', route('delete.order', ['orderId' => $order->id])),
+            new ResourceLink('cancel.order', route('cancel.order', ['orderId' => $order->id])),
+            new ResourceLink('uncancel.order', route('uncancel.order', ['orderId' => $order->id])),
+            new ResourceLink('show.order.cancellation.reasons', route('show.order.cancellation.reasons', ['orderId' => $order->id])),
+            new ResourceLink('generate.order.collection.code', route('generate.order.collection.code', ['orderId' => $order->id])),
+            new ResourceLink('revoke.order.collection.code', route('revoke.order.collection.code', ['orderId' => $order->id])),
+            new ResourceLink('update.order.status', route('update.order.status', ['orderId' => $order->id])),
+            new ResourceLink('request.order.payment', route('request.order.payment', ['orderId' => $order->id])),
+            new ResourceLink('show.payment.methods.for.requesting.order.payment', route('show.payment.methods.for.requesting.order.payment', ['orderId' => $order->id])),
+            new ResourceLink('mark.order.as.paid', route('mark.order.as.paid', ['orderId' => $order->id])),
+            new ResourceLink('show.payment.methods.for.marking.as.paid', route('show.payment.methods.for.marking.as.paid', ['orderId' => $order->id])),
+            new ResourceLink('show.order.cart', route('show.order.cart', ['orderId' => $order->id])),
+            new ResourceLink('show.order.store', route('show.order.store', ['orderId' => $order->id])),
+            new ResourceLink('show.order.customer', route('show.order.customer', ['orderId' => $order->id])),
+            new ResourceLink('show.order.occasion', route('show.order.occasion', ['orderId' => $order->id])),
+            new ResourceLink('show.order.placed.by.user', route('show.order.placed.by.user', ['orderId' => $order->id])),
+            new ResourceLink('show.order.created.by.user', route('show.order.created.by.user', ['orderId' => $order->id])),
+            new ResourceLink('show.order.collection.verified.by.user', route('show.order.collection.verified.by.user', ['orderId' => $order->id])),
+            new ResourceLink('show.order.delivery.address', route('show.order.delivery.address', ['orderId' => $order->id])),
+            new ResourceLink('show.order.friend.group', route('show.order.friend.group', ['orderId' => $order->id])),
+            new ResourceLink('add.order.friend.group', route('add.order.friend.group', ['orderId' => $order->id])),
+            new ResourceLink('remove.order.friend.group', route('remove.order.friend.group', ['orderId' => $order->id])),
+            new ResourceLink('show.order.viewers', route('show.order.viewers', ['orderId' => $order->id])),
+            new ResourceLink('show.order.transactions', route('show.order.transactions', ['orderId' => $order->id])),
         ];
     }
 }

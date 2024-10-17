@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ReviewSubject;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -18,13 +19,10 @@ class Review extends BaseModel
     const COMMENT_MIN_CHARACTERS = 3;
     const COMMENT_MAX_CHARACTERS = 160;
 
-    const USER_REVIEW_FILTERS = ['All', ...self::SUBJECTS];
-    const STORE_REVIEW_FILTERS = ['All', ...self::SUBJECTS, 'Me'];
-    const SUBJECTS = ['Product', 'Customer Service', 'Delivery', 'Payment'];
-
-    const USER_REVIEW_ASSOCIATIONS = [
-        'Reviewer', 'Team Member'
-    ];
+    public static function SUBJECTS(): array
+    {
+        return array_map(fn($status) => $status->value, ReviewSubject::cases());
+    }
 
     protected $fillable = ['rating', 'subject', 'comment', 'store_id', 'user_id'];
 

@@ -53,7 +53,7 @@ class UserSeeder extends Seeder
         User::create([
             'first_name' => 'Julian',
             'last_name' => 'Tabona',
-            'mobile_number' => '26772882239',
+            'mobile_number' => '+26772882239',
             'last_seen_at' => now(),
             'mobile_number_verified_at' => now(),
             'is_super_admin' => true,
@@ -66,7 +66,7 @@ class UserSeeder extends Seeder
         User::create([
             'first_name' => 'Bonolo',
             'last_name' => 'Tabona',
-            'mobile_number' => '26777479083',
+            'mobile_number' => '+26777479083',
             'last_seen_at' => now(),
             'mobile_number_verified_at' => now(),
             'is_super_admin' => false,

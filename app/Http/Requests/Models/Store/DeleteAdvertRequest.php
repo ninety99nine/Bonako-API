@@ -25,7 +25,7 @@ class DeleteAdvertRequest extends FormRequest
     public function rules()
     {
         return [
-            'position' => ['bail', 'required', 'integer', 'numeric', 'min:1', 'max:'.Store::MAXIMUM_ADVERTS],
+            'position' => ['bail', 'required', 'integer', 'min:1', 'max:'.Store::MAXIMUM_ADVERTS],
         ];
     }
 

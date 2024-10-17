@@ -2,124 +2,203 @@
 
 namespace App\Repositories;
 
-use App\Enums\CacheName;
-use App\Enums\PaymentMethodAvailability;
-use App\Enums\PaymentMethodFilter;
-use App\Helpers\CacheManager;
+use App\Models\Store;
+use App\Traits\AuthTrait;
 use App\Models\PaymentMethod;
-use App\Repositories\BaseRepository;
 use App\Traits\Base\BaseTrait;
+use Illuminate\Support\Collection;
+use App\Services\Filter\FilterService;
+use Illuminate\Database\Eloquent\Builder;
+use App\Http\Resources\PaymentMethodResources;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class PaymentMethodRepository extends BaseRepository
 {
-    use BaseTrait;
+    use AuthTrait, BaseTrait;
 
     /**
-     *  Show the payment method filters
+     * Show payment methods.
      *
-     *  @return array
+     * @return PaymentMethodResources|array
      */
-    public function showPaymentMethodFilters()
+    public function showPaymentMethods(array $data = []): PaymentMethodResources|array
     {
-        $filters = collect(PaymentMethod::FILTERS);
+        if($this->getQuery() == null) {
 
-        /**
-         *  $result = [
-         *      [
-         *          'name' => 'All',
-         *          'total' => 6000,
-         *          'total_summarized' => '6k'
-         *      ],
-         *      [
-         *          'name' => 'Available On Perfect Pay',
-         *          'total' => 2000,
-         *          'total_summarized' => '2k'
-         *      ],
-         *      [
-         *          'name' => 'Available On Ussd',
-         *          'total' => 1000,
-         *          'total_summarized' => '1k'
-         *      ],
-         *      ...
-         *  ];
-         */
-        return $filters->map(function($filter) {
+            $storeId = isset($data['store_id']) ? $data['store_id'] : null;
 
-            //  Query the payment methods by the filter
-            $total = $this->queryPaymentMethodsByFilter($filter)->count();
+            if($storeId) {
+                $store = Store::find($storeId);
+                if($store) {
+                    $this->setQuery($store->paymentMethods()->latest());
+                }else{
+                    return ['message' => 'This store does not exist'];
+                }
+            }else {
+                if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show payment methods'];
+                $this->setQuery(PaymentMethod::query()->latest());
+            }
+        }
 
-            return [
-                'name' => ucwords($filter),
-                'total' => $total,
-                'total_summarized' => $this->model->convertNumberToShortenedPrefix($total)
-            ];
-
-        })->toArray();
+        return $this->applyFiltersOnQuery()->getOrCountResources();
     }
 
     /**
-     *  Show the transaction
+     * Create payment method.
      *
-     *  @return PaymentMethodRepository
+     * @param array $data
+     * @return PaymentMethod|array
      */
-    public function showPaymentMethods()
+    public function createPaymentMethod(array $data): PaymentMethod|array
     {
-        $page = $this->getCurrentPage();
-        $usage = $this->model->separateWordsThenLowercase(request()->input('usage'));
-        $filter = $this->model->separateWordsThenLowercase(request()->input('filter'));
-        $perPage = $this->model->separateWordsThenLowercase(request()->input('per_page'));
-        $cacheManager = (new CacheManager(CacheName::PAYMENT_METHODS))->append($usage, true)->append($filter, true)->append($perPage)->append($page);
+        if(!$this->isAuthourized()) return ['created' => false, 'message' => 'You do not have permission to create payment methods'];
 
-        return $cacheManager->remember(now()->addWeek(), function() use ($filter) {
-
-            $paymentMethods = $this->queryPaymentMethodsByFilter($filter)->orderBy('position', 'asc');
-            return $this->setModel($paymentMethods)->get();
-
-        });
+        $paymentMethod = PaymentMethod::create($data);
+        return $this->showCreatedResource($paymentMethod);
     }
 
     /**
-     *  Query the payment methods by the specified filter
+     * Delete payment methods.
      *
-     *  @param string $filter - The filter to query the payment methods
-     *  @return App\Models\PaymentMethod
+     * @param array $paymentMethodIds
+     * @return array
      */
-    public function queryPaymentMethodsByFilter($filter)
+    public function deletePaymentMethods(array $paymentMethodIds): array
     {
-        //  Normalize the filter
-        $filter = $this->model->separateWordsThenLowercase($filter);
+        if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete payment methods'];
 
-        //  Normalize the usage
-        $usage = $this->model->separateWordsThenLowercase(request()->input('usage'));
+        $paymentMethods = $this->setQuery(PaymentMethod::query())->getPaymentMethodsByIds($paymentMethodIds);
 
-        //  Get the payment method eloquent instance
-        $paymentMethods = $this->model;
+        if($totalPaymentMethods  = $paymentMethods->count()) {
 
-        if($usage == strtolower(PaymentMethodAvailability::AvailableOnPerfectPay->value)) {
+            foreach($paymentMethods as $paymentMethod) {
+                $paymentMethod->delete();
+            }
 
-            $paymentMethods = $paymentMethods->availableOnPerfectPay();
+            return ['deleted' => true, 'message' => $totalPaymentMethods  .($totalPaymentMethods  == 1 ? ' payment method': ' payment methods') . ' deleted'];
 
-        }else if($usage == strtolower(PaymentMethodAvailability::AvailableInStores->value)) {
+        }else{
+            return ['deleted' => false, 'message' => 'No payment methods deleted'];
+        }
+    }
 
-            $paymentMethods = $paymentMethods->availableInStores();
-
-        }else if($usage == strtolower(PaymentMethodAvailability::AvailableOnUssd->value)) {
-
-            $paymentMethods = $paymentMethods->availableOnUssd();
-
+    /**
+     * Show payment method.
+     *
+     * @param PaymentMethod|string|null $paymentMethodId
+     * @return PaymentMethod|array|null
+     */
+    public function showPaymentMethod(PaymentMethod|string|null $paymentMethodId = null): PaymentMethod|array|null
+    {
+        if(($paymentMethod = $paymentMethodId) instanceof PaymentMethod) {
+            $paymentMethod = $this->applyEagerLoadingOnModel($paymentMethod);
+        }else {
+            $query = $this->getQuery() ?? PaymentMethod::query();
+            if($paymentMethodId) $query = $query->where('payment_methods.id', $paymentMethodId);
+            $this->setQuery($query)->applyEagerLoadingOnQuery();
+            $paymentMethod = $this->query->first();
         }
 
-        if($filter == strtolower(PaymentMethodFilter::Active->value)) {
+        return $this->showResourceExistence($paymentMethod);
+    }
 
-            $paymentMethods = $paymentMethods->active();
+    /**
+     * Update payment method.
+     *
+     * @param PaymentMethod|string $paymentMethodId
+     * @param array $data
+     * @return PaymentMethod|array
+     */
+    public function updatePaymentMethod(PaymentMethod|string $paymentMethodId, array $data): PaymentMethod|array
+    {
+        if(!$this->isAuthourized()) return ['updated' => false, 'message' => 'You do not have permission to update payment method'];
 
-        }else if($filter == strtolower(PaymentMethodFilter::Inactive->value)) {
+        $paymentMethod = $paymentMethodId instanceof PaymentMethod ? $paymentMethodId : PaymentMethod::find($paymentMethodId);
 
-            $paymentMethods = $paymentMethods->inactive();
+        if($paymentMethod) {
 
+            $paymentMethod->update($data);
+            return $this->showUpdatedResource($paymentMethod);
+
+        }else{
+            return ['updated' => false, 'message' => 'This payment method does not exist'];
         }
+    }
 
-        //  Return the payment methods query
-        return $paymentMethods;
+    /**
+     * Delete payment method.
+     *
+     * @param PaymentMethod|string $paymentMethodId
+     * @return array
+     */
+    public function deletePaymentMethod(PaymentMethod|string $paymentMethodId): array
+    {
+        if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete payment method'];
+
+        $paymentMethod = $paymentMethodId instanceof PaymentMethod ? $paymentMethodId : PaymentMethod::find($paymentMethodId);
+
+        if($paymentMethod) {
+            $deleted = $paymentMethod->delete();
+
+            if ($deleted) {
+                return ['deleted' => true, 'message' => 'Payment method deleted'];
+            }else{
+                return ['deleted' => false, 'message' => 'Payment method delete unsuccessful'];
+            }
+        }else{
+            return ['deleted' => false, 'message' => 'This payment method does not exist'];
+        }
+    }
+
+    /***********************************************
+     *             MISCELLANEOUS METHODS           *
+     **********************************************/
+
+    /**
+     * Query payment method by ID.
+     *
+     * @param string $paymentMethodId
+     * @param array $relationships
+     * @return Builder|Relation
+     */
+    public function queryPaymentMethodById(string $paymentMethodId, array $relationships = []): Builder|Relation
+    {
+        return $this->query->where('payment_methods.id', $paymentMethodId)->with($relationships);
+    }
+
+    /**
+     * Get payment method by ID.
+     *
+     * @param string $paymentMethodId
+     * @param array $relationships
+     * @return PaymentMethod|null
+     */
+    public function getPaymentMethodById(string $paymentMethodId, array $relationships = []): PaymentMethod|null
+    {
+        return $this->queryPaymentMethodById($paymentMethodId, $relationships)->first();
+    }
+
+    /**
+     * Query payment methods by IDs.
+     *
+     * @param array<string> $paymentMethodId
+     * @param string $relationships
+     * @return Builder|Relation
+     */
+    public function queryPaymentMethodsByIds($paymentMethodIds): Builder|Relation
+    {
+        return $this->query->whereIn('payment_methods.id', $paymentMethodIds);
+    }
+
+    /**
+     * Get payment methods by IDs.
+     *
+     * @param array<string> $paymentMethodId
+     * @param string $relationships
+     * @return Collection
+     */
+    public function getPaymentMethodsByIds($paymentMethodIds): Collection
+    {
+        return $this->queryPaymentMethodsByIds($paymentMethodIds)->get();
     }
 }

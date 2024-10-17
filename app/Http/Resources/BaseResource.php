@@ -272,7 +272,7 @@ class BaseResource extends JsonResource
              *  BaseResource and therefore run transformedStructure() to covert that value
              *  from its resource object format to its transformed array format before
              *  we proceed any further. This functionality is required for instance
-             *  in the HomeController.php apiHome() method. We return the following,
+             *  in the HomeController.php showApiHome() method. We return the following,
              *
              *  return (new HomeResource([
              *      'user' => new UserResource($authUser)
@@ -532,15 +532,16 @@ class BaseResource extends JsonResource
                  *  Note, you may transform Pivot models just as normal models provided
                  *  you create the associated model classes e.g
                  *
-                 *  $transformedRelationship = resolve($this->getRepositoryClass($relationship))->setModel($relationship)->transform();
+                 *  $resourceClass = $this->getResourceClass($relationship);
+                 *  $transformedRelationship = new $resourceClass($relationship);
                  */
                 $transformedRelationship = $relationship;
 
             //  If the nested relationship is a single BaseModel
             }else if($relationship instanceof BaseModel) {
 
-                //  Transform the single Model
-                $transformedRelationship = resolve($this->getRepositoryClass($relationship))->setModel($relationship)->transform();
+                $resourceClass = $this->getResourceClass($relationship);
+                $transformedRelationship = new $resourceClass($relationship);
 
             //  If the nested relationship is a Collection or Array of single Models
             }else if($relationship instanceof Collection || is_array($relationship)) {
@@ -554,8 +555,8 @@ class BaseResource extends JsonResource
 
                 }else{
 
-                    //  Transform the Collection of Models
-                    $transformedRelationship = resolve($this->getRepositoryClass($relationship->first()))->setCollection($relationship)->transform();
+                    $resourceCollectionClass = $this->getResourceCollectionClass($relationship->first());
+                    $transformedRelationship = new $resourceCollectionClass($relationship);
 
                 }
 
@@ -573,10 +574,11 @@ class BaseResource extends JsonResource
 
     }
 
-    private function getRepositoryClass($model) {
-        /**
-         *  Return a fully qualified class path e.g \App\Repositories\UserRepository
-         */
-        return '\App\Repositories\\' . class_basename($model).'Repository';
+    private function getResourceClass($model) {
+        return '\App\Http\Resources\\' . class_basename($model).'Resource';
+    }
+
+    private function getResourceCollectionClass($model) {
+        return '\App\Http\Resources\\' . class_basename($model).'Resources';
     }
 }

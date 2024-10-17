@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 enum PaymentMethodAvailability:string {
-    case AvailableOnUssd = 'Available On USSD';
-    case AvailableInStores = 'Available In Stores';
-    case AvailableOnPerfectPay = 'Available On PerfectPay';
+    case AvailableOnUssd = 'available on ussd';
+    case AvailableInStores = 'available in stores';
+    case AvailableOnPerfectPay = 'available on perfect pay';
 }

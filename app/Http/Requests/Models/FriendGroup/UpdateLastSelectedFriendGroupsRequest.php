@@ -25,7 +25,7 @@ class UpdateLastSelectedFriendGroupsRequest extends FormRequest
     {
         return [
             'friend_group_ids' => ['required', 'array'],
-            'friend_group_ids.*' => ['bail', 'required', 'integer', 'numeric', 'min:1', 'distinct']
+            'friend_group_ids.*' => ['bail', 'required', 'uuid', 'distinct']
         ];
     }
 

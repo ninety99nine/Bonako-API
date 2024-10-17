@@ -446,9 +446,9 @@ class PayloadLimiter
                          *  sometimes we might get objects as values e.g Values that
                          *  have been formated using:
                          *
-                         *  convertToMobileNumberFormat()
                          *  convertToCurrencyFormat()
                          *  convertToMoneyFormat()
+                         *  formatPhoneNumber()
                          *
                          *  These methods are found in the App\Traits\Base\BaseTrait.php file
                          *  and can be used to convert values into objects. Now when we need

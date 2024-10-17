@@ -35,14 +35,14 @@ class UserFactory extends Factory
      */
     public function generateBotswanaOrangeMobileNumber()
     {
-        $number = '267' . $this->uniqueRandomNumber(72000000, 72999999);
+        $number = $this->uniqueRandomNumber(72000000, 72999999);
 
         // Check if the number is within Orange range
         while (!$this->isBotswanaOrangeMobileNumber($number)) {
-            $number = '267' . $this->uniqueRandomNumber(72000000, 72999999);
+            $number = $this->uniqueRandomNumber(72000000, 72999999);
         }
 
-        return $number;
+        return '+267'.$number;
     }
 
     /**
@@ -66,26 +66,26 @@ class UserFactory extends Factory
     private function isBotswanaOrangeMobileNumber($number)
     {
         return (
-            (int) $number >= 26772000000 &&
-            (int) $number <= 26772999999 ||
-            (int) $number >= 26774300000 &&
-            (int) $number <= 26774499999 ||
-            (int) $number >= 26774800000 &&
-            (int) $number <= 26774899999 ||
-            (int) $number >= 26775000000 &&
-            (int) $number <= 26775399999 ||
-            (int) $number >= 26775700000 &&
-            (int) $number <= 26775799999 ||
-            (int) $number >= 26776300000 &&
-            (int) $number <= 26776599999 ||
-            (int) $number >= 26776900000 &&
-            (int) $number <= 26776999999 ||
-            (int) $number >= 26777400000 &&
-            (int) $number <= 26777599999 ||
-            (int) $number >= 26777900000 &&
-            (int) $number <= 26777999999 ||
-            (int) $number >= 26777300000 &&
-            (int) $number <= 26777399999
+            (int) $number >= 72000000 &&
+            (int) $number <= 72999999 ||
+            (int) $number >= 74300000 &&
+            (int) $number <= 74499999 ||
+            (int) $number >= 74800000 &&
+            (int) $number <= 74899999 ||
+            (int) $number >= 75000000 &&
+            (int) $number <= 75399999 ||
+            (int) $number >= 75700000 &&
+            (int) $number <= 75799999 ||
+            (int) $number >= 76300000 &&
+            (int) $number <= 76599999 ||
+            (int) $number >= 76900000 &&
+            (int) $number <= 76999999 ||
+            (int) $number >= 77400000 &&
+            (int) $number <= 77599999 ||
+            (int) $number >= 77900000 &&
+            (int) $number <= 77999999 ||
+            (int) $number >= 77300000 &&
+            (int) $number <= 77399999
         );
     }
 }

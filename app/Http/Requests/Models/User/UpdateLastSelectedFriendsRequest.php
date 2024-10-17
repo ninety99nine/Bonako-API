@@ -25,7 +25,7 @@ class UpdateLastSelectedFriendsRequest extends FormRequest
     {
         return [
             'friend_user_ids' => ['required', 'array'],
-            'friend_user_ids.*' => ['bail', 'required', 'integer', 'numeric', 'min:1', 'distinct']
+            'friend_user_ids.*' => ['bail', 'required', 'uuid', 'distinct']
         ];
     }
 

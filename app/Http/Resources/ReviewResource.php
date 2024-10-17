@@ -13,4 +13,15 @@ class ReviewResource extends BaseResource
         'user' => UserRepository::class,
         'store' => StoreRepository::class,
     ];
+
+    public function setLinks()
+    {
+        $review = $this->resource;
+
+        $this->resourceLinks = [
+            new ResourceLink('show.review', route('show.review', ['reviewId' => $review->id])),
+            new ResourceLink('update.review', route('update.review', ['reviewId' => $review->id])),
+            new ResourceLink('delete.review', route('delete.review', ['reviewId' => $review->id])),
+        ];
+    }
 }

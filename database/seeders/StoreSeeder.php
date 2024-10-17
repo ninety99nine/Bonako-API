@@ -7,7 +7,7 @@ use App\Models\Store;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Database\Seeder;
-use App\Models\SubscriptionPlan;
+use App\Models\PricingPlan;
 use Illuminate\Support\Facades\DB;
 use App\Repositories\StoreRepository;
 use Database\Seeders\Traits\SeederHelper;
@@ -74,12 +74,12 @@ class StoreSeeder extends Seeder
 
                 )->create();
 
-                //  Get a random subscription plan
-                $subcriptionPlan = SubscriptionPlan::find(rand(1, SubscriptionPlan::count()));
+                //  Get a random pricing plan
+                $pricingPlan = PricingPlan::find(rand(1, PricingPlan::count()));
 
                 //  Create a new request with the subscription plan and payment method
                 $request = (new Request)->merge([
-                    'subscription_plan_id' => $subcriptionPlan->id,
+                    'pricing_plan' => $pricingPlan->id,
                     'payment_method_id' => 1
                 ]);
 
@@ -103,7 +103,7 @@ class StoreSeeder extends Seeder
                         if(rand(1, 100) > 80) {
 
                             //  Get a random follower status
-                            $followerStatus = collect(UserStoreAssociation::FOLLOWER_STATUSES)->random();
+                            $followerStatus = collect(UserStoreAssociation::FOLLOWER_STATUSES())->random();
 
                         }else{
 
@@ -116,7 +116,7 @@ class StoreSeeder extends Seeder
                         if(rand(1, 100) > 80) {
 
                             //  Get a random team member role except the creator role
-                            $teamMemberRole = collect(UserStoreAssociation::TEAM_MEMBER_ROLES)->filter(function($role) {
+                            $teamMemberRole = collect(UserStoreAssociation::TEAM_MEMBER_ROLES())->filter(function($role) {
 
                                 //  Must not be a creator
                                 return $role != 'Creator';
@@ -124,7 +124,7 @@ class StoreSeeder extends Seeder
                             })->random();
 
                             //  Get a random team member status
-                            $teamMemberStatus = collect(UserStoreAssociation::TEAM_MEMBER_STATUSES)->random();
+                            $teamMemberStatus = collect(UserStoreAssociation::TEAM_MEMBER_STATUSES())->random();
 
                             //  Get the available store permissions
                             $storePermissions = $storeRepository->extractPermissions(['*']);

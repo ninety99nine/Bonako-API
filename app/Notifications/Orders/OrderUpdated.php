@@ -5,11 +5,10 @@ namespace App\Notifications\Orders;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\Store;
+use App\Models\Customer;
 use App\Models\Occasion;
 use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
-use Illuminate\Notifications\Notification;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\SlackMessage;
 use App\Notifications\Orders\Base\OrderNotification;
 use NotificationChannels\OneSignal\OneSignalChannel;
@@ -27,9 +26,9 @@ class OrderUpdated extends OrderNotification
 
     public Store $store;
     public Order $order;
-    public User $customer;
-    public ?Occasion $occasion;
     public User $updatedByUser;
+    public ?Customer $customer;
+    public ?Occasion $occasion;
 
     /**
      * Create a new notification instance.
@@ -68,7 +67,6 @@ class OrderUpdated extends OrderNotification
         $customer = $this->customer;
         $occasion = $this->occasion;
         $updatedByUser = $this->updatedByUser;
-        $isAssociatedAsFriend = $this->checkIfAssociatedAsFriend($order, $notifiable);
         $isAssociatedAsCustomer = $this->checkIfAssociatedAsCustomer($order, $notifiable);
 
         return [
@@ -80,14 +78,12 @@ class OrderUpdated extends OrderNotification
                 'id' => $order->id,
                 'number' => $order->number,
                 'summary' => $order->summary,
-                'isAssociatedAsFriend' => $isAssociatedAsFriend,
                 'isAssociatedAsCustomer' => $isAssociatedAsCustomer,
-                'orderForTotalFriends' => $order->order_for_total_friends,
             ],
             'customer' => [
-                'id' => $customer->id,
-                'name' => $customer->name,
-                'firstName' => $customer->first_name,
+                'id' => $customer?->id,
+                'name' => $order->customer_name,
+                'firstName' => $order->customer_first_name,
             ],
             'updatedByUser' => [
                 'id' => $updatedByUser->id,
@@ -107,11 +103,8 @@ class OrderUpdated extends OrderNotification
     {
         return (new SlackMessage)->content($this->order->summary)->attachment(function ($attachment) {
 
-            $totalUsers = $this->order->order_for_total_users;
-
             $attachment->fields([
-                'Customer' => $this->order->customer_name,
-                'For' => $totalUsers == 1 ? $totalUsers.' person' : $totalUsers.' people',
+                'Customer' => $this->order->customer_name
             ]);
 
         });

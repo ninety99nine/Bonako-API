@@ -3,9 +3,8 @@
 namespace App\Observers;
 
 use App\Enums\CacheName;
-use App\Helpers\CacheManager;
 use App\Models\FriendGroup;
-use Illuminate\Support\Facades\Cache;
+use App\Helpers\CacheManager;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\FriendGroups\FriendGroupDeleted;
 
@@ -33,7 +32,7 @@ class FriendGroupObserver
          *  We need to capture the friend group users before the friend group is deleted.
          *  This is because once the friend group is deleted, the user and friend group associations
          *  are automatically deleted based on the cascadeOnDelete relationship that is set on the
-         *  user_friend_group_association table schema. This means that while trying to access the
+         *  friend_group_user_association table schema. This means that while trying to access the
          *  users on the deleted() event using $friendGroup->users(), we should expect no results
          *  since the relationship would have already been destroyed. We can capture the users
          *  before deleting the friend group then access these same users after deleting the

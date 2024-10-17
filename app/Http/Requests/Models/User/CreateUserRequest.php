@@ -12,6 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class CreateUserRequest extends FormRequest
 {
     use BaseTrait;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -19,7 +20,6 @@ class CreateUserRequest extends FormRequest
      */
     public function authorize()
     {
-        //  Everyone is authorized to make this request
         return true;
     }
 
@@ -37,10 +37,10 @@ class CreateUserRequest extends FormRequest
         $requestIsFromUssdServer = $ussdService->verifyIfRequestFromUssdServer();
 
         return [
-            'mobile_number' => ['bail', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11', 'unique:users,mobile_number'],
             'first_name' => ['bail', 'required', 'string', 'min:'.User::FIRST_NAME_MIN_CHARACTERS, 'max:'.User::FIRST_NAME_MAX_CHARACTERS],
             'last_name' => ['bail', 'required', 'string', 'min:'.User::LAST_NAME_MIN_CHARACTERS, 'max:'.User::LAST_NAME_MAX_CHARACTERS],
             'about_me' => ['bail', 'nullable', 'string', 'min:'.User::ABOUT_ME_MIN_CHARACTERS, 'max:'.User::ABOUT_ME_MAX_CHARACTERS],
+            'mobile_number' => ['bail', 'required', 'phone', 'unique:users,mobile_number'],
             /**
              *  Since the creation of an account can be done by any user creating their
              *  own profile, or by a Super Admin creating a profile on be-half of other
@@ -70,7 +70,7 @@ class CreateUserRequest extends FormRequest
                 $authUserIsSuperAdmin ? [] : ['confirmed']
             ),
             'verification_code' => !$requestIsFromUssdServer && !$authUserIsSuperAdmin ? [
-                'bail', 'required', 'string', 'size:'.MobileVerification::CODE_CHARACTERS, 'regex:/^[0-9]+$/',
+                'bail', 'required', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS,
                 Rule::exists('mobile_verifications', 'code')->where('mobile_number', request()->input('mobile_number')),
             ] : []
         ];
@@ -83,11 +83,7 @@ class CreateUserRequest extends FormRequest
      */
     public function messages()
     {
-        $mobileNumberWithoutExtension = $this->convertToMobileNumberFormat(request()->input('mobile_number'))->withoutExtension;
-
         return [
-            'mobile_number.regex' => 'The mobile number must only contain numbers',
-            'mobile_number.unique' => 'An account using the mobile number '.$mobileNumberWithoutExtension.' already exists.',
             'verification_code.required' => 'The verification code is required to verify ownership of the mobile number ' . request()->input('mobile_number'),
             'verification_code.exists' => 'The verification code is not valid.',
             'verification_code.regex' => 'The verification code must only contain numbers',
@@ -101,8 +97,6 @@ class CreateUserRequest extends FormRequest
      */
     public function attributes()
     {
-        return [
-
-        ];
+        return [];
     }
 }

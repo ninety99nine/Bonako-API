@@ -31,11 +31,7 @@ class AddressMetadata implements CastsAttributes
              *
              *  Reference: https://www.php.net/manual/en/function.json-decode.php
              */
-            $data = json_decode($value, true);
-
-            if( isset($data['mobile_number']) && !empty($data['mobile_number']) ) {
-                $data['mobile_number'] = $this->convertToMobileNumberFormat($data['mobile_number']);
-            }
+            return json_decode($value, true);
 
             return $data;
 

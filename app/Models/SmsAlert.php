@@ -25,31 +25,6 @@ class SmsAlert extends BaseModel
     }
 
     /**
-     *  Returns the shortcodes owned by this SMS Alert
-     */
-    public function shortcodes()
-    {
-        return $this->morphMany(Shortcode::class, 'owner');
-    }
-
-    /**
-     *  Returns the shortcode owned by this SMS Alert
-     */
-    public function shortcode()
-    {
-        return $this->morphOne(Shortcode::class, 'owner');
-    }
-
-    /**
-     *  Returns the latest payment shortcode owned by this SMS Alert
-     *  and reserved for the current authenticated user
-     */
-    public function authPaymentShortcode()
-    {
-        return $this->shortcode()->action('Pay')->notExpired()->belongsToAuth()->latest();
-    }
-
-    /**
      *  Returns the transactions owned by this SMS Alert
      */
     public function transactions()

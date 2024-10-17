@@ -5,9 +5,7 @@ namespace App\Http\Requests\Models\Store;
 use App\Models\Store;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\File;
 use Illuminate\Foundation\Http\FormRequest;
-use App\Models\Pivots\StorePaymentMethodAssociation;
 
 class UpdateStoreRequest extends FormRequest
 {
@@ -42,49 +40,6 @@ class UpdateStoreRequest extends FormRequest
                 ]);
             }
 
-            /**
-             *  Convert the "banking_with" to the correct format if it has been set on the request inputs
-             *
-             *  Example: convert "Stanbic Bank" or "stanbicBank" into "buy now"
-             */
-            if($this->has('banking_with')) {
-                $this->merge([
-                    'banking_with' => $this->separateWordsThenLowercase($this->get('banking_with'))
-                ]);
-            }
-
-            /**
-             *  Convert the "registered_with_cipa_as" to the correct format if it has been set on the request inputs
-             *
-             *  Example: convert "Company" or "CompanY" into "company"
-             */
-            if($this->has('registered_with_cipa_as')) {
-                $this->merge([
-                    'registered_with_cipa_as' => $this->separateWordsThenLowercase($this->get('registered_with_cipa_as'))
-                ]);
-            }
-
-            /**
-             *  Convert the accepted boolean input values (such as 'true', 'false', 1, 0, "1", and "0")
-             *  into actual boolean values (true or false). This ensures consistent handling of the
-             *  boolean fields throughout the validation process.
-             *
-             *  This is useful for checking the following:
-             *
-             *  required_if:registered_with_bank,true
-             */
-            if($this->has('registered_with_bank')) {
-                $this->merge([
-                    'registered_with_bank' => (bool) $this->get('registered_with_bank')
-                ]);
-            }
-
-            if($this->has('registered_with_cipa')) {
-                $this->merge([
-                    'registered_with_cipa' => (bool) $this->get('registered_with_cipa')
-                ]);
-            }
-
         } catch (\Throwable $th) {
 
         }
@@ -99,9 +54,8 @@ class UpdateStoreRequest extends FormRequest
      */
     public function rules()
     {
-        $bankingWith = collect(Store::BANKING_WITH)->map(fn($filter) => strtolower($filter));
-        $registeredWithCipa = collect(Store::REGISTERED_WITH_CIPA_AS)->map(fn($filter) => strtolower($filter));
-        $callToActionOptions = collect(Store::CALL_TO_ACTION_OPTIONS)->map(fn($filter) => strtolower($filter));
+        $storeId = request()->storeId;
+        $callToActionOptions = collect(Store::CALL_TO_ACTION_OPTIONS())->map(fn($filter) => strtolower($filter));
 
         /*
          *  Note that image upload is not possible on a PUT/PATCH request, which is why
@@ -112,24 +66,21 @@ class UpdateStoreRequest extends FormRequest
          */
         return [
             'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
-            'name' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::NAME_MIN_CHARACTERS, 'max:'.Store::NAME_MAX_CHARACTERS, Rule::unique('stores')->ignore(request()->store->id)],
+            'name' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::NAME_MIN_CHARACTERS, 'max:'.Store::NAME_MAX_CHARACTERS],
+            'alias' => [
+                'bail', 'sometimes', 'required', 'string', 'min:'.Store::ALIAS_MIN_CHARACTERS, 'max:'.Store::ALIAS_MAX_CHARACTERS,
+                Rule::unique('stores')->ignore($storeId)
+            ],
             'call_to_action' => ['bail', 'sometimes', 'required', Rule::in(collect($callToActionOptions))],
             'description' => ['bail', 'sometimes', 'nullable', 'min:'.Store::DESCRIPTION_MIN_CHARACTERS, 'max:'.Store::DESCRIPTION_MAX_CHARACTERS],
             'sms_sender_name' => [
                 'bail', 'sometimes', 'nullable', 'min:'.Store::SMS_SENDER_NAME_MIN_CHARACTERS, 'max:'.Store::SMS_SENDER_NAME_MAX_CHARACTERS,
             ],
-            'mobile_number' => ['bail', 'sometimes', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
             'currency' => [
                 'bail', 'sometimes', 'required', 'string', 'size:3',
                 Rule::in(collect($this->supportedCurrencySymbols)->keys())
             ],
             'verified' => ['exclude'],
-            'registered_with_bank' => ['sometimes', 'boolean'],
-            'banking_with' => ['bail', 'string', 'required_if:registered_with_bank,true', Rule::in($bankingWith)],
-            'registered_with_cipa' => ['sometimes', 'boolean'],
-            'registered_with_cipa_as' => ['bail', 'string', 'required_if:registered_with_cipa,true', Rule::in($registeredWithCipa)],
-            'company_uin' => ['bail', 'sometimes', 'alpha_num', 'starts_with:BW', 'size:'.Store::COMPANY_UIN_CHARACTERS],
-            'number_of_employees' => ['bail', 'sometimes', 'integer', 'numeric', 'min:'.Store::NUMBER_OF_EMPLOYEES_MIN_CHARACTERS, 'max:'.Store::NUMBER_OF_EMPLOYEES_MAX_CHARACTERS],
             'online' => ['bail', 'sometimes', 'required', 'boolean'],
             'offline_message' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::OFFLINE_MESSAGE_MIN_CHARACTERS, 'max:'.Store::OFFLINE_MESSAGE_MAX_CHARACTERS],
             'identified_orders' => ['bail', 'sometimes', 'required', 'boolean'],
@@ -149,26 +100,20 @@ class UpdateStoreRequest extends FormRequest
             'pickup_destinations.*.name' => ['bail', 'required', 'string', 'min:'.Store::PICKUP_DESTINATION_NAME_MIN_CHARACTERS, 'max:'.Store::PICKUP_DESTINATION_NAME_MAX_CHARACTERS],
             'pickup_destinations.*.address' => ['bail', 'nullable', 'min:'.Store::PICKUP_DESTINATION_ADDRESS_MIN_CHARACTERS, 'max:'.Store::PICKUP_DESTINATION_ADDRESS_MAX_CHARACTERS],
 
-            'perfect_pay_enabled' => ['bail', 'sometimes', 'required', 'boolean'],
-            'orange_money_payment_enabled' => ['bail', 'sometimes', 'required', 'boolean'],
-            'orange_money_merchant_code' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::ORANGE_MONEY_MERCHANT_CODE_MIN_CHARACTERS, 'max:'.Store::ORANGE_MONEY_MERCHANT_CODE_MAX_CHARACTERS],
-            'dpo_payment_enabled' => ['bail', 'sometimes', 'required', 'boolean'],
-            'dpo_company_token' => ['bail', 'sometimes', 'required', 'string', 'min:'.Store::DPO_COMPANY_TOKEN_MIN_CHARACTERS, 'max:'.Store::DPO_COMPANY_TOKEN_MAX_CHARACTERS],
-
-            'allow_deposit_payments' => ['bail', 'required', 'boolean'],
+            'allow_deposit_payments' => ['bail', 'sometimes', 'required', 'boolean'],
             'deposit_percentages' => ['bail', 'sometimes', 'array'],
-            'deposit_percentages.*' => ['bail', 'required', 'integer', 'numeric', 'min:5', 'max:95'],
+            'deposit_percentages.*' => ['bail', 'required', 'integer', 'min:5', 'max:95'],
 
-            'allow_installment_payments' => ['bail', 'required', 'boolean'],
+            'allow_installment_payments' => ['bail', 'sometimes', 'required', 'boolean'],
             'installment_percentages' => ['bail', 'sometimes', 'array'],
-            'installment_percentages.*' => ['bail', 'required', 'integer', 'numeric', 'min:5', 'max:95'],
+            'installment_percentages.*' => ['bail', 'required', 'integer', 'min:5', 'max:95'],
 
             'supported_payment_methods' => ['bail', 'sometimes', 'array'],
             'supported_payment_methods.*.id' => [
-                'bail', 'required', 'integer', 'numeric', 'min:1', Rule::exists('payment_methods')
+                'bail', 'required', 'uuid', Rule::exists('payment_methods')
             ],
             'supported_payment_methods.*.active' => ['bail', 'required', 'boolean'],
-            'supported_payment_methods.*.instruction' => ['bail', 'nullable', 'string', 'max:'.StorePaymentMethodAssociation::SUPPORTED_PAYMENT_METHOD_INSTRUCTION_MAX_CHARACTERS],
+            'supported_payment_methods.*.instruction' => ['bail', 'nullable', 'string'],
         ];
     }
 
@@ -180,9 +125,7 @@ class UpdateStoreRequest extends FormRequest
     public function messages()
     {
         return [
-            'call_to_action.in' => 'Answer "'.collect(Store::CALL_TO_ACTION_OPTIONS)->join('", "', '" or "').' to indicate the call to action',
-            'banking_with.in' => 'Answer "'.collect(Store::BANKING_WITH)->join('", "', '" or "').'" to indicate the banking instruction',
-            'registered_with_cipa_as.in' => 'Answer "'.collect(Store::REGISTERED_WITH_CIPA_AS)->join('", "', '" or "').'" to indicate type of entity registration with CIPA (Companies and Intellectual Property Authority)',
+            'call_to_action.in' => 'Answer "'.collect(Store::CALL_TO_ACTION_OPTIONS())->join('", "', '" or "').' to indicate the call to action',
         ];
     }
 

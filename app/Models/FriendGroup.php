@@ -3,10 +3,9 @@
 namespace App\Models;
 
 use App\Models\Base\BaseModel;
-use App\Traits\UserFriendGroupAssociationTrait;
+use App\Traits\FriendGroupUserAssociationTrait;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-use App\Models\Pivots\UserFriendGroupAssociation;
-use App\Models\Pivots\FriendGroupOrderAssociation;
+use App\Models\Pivots\FriendGroupUserAssociation;
 use App\Models\Pivots\FriendGroupStoreAssociation;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class FriendGroup extends BaseModel
 {
-    use HasFactory, UserFriendGroupAssociationTrait;
+    use HasFactory, FriendGroupUserAssociationTrait;
 
     const FILTERS = ['Groups', 'Shared Groups'];    //  or ['Created', 'Shared']
     const MEMBER_FILTERS = ['All', 'Creator', 'Admins', 'Members'];
@@ -23,10 +22,11 @@ class FriendGroup extends BaseModel
     protected $casts = [
         'shared' => 'boolean',
         'can_add_friends' => 'boolean',
+        'created_by_super_admin' => 'boolean',
     ];
 
     protected $fillable = [
-        'emoji', 'name', 'description', 'shared', 'can_add_friends'
+        'emoji', 'name', 'description', 'shared', 'can_add_friends', 'created_by_super_admin'
     ];
 
     /**
@@ -56,10 +56,20 @@ class FriendGroup extends BaseModel
      */
     public function users()
     {
-        return $this->belongsToMany(User::class, 'user_friend_group_association', 'friend_group_id', 'user_id')
-                    ->withPivot(UserFriendGroupAssociation::VISIBLE_COLUMNS)
-                    ->using(UserFriendGroupAssociation::class)
-                    ->as('user_friend_group_association');
+        return $this->belongsToMany(User::class, 'friend_group_user_association', 'friend_group_id', 'user_id')
+                    ->withPivot(FriendGroupUserAssociation::VISIBLE_COLUMNS)
+                    ->using(FriendGroupUserAssociation::class)
+                    ->as('friend_group_user_association');
+    }
+
+    /**
+     *  Get the Users of this Friend Group
+     *
+     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
+     */
+    public function nonGuestUsers()
+    {
+        return $this->users()->notGuest();
     }
 
     /**
@@ -82,10 +92,7 @@ class FriendGroup extends BaseModel
      */
     public function orders()
     {
-        return $this->belongsToMany(Order::class, 'friend_group_order_association', 'friend_group_id', 'order_id')
-                    ->withPivot(FriendGroupOrderAssociation::VISIBLE_COLUMNS)
-                    ->using(FriendGroupOrderAssociation::class)
-                    ->as('friend_group_order_association');
+        return $this->hasMany(Order::class);
     }
 
     /****************************

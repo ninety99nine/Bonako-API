@@ -5,6 +5,7 @@ namespace App\Models\Base;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 /**
  *  Allows the model to define fields that are transformable
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 abstract class BaseModel extends Model
 {
-    use BaseTrait;
+    use HasUuids, BaseTrait;
 
     /*
      *  Scope: Return results that are being searched.

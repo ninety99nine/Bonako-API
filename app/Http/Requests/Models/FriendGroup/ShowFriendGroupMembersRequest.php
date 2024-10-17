@@ -24,7 +24,7 @@ class ShowFriendGroupMembersRequest extends FormRequest
     public function rules()
     {
         return [
-            'except_user_id' => ['sometimes', 'required', 'integer', 'numeric', 'min:1'],
+            'except_user_id' => ['sometimes', 'required', 'uuid'],
         ];
     }
 

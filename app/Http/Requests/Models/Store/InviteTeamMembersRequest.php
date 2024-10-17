@@ -81,7 +81,7 @@ class InviteTeamMembersRequest extends FormRequest
         return [
 
             'mobile_numbers' => ['required', 'array'],
-            'mobile_numbers.*' => ['bail', 'string', 'distinct', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
+            'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
 
             'permissions' => ['required', 'array'],
             'permissions.*' => ['bail', 'string',  Rule::in($permissions)]
@@ -97,8 +97,6 @@ class InviteTeamMembersRequest extends FormRequest
     public function messages()
     {
         return [
-            'mobile_numbers.*.regex' => 'The mobile number must only contain numbers',
-
             'permissions.*.string' => 'The following permissions are allowed: '.collect($this->permissions)->join(', ', ' or '),
             'permissions.*.in' => 'The following permissions are allowed: '.collect($this->permissions)->join(', ', ' or ')
         ];

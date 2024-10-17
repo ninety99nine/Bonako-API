@@ -25,21 +25,17 @@ class AiMessage extends BaseModel
     protected $tranformableCasts = [];
 
     protected $fillable = [
-        'user_content', 'assistant_content', 'category_id', 'user_id',
-        'free_tokens_used', 'response_tokens_used', 'request_tokens_used',
-        'total_tokens_used', 'remaining_paid_tokens', 'request_at', 'response_at'
+        'user_content', 'assistant_content', 'prompt_tokens', 'completion_tokens', 'total_tokens',
+        'request_at', 'response_at', 'ai_message_category_id', 'ai_assistant_id'
     ];
 
-    public function user()
+    public function aiAssistant()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(AiAssistant::class);
     }
 
-    /**
-     *  Get the AI message category for this AI message
-     */
     public function aiMessageCategory()
     {
-        return $this->belongsTo(AiMessageCategory::class, 'category_id');
+        return $this->belongsTo(AiMessageCategory::class);
     }
 }

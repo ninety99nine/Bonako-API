@@ -47,7 +47,7 @@ class RemoveFriendGroupMembersRequest extends FormRequest
     {
         return [
             'mobile_numbers' => ['required', 'array'],
-            'mobile_numbers.*' => ['bail', 'string', 'distinct', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
+            'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
         ];
     }
 
@@ -58,9 +58,7 @@ class RemoveFriendGroupMembersRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-            'mobile_numbers.*.regex' => 'The mobile number must only contain numbers',
-        ];
+        return [];
     }
 
     /**

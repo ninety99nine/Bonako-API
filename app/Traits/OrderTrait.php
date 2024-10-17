@@ -2,97 +2,17 @@
 
 namespace App\Traits;
 
-use App\Models\Cart;
-use App\Models\Order;
-use App\Models\PaymentMethod;
-use App\Models\ProductLine;
-use App\Models\Store;
-use App\Models\Transaction;
-use App\Models\User;
-use App\Traits\Base\BaseTrait;
 use Carbon\Carbon;
+use App\Models\User;
+use App\Models\Order;
+use App\Models\Store;
+use App\Models\Customer;
+use App\Models\Transaction;
+use App\Traits\Base\BaseTrait;
 
 trait OrderTrait
 {
     use BaseTrait;
-
-    /**
-     *  Make a summary out of the cart product lines
-     */
-    public function generateSummary()
-    {
-        /**
-         *  @var Cart $cart
-         */
-        $cart = $this->cart;
-
-        //  Make and return the order summary
-        $this->summary = collect($cart->productLines)->sortBy('position')->map(function(ProductLine $productLine) {
-
-            if($productLine->quantity >= 2) {
-
-                return $productLine->quantity .'x('. $productLine->name.')';
-
-            }else{
-
-                return $productLine->name;
-
-            }
-
-        })->join(', ', ' and ');
-
-        //  If the customer is paying for delivery
-        if( $this->collection_type == 'Delivery' && $cart->allow_free_delivery == false ) {
-
-            $this->summary .= ' plus delivery';
-
-            //  If the delivery destination is provided
-            if( !is_null($this->destination_name) ) {
-
-                $this->summary .= ' to ' . ucwords($this->destination_name);
-
-            }
-
-        }
-
-        $this->summary .= ' for ' . $cart->grand_total->amountWithCurrency;
-
-        //  If the customer claimed a discount and free delivery
-        if( $cart->coupon_and_sale_discount_total->amount > 0 && $cart->allow_free_delivery ) {
-
-            $this->summary .= ' while saving ' . $cart->coupon_and_sale_discount_total->amountWithCurrency . ' plus free delivery';
-
-        //  If the customer claimed a discount
-        }else if( $cart->coupon_and_sale_discount_total->amount > 0 ) {
-
-            $this->summary .= ' while saving ' . $cart->coupon_and_sale_discount_total->amountWithCurrency;
-
-        }
-
-        //  If the customer claimed free delivery
-        if( $this->collection_type == 'Delivery' && $cart->allow_free_delivery ) {
-
-            $this->summary .= ' plus free delivery';
-
-            //  If the delivery destination is provided
-            if( !is_null($this->destination_name) ) {
-
-                $this->summary .= ' to ' . ucwords($this->destination_name);
-
-            }
-
-        }
-
-        //  If the customer is picking up
-        if( $this->collection_type == 'Pickup' && !is_null($this->destination_name)) {
-
-            $this->summary .= ', pickup from ' . ucwords($this->destination_name);
-
-        }
-
-        //  Return the current Model instance
-        return $this;
-    }
 
     /**
      *  Check if this order is paid
@@ -216,46 +136,6 @@ trait OrderTrait
     }
 
     /**
-     *  Check if this order is an order for "me"
-     *
-     *  @return bool
-     */
-    public function orderingForMe()
-    {
-        return strtolower($this->getRawOriginal('order_for')) === 'me';
-    }
-
-    /**
-     *  Check if this order is an order for "me and friends"
-     *
-     *  @return bool
-     */
-    public function orderingForMeAndFriends()
-    {
-        return strtolower($this->getRawOriginal('order_for')) === 'me and friends';
-    }
-
-    /**
-     *  Check if this order is an order for "friends only"
-     *
-     *  @return bool
-     */
-    public function orderingForFriendsOnly()
-    {
-        return strtolower($this->getRawOriginal('order_for')) === 'friends only';
-    }
-
-    /**
-     *  Check if this order is an order for "business"
-     *
-     *  @return bool
-     */
-    public function orderingForBusiness()
-    {
-        return strtolower($this->getRawOriginal('order_for')) === 'business';
-    }
-
-    /**
      *  Make this order anonymous by overiding information
      *  that would expose the identity of the customer
      *
@@ -266,8 +146,8 @@ trait OrderTrait
         $this->customer_display_name = null;
         $this->customer_first_name = null;
         $this->customer_last_name = null;
-        $this->customer_user_id = null;
         $this->customer_name = null;
+        $this->customer_id = null;
         $this->number = null;
 
         return $this;
@@ -278,11 +158,17 @@ trait OrderTrait
      *
      *  @return string
      */
-    public function craftNewOrderForSellerMessage(Store $store, User $customer) {
+    public function craftNewOrderForSellerMessage(Store $store) {
         if(empty($store->sms_sender_name)) {
-            return 'New order: '.$store->name_with_emoji.', '.$this->summary.' from ' . $customer->name.' '.$customer->mobile_number->withoutExtension.'. Order #'.$this->number;
+            return 'New order: '.$store->name_with_emoji.', '.
+                   $this->summary.' from ' . $this->customer_name.
+                   ($this->customer_mobile_number == null ? '' : ' '.$this->customer_mobile_number->formatNational()).
+                   '. Order #'.$this->number;
         }else{
-            return 'New order: '.$this->summary.' from ' . $customer->name.' '.$customer->mobile_number->withoutExtension.'. Order #'.$this->number;
+            return 'New order: '.$this->summary.
+                   ' from ' . $this->customer_name.
+                   ($this->customer_mobile_number == null ? '' : ' '.$this->customer_mobile_number->formatNational()).
+                   '. Order #'.$this->number;
         }
     }
 
@@ -293,57 +179,22 @@ trait OrderTrait
      */
     public function craftNewOrderForCustomerMessage(Store $store) {
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', you ordered '.$this->summary.'. Reach us on '.$store->mobile_number->withoutExtension.'. Order #'.$this->number;
+            return $store->name_with_emoji.', you ordered '.$this->summary.'. Reach us on '.$store->mobile_number?->formatNational().'. Order #'.$this->number;
         }else{
-            return 'You ordered '.$this->summary.'. Reach us on '.$store->mobile_number->withoutExtension.'. Order #'.$this->number;
+            return 'You ordered '.$this->summary.'. Reach us on '.$store->mobile_number?->formatNational().'. Order #'.$this->number;
         }
     }
 
     /**
-     *  Craft the new order sms messsage to send to the friend
+     *  Craft the order collection code messsage
      *
      *  @return string
      */
-    public function craftNewOrderForFriendMessage($friend, ) {
-
-        $message = $this->customer->name.' ordered '.$this->summary;
-
-        if($this->orderingForMeAndFriends()) {
-
-            $message .= ' with you';
-
-        }else if($this->orderingForFriendsOnly()) {
-
-            $message .= ' for you';
-
-        }
-
-        if( $this->relationLoaded('friends') ) {
-            $otherFriends = collect($this->friends)->where('id', '!=', $friend);
+    public function craftOrderCollectionCodeMessage(Store $store) {
+        if(empty($store->sms_sender_name)) {
+            return $store->name_with_emoji.', your collection code for Order #'.$this->number.' is ' .$this->collection_code;
         }else{
-            $otherFriends = $this->friends()->select('users.id', 'users.first_name')->where('users.id', '!=', $friend);
-        }
-
-        if($this->order_for_total_friends == 2) {
-
-            $message .= ' and ' . $otherFriends->first()->first_name;
-
-        }else if($this->order_for_total_friends == 3) {
-
-            $message .= ', ' . $otherFriends->pluck('first_name')->join(', ', ' and ');
-
-        }else if($this->order_for_total_friends > 3) {
-
-            $total = $otherFriends->count() - 1;
-
-            $message .= ' and ' . $total . ' other people';
-
-        }
-
-        if(empty($this->store->sms_sender_name)) {
-            return $message.'. Reach '.$this->customer->first_name.' on '.$this->customer->mobile_number->withoutExtension.' or the store on '.$this->customer->mobile_number->withoutExtension.'. Order #'.$this->number;
-        }else{
-            return $message.'. Reach '.$this->customer->first_name.' on '.$this->customer->mobile_number->withoutExtension.' or our store on '.$this->customer->mobile_number->withoutExtension.'. Order #'.$this->number;
+            return 'Your collection code for Order #'.$this->number.' is ' .$this->collection_code;
         }
     }
 
@@ -354,9 +205,9 @@ trait OrderTrait
      */
     public function craftOrderUpdatedMessage(Store $store, User $updatedByUser) {
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.'Order # '.$this->number.' updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+            return $store->name_with_emoji.', '.'Order #'.$this->number.' updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$this->summary;
         }else{
-            return 'Order # '.$this->number.' updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+            return 'Order #'.$this->number.' updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$this->summary;
         }
     }
 
@@ -367,9 +218,9 @@ trait OrderTrait
      */
     public function craftOrderStatusUpdatedMessage(Store $store, User $updatedByUser) {
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.'Order # '.$this->number.' is '.$this->statusRawOriginalLowercase().', updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+            return $store->name_with_emoji.', '.'Order #'.$this->number.' is '.$this->statusRawOriginalLowercase().', updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$this->summary;
         }else{
-            return 'Order # '.$this->number.' is '.$this->statusRawOriginalLowercase().', updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+            return 'Order #'.$this->number.' is '.$this->statusRawOriginalLowercase().', updated by '.$updatedByUser->name.' ('.$updatedByUser->mobile_number->formatNational().') Items: '.$this->summary;
         }
     }
 
@@ -380,9 +231,9 @@ trait OrderTrait
      */
     public function craftOrderSeenMessage(Store $store, User $seenByUser) {
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.'Order # '.$this->number.' has been seen by '.$seenByUser->name.' ('.$seenByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+            return $store->name_with_emoji.', '.'Order #'.$this->number.' has been seen by '.$seenByUser->name.' ('.$seenByUser->mobile_number->formatNational().') Items: '.$this->summary;
         }else{
-            return 'Order # '.$this->number.' has been seen by '.$seenByUser->name.' ('.$seenByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+            return 'Order #'.$this->number.' has been seen by '.$seenByUser->name.' ('.$seenByUser->mobile_number->formatNational().') Items: '.$this->summary;
         }
     }
 
@@ -391,11 +242,11 @@ trait OrderTrait
      *
      *  @return string
      */
-    public function craftOrderCollectedMessage(Store $store, User $collectedByUser, User $verifiedByUser) {
+    public function craftOrderCollectedMessage(Store $store, User $manuallyVerifiedByUser) {
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.'Order #'.$this->number.' collected by '.$collectedByUser->name.' ('.$collectedByUser->mobile_number->withoutExtension.'), verified by '.$verifiedByUser->name.' ('.$verifiedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+            return $store->name_with_emoji.', '.'Order #'.$this->number.' completed and collected. Verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().') Items: '.$this->summary;
         }else{
-            return 'Order #'.$this->number.' collected by '.$collectedByUser->name.' ('.$collectedByUser->mobile_number->withoutExtension.'), verified by '.$verifiedByUser->name.' ('.$verifiedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+            return 'Order #'.$this->number.' completed and collected. Verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().') Items: '.$this->summary;
         }
     }
 
@@ -404,21 +255,25 @@ trait OrderTrait
      *
      *  @return string
      */
-    public function craftOrderPaymentRequestMessage(Store $store, Transaction $transaction, User $requestedByUser) {
-        if($transaction->paymentMethod->isDpo()) {
+    public function craftOrderPaymentRequestMessage(Store $store, Transaction $transaction) {
+
+        $requestedByUser = $transaction->requestedByUser;
+        $paymentMethod = $transaction->paymentMethod;
+
+        if($paymentMethod->isDpo()) {
 
             if(empty($store->sms_sender_name)) {
-                return $store->name_with_emoji.', Pay for Order #'.$this->number.' using this payment link '.$transaction->dpo_payment_url.'. Valid till '.Carbon::parse($transaction->dpo_payment_url_expires_at)->format('d M Y H:i').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+                return $store->name_with_emoji.', Pay for Order #'.$this->number.' using this payment link '.$transaction->metadata['dpo_payment_url'].'. Valid till '.Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->format('d M Y H:i').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$this->summary;
             }else{
-                return 'Pay for Order #'.$this->number.' using this payment link '.$transaction->dpo_payment_url.'. Valid till '.Carbon::parse($transaction->dpo_payment_url_expires_at)->format('d M Y H:i').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+                return 'Pay for Order #'.$this->number.' using this payment link '.$transaction->metadata['dpo_payment_url'].'. Valid till '.Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->format('d M Y H:i').'. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$this->summary;
             }
 
-        }else if($transaction->paymentMethod->isOrangeMoney()) {
+        }else if($paymentMethod->isOrangeMoney()) {
 
             if(empty($store->sms_sender_name)) {
-                return $store->name_with_emoji.', You are paying for Order #'.$this->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+                return $store->name_with_emoji.', You are paying for Order #'.$this->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$this->summary;
             }else{
-                return 'You are paying for Order #'.$this->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->withoutExtension.') Items: '.$this->summary;
+                return 'You are paying for Order #'.$this->number.' using Orange Money. Requested by '.$requestedByUser->name.' ('.$requestedByUser->mobile_number->formatNational().') Items: '.$this->summary;
             }
 
         }
@@ -438,15 +293,15 @@ trait OrderTrait
     public function craftOrderPaidMessage(Store $store, Transaction $transaction) {
         if($transaction->paymentMethod->isDpo()) {
             if(empty($store->sms_sender_name)) {
-                return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->dpo_payment_response['onVerifyPaymentResponse']['customerName'].' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
+                return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->metadata['dpo_payment_response']['onVerifyPaymentResponse']['customerName'].' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }else{
-                return $transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->dpo_payment_response['onVerifyPaymentResponse']['customerName'].' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
+                return $transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->metadata['dpo_payment_response']['onVerifyPaymentResponse']['customerName'].' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }
         }else if($transaction->paymentMethod->isOrangeMoney()) {
             if(empty($store->sms_sender_name)) {
-                return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->paidByUser->name.' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
+                return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->customer->name.' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }else{
-                return $transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->paidByUser->name.' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
+                return $transaction->amount->amountWithCurrency.' paid successfully for Order #'.$this->number.' by '.$transaction->customer->name.' using '.$transaction->paymentMethod->name.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i');
             }
         }
     }
@@ -456,11 +311,11 @@ trait OrderTrait
      *
      *  @return string
      */
-    public function craftOrderMarkedAsPaidMessage(Store $store, Transaction $transaction, User $verifiedByUser) {
+    public function craftOrderMarkedAsPaidMessage(Store $store, Transaction $transaction, User $manuallyVerifiedByUser) {
         if(empty($store->sms_sender_name)) {
-            return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' marked as paid using '.$transaction->paymentMethod->name.' for Order #'.$this->number.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i').'. Payment verified by '.$verifiedByUser->name.' ('.$verifiedByUser->mobile_number->withoutExtension.')';
+            return $store->name_with_emoji.', '.$transaction->amount->amountWithCurrency.' marked as paid using '.$transaction->paymentMethod->name.' for Order #'.$this->number.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i').'. Payment verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().')';
         }else{
-            return $transaction->amount->amountWithCurrency.' marked as paid using '.$transaction->paymentMethod->name.' for Order #'.$this->number.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i').'. Payment verified by '.$verifiedByUser->name.' ('.$verifiedByUser->mobile_number->withoutExtension.')';
+            return $transaction->amount->amountWithCurrency.' marked as paid using '.$transaction->paymentMethod->name.' for Order #'.$this->number.' on '.Carbon::parse($transaction->updated_at)->format('d M Y H:i').'. Payment verified by '.$manuallyVerifiedByUser->name.' ('.$manuallyVerifiedByUser->mobile_number->formatNational().')';
         }
     }
 }

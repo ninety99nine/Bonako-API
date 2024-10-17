@@ -55,11 +55,13 @@ class CreateReviewRequest extends FormRequest
      */
     public function rules()
     {
-        $subjects = collect(Review::STORE_REVIEW_FILTERS)->map(fn($filter) => strtolower($filter));
+        $subjects = collect(Review::SUBJECTS())->map(fn($filter) => $this->separateWordsThenLowercase($filter));
 
         return [
+            'return' => ['sometimes', 'boolean'],
+            'store_id' => ['required', 'uuid'],
             'subject' => ['bail', 'required', Rule::in($subjects)],
-            'rating' => ['bail', 'required', 'string', 'min:'.Review::RATING_MIN, 'max:'.Review::RATING_MAX],
+            'rating' => ['bail', 'required', 'integer', 'between:'.Review::RATING_MIN.','.Review::RATING_MAX],
             'comment' => ['bail', 'required_with:subject', 'string', 'min:'.Review::COMMENT_MIN_CHARACTERS, 'max:'.Review::COMMENT_MAX_CHARACTERS],
         ];
     }
@@ -72,7 +74,7 @@ class CreateReviewRequest extends FormRequest
     public function messages()
     {
         return [
-            'subject.in' => 'Answer "'.collect(Review::SUBJECTS)->join('", "', '" or "').'" to indicate the subject of concern',
+            'subject.in' => 'Answer "'.collect(Review::SUBJECTS())->join('", "', '" or "').'" to indicate the subject of concern',
         ];
     }
 

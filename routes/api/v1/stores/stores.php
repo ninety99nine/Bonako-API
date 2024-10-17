@@ -1,0 +1,174 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\StoreController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\CouponController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\SubscriptionController;
+
+Route::controller(StoreController::class)
+    ->scopeBindings()
+    ->prefix('stores')
+    ->group(function () {
+
+    Route::get('/', 'showStores')->name('show.stores');
+    Route::post('/', 'createStore')->name('create.store');
+
+    Route::post('/search-by-alias', 'searchStoreByAlias')->name('search.store.by.alias');
+    Route::post('/search-by-ussd-mobile-number', 'searchStoreByUssdMobileNumber')->name('search.store.by.ussd.mobile.number');
+
+    //  Follow Store Invitations
+    Route::get('/check-invitations-to-follow-stores', 'checkInvitationsToFollowStores')->name('check.invitations.to.follow.stores');
+    Route::put('/accept-all-invitations-to-follow-stores', 'acceptAllInvitationsToFollowStores')->name('accept.all.invitations.to.follow.stores');
+    Route::put('/decline-all-invitations-to-follow-stores', 'declineAllInvitationsToFollowStores')->name('decline.all.invitations.to.follow.stores');
+
+    //  Join Store Invitations
+    Route::get('/check-invitations-to-join-stores', 'checkInvitationsToJoinStores')->name('check.invitations.to.join.stores');
+    Route::put('/accept-all-invitations-to-join-stores', 'acceptAllInvitationsToJoinStores')->name('accept.all.invitations.to.join.stores');
+    Route::put('/decline-all-invitations-to-join-stores', 'declineAllInvitationsToJoinStores')->name('decline.all.invitations.to.join.stores');
+
+    //  Store
+    Route::prefix('{storeId}')->group(function () {
+        Route::get('/', 'showStore')->name('show.store');
+        Route::put('/', 'updateStore')->name('update.store');
+        Route::delete('/', 'deleteStore')->name('delete.store');
+        Route::get('/logo', 'showStoreLogo')->name('show.store.logo');
+        Route::post('/logo', 'uploadStoreLogo')->name('upload.store.logo');
+        Route::get('/cover-photo', 'showStoreCoverPhoto')->name('show.store.cover.photo');
+        Route::post('/cover-photo', 'uploadStoreCoverPhoto')->name('upload.store.cover.photo');
+
+        //  Adverts
+        Route::prefix('adverts')->group(function () {
+            Route::get('/', 'showStoreAdverts')->name('show.store.adverts');
+            Route::post('/', 'uploadStoreAdvert')->name('upload.store.advert');
+        });
+
+        //  Quick Start Guide
+        Route::get('/quick-start-guide', 'showStoreQuickStartGuide')->name('show.store.quick.start.guide');
+
+        //  Followers
+        Route::prefix('followers')->group(function () {
+            Route::get('/', 'showStoreFollowers')->name('show.store.followers');
+            Route::post('/', 'inviteStoreFollowers')->name('invite.store.followers');
+        });
+
+        //  Following
+        Route::prefix('following')->group(function () {
+            Route::get('/', 'showStoreFollowing')->name('show.store.following');
+            Route::put('/', 'updateStoreFollowing')->name('update.store.following');
+        });
+
+        //  Invitations To Follow
+        Route::post('/accept-invitation-to-follow-store', 'acceptInvitationToFollowStore')->name('accept.invitation.to.follow.store');
+        Route::post('/decline-invitation-to-follow-store', 'declineInvitationToFollowStore')->name('decline.invitation.to.follow.store');
+
+        //  Team Members
+        Route::prefix('team-members')->group(function () {
+
+            Route::get('/', 'showStoreTeamMembers')->name('show.store.team.members');
+            Route::post('/', 'inviteStoreTeamMembers')->name('invite.store.team.members');
+            Route::delete('/', 'removeStoreTeamMembers')->name('remove.store.team.members');
+            Route::get('/my-permissions', 'showMyStorePermissions')->name('show.my.store.permissions');
+            Route::get('/team-member-permission-options', 'showTeamMemberPermissionOptions')->name('show.team.member.permission.options');
+
+            Route::prefix('{teamMemberId}')->group(function () {
+                Route::get('/', 'showStoreTeamMember')->name('show.store.team.member');
+                Route::get('/permissions', 'showStoreTeamMemberPermissions')->name('show.store.team.member.permissions');
+                Route::put('/permissions', 'updateStoreTeamMemberPermissions')->name('update.store.team.member.permissions');
+            });
+
+        });
+
+        //  Invitations To Join Team
+        Route::post('/accept-invitation-to-join-store-team', 'acceptInvitationToJoinStoreTeam')->name('accept.invitation.to.join.store.team');
+        Route::post('/decline-invitation-to-join-store-team', 'declineInvitationToJoinStoreTeam')->name('decline.invitation.to.join.store.team');
+
+        //  Orders
+        Route::controller(OrderController::class)->prefix('orders')->group(function () {
+            Route::get('/', 'showOrders')->name('show.store.orders');
+        });
+
+        //  Products
+        Route::controller(ProductController::class)->prefix('products')->group(function () {
+            Route::get('/', 'showProducts')->name('show.store.products');
+        });
+
+        //  Coupons
+        Route::controller(CouponController::class)->prefix('coupons')->group(function () {
+            Route::get('/', 'showCoupons')->name('show.store.coupons');
+        });
+
+        //  Reviews
+        Route::controller(ReviewController::class)->prefix('reviews')->group(function () {
+            Route::get('/', 'showReviews')->name('show.store.reviews');
+        });
+
+        //  Customers
+        Route::controller(CustomerController::class)->prefix('customers')->group(function () {
+            Route::get('/', 'showCustomers')->name('show.store.customers');
+        });
+
+        //  Subscriptions
+        Route::controller(SubscriptionController::class)->prefix('subscriptions')->group(function () {
+            Route::get('/', 'showSubscriptions')->name('show.store.subscriptions');
+        });
+
+        //  Transactions
+        Route::controller(TransactionController::class)->prefix('transactions')->group(function () {
+            Route::get('/', 'showTransactions')->name('show.store.transactions');
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //  Payment methods
+        Route::get('/supported-payment-methods', 'showSupportedPaymentMethods')->name('.supported.payment.methods.show');
+        Route::get('/available-payment-methods', 'showAvailablePaymentMethods')->name('.available.payment.methods.show');
+        Route::get('/available-deposit-percentages', 'showAvailableDepositPercentages')->name('.available.deposit.percentages.show');
+        Route::get('/available-installment-percentages', 'showAvailableInstallmentPercentages')->name('.available.installment.percentages.show');
+
+        //  Sharable Content
+        Route::prefix('sharable-content')
+            ->name('.sharable.content')->group(function () {
+
+            Route::get('/', 'showSharableContent')->name('.show');
+            Route::get('/choices', 'showSharableContentChoices')->name('.choices.show');
+
+        });
+
+        //  Shopping carts
+        Route::prefix('shopping-cart')
+            ->name('.shopping.cart')
+            ->group(function () {
+
+            //  Allow the public access to manage their shopping cart and place an order
+            Route::post('/', 'inspectShoppingCart')->name('.inspect');
+            Route::post('/convert', 'convertShoppingCart')->name('.convert');
+            Route::post('/order-for-users', 'showShoppingCartOrderForUsers')->name('.order.for.users.show');
+            Route::get('/order-for-options', 'showShoppingCartOrderForOptions')->name('.order.for.options.show');
+            Route::post('/count-order-for-users', 'countShoppingCartOrderForUsers')->name('.order.for.users.count');
+
+        });
+
+    });
+
+});

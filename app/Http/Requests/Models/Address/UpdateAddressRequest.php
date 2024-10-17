@@ -3,15 +3,12 @@
 namespace App\Http\Requests\Models\Address;
 
 use App\Models\Address;
-use App\Models\User;
-use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAddressRequest extends FormRequest
 {
-    use BaseTrait;
-
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -23,29 +20,42 @@ class UpdateAddressRequest extends FormRequest
     }
 
     /**
+     *  We want to modify the request input before validating
+     *
+     *  Reference: https://laracasts.com/discuss/channels/requests/modify-request-input-value-before-validation
+     */
+    public function getValidatorInstance()
+    {
+        try {
+
+            if($this->has('type')) $this->merge(['type' => strtolower($this->get('type'))]);
+
+        } catch (\Throwable $th) {
+
+        }
+
+        return parent::getValidatorInstance();
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array
      */
     public function rules()
     {
-        //  Get the address id
-        $addressId = request()->address->id;
-
-        //  Get the user's id
-        $userId = $this->chooseUser()->id;
-
         return [
-            'name' => [
-                'bail', 'required', 'string', 'min:'.Address::NAME_MIN_CHARACTERS, 'max:'.Address::NAME_MAX_CHARACTERS,
-                /**
-                 *  Make sure that this address name does not
-                 *  already exist for the same user
-                 */
-                Rule::unique('addresses')->where('user_id', $userId)->ignore($addressId)
-            ],
-            'share_address' => ['bail', 'sometimes', 'required', 'boolean'],
-            'address_line' => ['bail', 'required', 'string', 'min:'.Address::ADDRESS_LINE_MIN_CHARACTERS, 'max:'.Address::ADDRESS_LINE_MAX_CHARACTERS]
+            'type' => ['bail', 'sometimes', 'nullable', Rule::in(Address::TYPES())],
+            'address_line' => ['bail', 'required', 'string', 'max:' . Address::ADDRESS_MAX_CHARACTERS],
+            'address_line2' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::ADDRESS2_MAX_CHARACTERS],
+            'city' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::CITY_MAX_CHARACTERS],
+            'state' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::STATE_MAX_CHARACTERS],
+            'zip' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::ZIP_MAX_CHARACTERS],
+            'country_code' => ['bail', 'required', 'string', 'size:2'],
+            'place_id' => ['bail', 'sometimes', 'nullable', 'string'],
+            'latitude' => ['bail', 'sometimes', 'nullable', 'numeric', 'min:-90', 'max:90'],
+            'longitude' => ['bail', 'sometimes', 'nullable', 'numeric', 'min:-180', 'max:180'],
+            'description' => ['bail', 'sometimes', 'nullable', 'string']
         ];
     }
 
@@ -56,7 +66,9 @@ class UpdateAddressRequest extends FormRequest
      */
     public function messages()
     {
-        return [];
+        return [
+            'address.unique' => 'This address already exists for the user.',
+        ];
     }
 
     /**
@@ -66,9 +78,6 @@ class UpdateAddressRequest extends FormRequest
      */
     public function attributes()
     {
-        return [
-            'metadata.name' => 'name',
-            'metadata.mobile_number' => 'mobile number',
-        ];
+        return [];
     }
 }

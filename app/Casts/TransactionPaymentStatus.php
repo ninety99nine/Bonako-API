@@ -52,6 +52,9 @@ class TransactionPaymentStatus implements CastsAttributes
             case $model->isPendingPayment($value):
                 $description = 'This '.$descriptionName.' is pending payment';
                 break;
+            case $model->isFailedPayment($value):
+                $description = 'This '.$descriptionName.' payment failed';
+                break;
             default:
                 $description = null;
                 break;

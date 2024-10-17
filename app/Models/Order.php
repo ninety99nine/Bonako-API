@@ -7,119 +7,129 @@ use App\Casts\Status;
 use App\Models\Store;
 use App\Casts\Currency;
 use App\Casts\Percentage;
+use App\Traits\AuthTrait;
 use App\Traits\OrderTrait;
 use App\Casts\OrderStatus;
-use App\Casts\MobileNumber;
 use App\Models\Base\BaseModel;
 use App\Casts\OrderPaymentStatus;
 use App\Casts\OrderCollectionType;
 use App\Services\Ussd\UssdService;
-use Illuminate\Database\Eloquent\Builder;
-use App\Models\Pivots\UserStoreAssociation;
+use App\Casts\E164PhoneNumberCast;
+use App\Enums\OrderCancellationReason;
+use App\Enums\OrderStatus as EnumsOrderStatus;
 use App\Models\Pivots\UserOrderViewAssociation;
-use App\Models\Pivots\FriendGroupOrderAssociation;
-use App\Models\Pivots\UserOrderCollectionAssociation;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\OrderPaymentStatus as EnumsOrderPaymentStatus;
+use App\Enums\OrderCollectionType as EnumsOrderCollectionType;
 
 class Order extends BaseModel
 {
-    use HasFactory, OrderTrait;
+    use HasFactory, OrderTrait, AuthTrait;
 
-    const COLLECTION_TYPES = ['Delivery', 'Pickup'];
-    const USER_ORDER_FILTERS = ['All', ...self::STATUSES];
-    const STORE_ORDER_FILTERS = ['All', ...self::STATUSES];
-    const FRIEND_GROUP_ORDER_FILTERS = ['All', ...self::STATUSES];
-    const PAYMENT_STATUSES = ['Paid', 'Pending Payment', 'Partially Paid', 'Unpaid'];
-    const ORDER_FOR_OPTIONS = ['Me', 'Me And Friends', 'Friends Only' /*, 'Business'*/];
-    const STATUSES = ['Waiting', 'On Its Way', 'Ready For Pickup', 'Cancelled', 'Completed'];
-    const CANCELLATION_REASONS = [
-        'Not Available', 'No stock', 'No payment', 'No delivery', 'No pickup', 'Changes in order',
-        'Cancelled by customer', 'Unrealistic order', 'Fake order', 'Other'
-    ];
+    const USER_ORDER_ASSOCIATIONS = ['Customer', 'Team Member'];
 
-    const USER_ORDER_ASSOCIATIONS = [
-        'Customer', 'Friend', 'Customer Or Friend', 'Team Member'
-    ];
+    public static function STATUSES(): array
+    {
+        return array_map(fn($status) => $status->value, EnumsOrderStatus::cases());
+    }
+
+    public static function PAYMENT_STATUSES(): array
+    {
+        return array_map(fn($status) => $status->value, EnumsOrderPaymentStatus::cases());
+    }
+
+    public static function COLLECTION_TYPES(): array
+    {
+        return array_map(fn($status) => $status->value, EnumsOrderCollectionType::cases());
+    }
+
+    public static function CANCELLATION_REASONS(): array
+    {
+        return array_map(fn($status) => $status->value, OrderCancellationReason::cases());
+    }
+
+    public static function STATUSES_BEFORE_CANCELLATION(): array
+    {
+        return array_values(array_filter(self::STATUSES(), fn($status) => $status !== EnumsOrderStatus::CANCELLED->value));
+    }
 
     /**
      *  Magic Numbers
      */
-    const SPECIAL_NOTE_MIN_CHARACTERS = 3;
-    const SPECIAL_NOTE_MAX_CHARACTERS = 400;
+    const STORE_NOTE_MIN_CHARACTERS = 3;
+    const STORE_NOTE_MAX_CHARACTERS = 1000;
+    const CUSTOMER_NOTE_MIN_CHARACTERS = 3;
+    const CUSTOMER_NOTE_MAX_CHARACTERS = 400;
+    const OTHER_CANCELLATION_REASON_MIN_CHARACTERS = 3;
+    const OTHER_CANCELLATION_REASON_MAX_CHARACTERS = 400;
 
     protected $casts = [
+        'cancelled_at' => 'datetime',
+        'paid_total' => Money::class,
         'grand_total' => Money::class,
-        'amount_paid' => Money::class,
-        'amount_pending' => Money::class,
+        'pending_total' => Money::class,
         'collection_verified' => 'boolean',
-        'amount_outstanding' => Money::class,
+        'outstanding_total' => Money::class,
         'collection_verified_at' => 'datetime',
         'last_viewed_by_team_at' => 'datetime',
         'first_viewed_by_team_at' => 'datetime',
+        'collection_code_expires_at' => 'datetime',
+        'customer_mobile_number' => E164PhoneNumberCast::class,
     ];
 
     protected $tranformableCasts = [
         'currency' => Currency::class,
         'status' => OrderStatus::class,
+        'paid_percentage' => Percentage::class,
         'collection_verified' => Status::class,
-        'amount_paid_percentage' => Percentage::class,
+        'pending_percentage' => Percentage::class,
+        'outstanding_percentage' => Percentage::class,
         'payment_status' => OrderPaymentStatus::class,
         'collection_type' => OrderCollectionType::class,
-        'amount_pending_percentage' => Percentage::class,
-        'amount_outstanding_percentage' => Percentage::class,
+        'status_before_cancellation' => OrderStatus::class,
     ];
 
     protected $fillable = [
 
-        /*  Basic Information  */
+        /* Basic Information */
         'summary',
 
-        /*  Balance Information  */
-        'currency',
-        'grand_total',
-        'amount_paid', 'amount_paid_percentage',
-        'amount_pending', 'amount_pending_percentage',
-        'amount_outstanding', 'amount_outstanding_percentage',
+        /* Financial Information */
+        'currency','grand_total','paid_total','paid_percentage','pending_total','pending_percentage','outstanding_total','outstanding_percentage',
 
-        /*  Status Information  */
-        'status', 'payment_status',
+        /* Status Information */
+        'status','payment_status',
 
-        /*  Special Note Information  */
-        'special_note',
+        /* Notes */
+        'customer_note','store_note',
 
-        /*  Cancellation Information  */
-        'cancellation_reason',
+        /* Cancellation Information */
+        'status_before_cancellation','cancellation_reason','other_cancellation_reason','cancelled_at',
 
-        /*  Customer Information  */
-        'customer_first_name', 'customer_last_name', 'customer_user_id',
+        /* Customer Information */
+        'customer_first_name', 'customer_last_name', 'customer_mobile_number', 'customer_email', 'customer_id', 'placed_by_user_id',
 
-        /*  Order For Information  */
-        'order_for', 'order_for_total_users', 'order_for_total_friends',
+        /* Collection Information */
+        'collection_type','delivery_address_id','destination_name',
 
-        /*  Collection Information  */
-        'collection_verified', 'collection_verified_at',
-        'collection_verified_by_user_id', 'collection_verified_by_user_first_name',
-        'collection_verified_by_user_last_name', 'collection_by_user_id',
-        'collection_by_user_first_name', 'collection_by_user_last_name',
-        'collection_type', 'destination_name', 'delivery_address_id',
+        /* Collection Verification */
+        'collection_code','collection_qr_code','collection_code_expires_at','collection_verified','collection_verified_at','collection_verified_by_user_id', 'collection_note',
 
-        /*  Occasion Information  */
-        'occasion_id',
+        /* Relationships */
+        'cart_id','store_id','occasion_id','friend_group_id',
 
-        /*  Payment Information  */
-        'payment_method_id',
+        /* Team Views */
+        'total_views_by_team','first_viewed_by_team_at','last_viewed_by_team_at',
 
-        /*  Ownership Information  */
-        'store_id',
-
-        /*  Team Views  */
-        'total_views_by_team', 'first_viewed_by_team_at', 'last_viewed_by_team_at'
+        /* Creator Information */
+        'created_by_user_id',
 
     ];
 
-    /****************************
-     *  SCOPES                  *
-     ***************************/
+    /************
+     *  SCOPES  *
+     ***********/
 
     /*
      *  Scope: Return orders that are being searched
@@ -138,189 +148,61 @@ class Order extends BaseModel
                      });
     }
 
-    /**
-     *  Scope orders where the current authenticated user is the customer
-     */
-    public function scopeAuthAsCustomer($query)
-    {
-        //  Query orders where the current authenticated has been added as a customer
-        return $query->userAsCustomer(request()->auth_user->id);
-    }
+    /********************
+     *  RELATIONSHIPS   *
+     *******************/
 
-    /**
-     *  Scope orders where the specified user is the customer
-     */
-    public function scopeUserAsCustomer($query, $userId)
-    {
-        return $query->whereHas('customer', function (Builder $query) use ($userId) {
-
-            //  Query orders where the specified user has been added as a customer
-            $query->where('user_order_collection_association.user_id', $userId);
-
-        });
-    }
-
-    /**
-     *  Scope orders where the specified user is the customer
-     */
-    public function scopeUserAsFriend($query, $userId)
-    {
-        return $query->whereHas('friends', function (Builder $query) use ($userId) {
-
-            //  Query orders where the specified user has been added as a friend
-            $query->where('user_order_collection_association.user_id', $userId);
-
-        });
-    }
-
-    /****************************
-     *  RELATIONSHIPS           *
-     ***************************/
-
-    /**
-     *  Get the Cart assigned to this Order
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasOne
-     */
     public function cart()
     {
-        return $this->hasOne(Cart::class);
+        return $this->belongsTo(Cart::class);
     }
 
-    /**
-     * Get the transactions
-     */
-    public function transactions()
-    {
-        return $this->morphMany(Transaction::class, 'owner');
-    }
-
-    /**
-     * Get the latest transaction
-     */
-    public function transaction()
-    {
-        return $this->morphOne(Transaction::class, 'owner')->latest();
-    }
-
-    /**
-     *  Returns the current authenticated user's latest transaction
-     *  that is pending payment for this order
-     */
-    public function authTransactionPendingPayment()
-    {
-        return $this->transaction()->pendingPayment()->belongsToAuth();
-    }
-
-    /**
-     * Get the Delivery Address for this Order
-     */
-    public function deliveryAddress()
-    {
-        return $this->belongsTo(DeliveryAddress::class, 'delivery_address_id');
-    }
-
-    /**
-     * Get the Occasion for this Order
-     */
-    public function occasion()
-    {
-        return $this->belongsTo(Occasion::class, 'occasion_id');
-    }
-
-    /**
-     * Get the Payment Method for this Order
-     */
-    public function paymentMethod()
-    {
-        return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
-    }
-
-    /**
-     * Get the User that collected this Order
-     */
-    public function userThatCollected()
-    {
-        return $this->belongsTo(User::class, 'collection_by_user_id');
-    }
-
-    /**
-     * Get the User that verified the Order collection
-     */
-    public function userThatVerifiedCollection()
-    {
-        return $this->belongsTo(User::class, 'collection_verified_by_user_id');
-    }
-
-    /**
-     * Get the Store that owns the Order
-     */
     public function store()
     {
         return $this->belongsTo(Store::class);
     }
 
-    /**
-     *  Get the Users of this Order
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function users()
-    {
-        return $this->belongsToMany(User::class, 'user_order_collection_association', 'order_id', 'user_id')
-                    ->withPivot(UserOrderCollectionAssociation::VISIBLE_COLUMNS)
-                    ->using(UserOrderCollectionAssociation::class)
-                    ->as('user_order_collection_association');
-    }
-
-    /**
-     *  Get the Customer that owns the Order
-     */
     public function customer()
     {
-        return $this->users()->where('user_order_collection_association.role', 'Customer');
+        return $this->belongsTo(Customer::class);
     }
 
-    /**
-     *  Get the friends (Users) of this Order
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function friends()
+    public function occasion()
     {
-        return $this->users()->where('user_order_collection_association.role', 'Friend');
+        return $this->belongsTo(Occasion::class);
     }
 
-    /**
-     *  Returns the current authenticated user and order collection association
-     *
-     *  @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function authUserOrderCollectionAssociation()
+    public function friendGroup()
     {
-        return $this->hasOne(UserOrderCollectionAssociation::class, 'order_id')
-                    ->where('user_id', request()->auth_user->id);
+        return $this->belongsTo(FriendGroup::class);
     }
 
-    /**
-     *  Get the Friend Groups of this Order
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function friendGroups()
+    public function transactions()
     {
-        return $this->belongsToMany(FriendGroup::class, 'friend_group_order_association', 'order_id', 'friend_group_id')
-                    ->withPivot(FriendGroupOrderAssociation::VISIBLE_COLUMNS)
-                    ->using(FriendGroupOrderAssociation::class)
-                    ->as('friend_group_order_association');
+        return $this->morphMany(Transaction::class, 'owner');
     }
 
-    /**
-     *  Get the Users (team members) that viewed the Order.
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function usersThatViewed()
+    public function placedByUser()
+    {
+        return $this->belongsTo(User::class, 'placed_by_user_id');
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function deliveryAddress()
+    {
+        return $this->hasOne(DeliveryAddress::class);
+    }
+
+    public function collectionVerifiedByUser()
+    {
+        return $this->belongsTo(User::class, 'collection_verified_by_user_id');
+    }
+
+    public function viewers()
     {
         return $this->belongsToMany(User::class, 'user_order_view_association', 'order_id', 'user_id')
                     ->withPivot(UserOrderViewAssociation::VISIBLE_COLUMNS)
@@ -333,148 +215,41 @@ class Order extends BaseModel
      ***************************/
 
     protected $appends = [
-        'customer_name', 'customer_display_name', 'collection_by_user_name', 'collection_verified_by_user_name', 'number', 'dial_to_show_collection_code', 'follow_up_statuses',
+        'customer_name', 'customer_display_name', 'number', 'dial_to_show_collection_code', 'follow_up_statuses',
         'can_cancel', 'can_uncancel', 'can_delete', 'can_mark_as_paid', 'can_request_payment', 'payable_amounts', 'is_paid', 'is_unpaid', 'is_partially_paid', 'is_pending_payment',
-        'is_waiting', 'is_on_its_way', 'is_ready_for_pickup', 'is_cancelled', 'is_completed', 'is_ordering_for_me', 'is_ordering_for_me_and_friends',
-        'is_ordering_for_friends_only', 'is_ordering_for_business', 'other_associated_friends'
+        'is_waiting', 'is_on_its_way', 'is_ready_for_pickup', 'is_cancelled', 'is_completed'
     ];
 
-    /**
-     *  Get the user and order collection association pivot model is provided
-     *
-     *  @return UserOrderCollectionAssociation|null $userOrderCollectionAssociation
-     */
-    public function getUserOrderCollectionAssociation() {
-
-        $userOrderCollectionAssociation = null;
-
-        /**
-         *  Check if the user and order collection association pivot model is loaded so that
-         *  we can determine how this user is associated with this order. If the relationship
-         *  "user_order_collection_association" exists then this order was acquired directly
-         *  from a user and order relationship e.g
-         *
-         *  $user->orders()->first();
-         */
-        if( $this->relationLoaded('user_order_collection_association') ) {
-
-            /**
-             *  @var UserOrderCollectionAssociation $userOrderCollectionAssociation
-             */
-            $userOrderCollectionAssociation = $this->user_order_collection_association;
-
-        /**
-         *  Check if the user and order collection association pivot model is loaded so that
-         *  we can determine how this user is associated with this order. If the relationship
-         *  "authUserOrderCollectionAssociation" exists then this order was acquired without
-         *  a user and order relationship but the UserOrderCollectionAssociation was then
-         *  eager loaded on the order e.g
-         *
-         *  Order::with('authUserOrderCollectionAssociation')->first();
-         */
-        }elseif( $this->relationLoaded('authUserOrderCollectionAssociation') ) {
-
-            /**
-             *  @var UserOrderCollectionAssociation $userOrderCollectionAssociation
-             */
-            $userOrderCollectionAssociation = $this->authUserOrderCollectionAssociation;
-
-        }
-
-        return $userOrderCollectionAssociation;
+    protected function customerName(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => trim($this->customer_first_name.' '.$this->customer_last_name)
+        );
     }
 
-    public function getOtherAssociatedFriendsAttribute()
+    protected function customerDisplayName(): Attribute
     {
-        $otherFriendsText = '';
-        $orderForTotalFriendsLeft = $this->order_for_total_friends;
+        $isMe = !is_null($this->placed_by_user_id) && $this->hasAuthUser() && $this->getAuthUser()->id == $this->placed_by_user_id;
 
-        if($this->is_ordering_for_me_and_friends || $this->is_ordering_for_friends_only) {
-
-            /**
-             *  @var UserOrderCollectionAssociation $userOrderCollectionAssociation
-             */
-            $userOrderCollectionAssociation = $this->getUserOrderCollectionAssociation();
-
-            /**
-             *  If the user and order collection association is provided and the current authenticated
-             *  user is associated with this order as a friend
-             */
-            if(!is_null($userOrderCollectionAssociation) && $userOrderCollectionAssociation->is_associated_as_friend) {
-
-                // Will end as 'John Doe + Me'
-                if($this->is_ordering_for_me_and_friends) $otherFriendsText .= '+ Me';
-
-                // Will end as 'John Doe for Me'
-                if($this->is_ordering_for_friends_only) $otherFriendsText .= 'for Me';
-
-                // Reduce the total friends left by 1
-                $orderForTotalFriendsLeft = $orderForTotalFriendsLeft - 1;
-
-                if($orderForTotalFriendsLeft > 0) $otherFriendsText .= ' and ';
-
-            }else{
-
-                // Will end as 'John Doe + 2 friends'
-                if($this->is_ordering_for_me_and_friends) $otherFriendsText .= '+ ';
-
-                // Will end as 'John Doe for 2 friends'
-                if($this->is_ordering_for_friends_only) $otherFriendsText .= 'for ';
-
-            }
-
-            if($orderForTotalFriendsLeft > 0) {
-
-                /**
-                 * Will End As:
-                 *
-                 * (1) 'John Doe + 1 friend'
-                 * (2) 'John Doe + 2 friends'
-                 * (3) 'John Doe + You and 1 friend'
-                 * (4) 'John Doe + You and 2 friends'
-                 *
-                 * (5) 'John Doe for 1 friend'
-                 * (6) 'John Doe for 2 friends'
-                 * (7) 'John Doe for You and 1 friend'
-                 * (8) 'John Doe for You and 2 friends'
-                 */
-                $otherFriendsText .= $orderForTotalFriendsLeft.($orderForTotalFriendsLeft == 1 ? ' friend' : ' friends');
-
-            }
-
-        }
-
-        return empty($otherFriendsText) ? null : $otherFriendsText;
+        return Attribute::make(
+            get: fn () => $isMe ? 'Me' : $this->customer_name
+        );
     }
 
-    public function getCustomerAttribute()
+    protected function cancellationReason(): Attribute
     {
-        if($this->relationLoaded('customer')) {
-
-            /**
-             *  Since the customer is a belongsToMany, the relationship returns
-             *  a collection of the User Model. We need to always return the
-             *  first result otherwise null.
-             */
-            $customerCollection = $this->getRelation('customer');
-
-            if($customerCollection->count()) {
-                return $customerCollection->first();
-            }
-
-        }
-
-        return null;
+        return Attribute::make(
+            get: fn ($value) => empty($value) ? null : ucwords($value),
+            set: fn ($value) => empty($value) ? null : strtolower($value)
+        );
     }
 
-    public function getCustomerNameAttribute()
+    protected function otherCancellationReason(): Attribute
     {
-        return trim($this->customer_first_name.' '.$this->customer_last_name);
-    }
-
-    public function setCancellationReasonAttribute($value)
-    {
-        $this->attributes['cancellation_reason'] = ucwords($value);
+        return Attribute::make(
+            get: fn ($value) => empty($value) ? null : ucfirst(strtolower($value)),
+            set: fn ($value) => empty($value) ? null : strtolower($value)
+        );
     }
 
     public function setCustomerNameAttribute($value)
@@ -487,17 +262,6 @@ class Order extends BaseModel
         $this->customer_name = $value;
     }
 
-    public function getCustomerDisplayNameAttribute()
-    {
-        /**
-         *  This is later changed to "Me" when transforming the order depending
-         *  on whether or not the authenticated user placed this order. We use
-         *  this to determine how the customer, friend, store team members and
-         *  general public see this order.
-         */
-        return $this->customer_name;
-    }
-
     public function setCustomerDisplayNameAttribute($value)
     {
         /**
@@ -507,18 +271,6 @@ class Order extends BaseModel
          *  team members and general public see this order.
          */
         $this->customer_display_name = $value;
-    }
-
-    public function getCollectionByUserNameAttribute()
-    {
-        return trim($this->collection_by_user_first_name.' '.$this->collection_by_user_last_name);
-    }
-
-    public function getCollectionVerifiedByUserNameAttribute()
-    {
-        if($this->collection_verified_by_user_first_name && $this->collection_verified_by_user_last_name) {
-            return trim($this->collection_verified_by_user_first_name.' '.$this->collection_verified_by_user_last_name);
-        }
     }
 
     public function getNumberAttribute()
@@ -538,26 +290,25 @@ class Order extends BaseModel
 
     public function getDialToShowCollectionCodeAttribute()
     {
-        $code = UssdService::getMobileVerificationShortcode();
-        $hasCustomer = $this->customer;
+        if($this->customer_mobile_number) {
 
-        if($hasCustomer) {
+            $mobileVerificationShortcode = UssdService::getMobileVerificationShortcode($this->customer_mobile_number->getCountry());
 
-            $customer = $this->customer;
-            $customerName = $customer->first_name;
-            $mobileNumberWithoutExtension = $customer->mobile_number->withoutExtension;
-            $instruction = 'Ask '.$customerName.' to dial '.$code.' on '. $mobileNumberWithoutExtension . ', then enter the 6 digit code that appears on screen to complete this order';
+            if($mobileVerificationShortcode) {
 
-        }else{
+                $customerName = $this->customer_name;
+                $mobileNumber = $this->customer_mobile_number->formatNational();
+                $instruction = 'Ask '.$customerName.' to dial '.$mobileVerificationShortcode.' on '. $mobileNumber . ', then enter the 6 digit code that appears on screen to complete this order';
 
-            $instruction = 'Ask the customer to dial '.$code.' on their mobile number and enter the code to verify collection';
+                return [
+                    'code' => $mobileVerificationShortcode,
+                    'instruction' => $instruction
+                ];
+            }
 
         }
 
-        return [
-            'code' => $code,
-            'instruction' => $instruction
-        ];
+        return null;
     }
 
     public function getFollowUpStatusesAttribute()
@@ -640,6 +391,9 @@ class Order extends BaseModel
                     // Get the UserStoreAssociation
                     $userStoreAssociation = $store->user_store_association;
 
+                    // Check if the store has payment methods
+                    $hasAutomatedPayments = $store->has_payment_methods;
+
                     // Check if the UserStoreAssociation is provided
                     if ($userStoreAssociation) {
 
@@ -660,84 +414,26 @@ class Order extends BaseModel
         return false;
     }
 
-
     public function getCanRequestPaymentAttribute()
     {
-        if($this->grand_total->amount > 0) {
+        $store = request()->store ?? ($this->relationLoaded('store') ? $this->getRelation('store') : null);
 
-            // Check if the store is loaded
-            if (request()->store || $this->relationLoaded('store')) {
-
-                // Attempt to get the store from the request or eager loaded relation
-                $store = request()->store ?? $this->getRelation('store');
-
-                $perfectPayEnabled = $store->perfect_pay_enabled;
-                $dpoPaymentEnabled = $store->dpo_payment_enabled;
-                $hasPayableAmounts = count($this->payable_amounts) > 0;
-                $orangeMoneyPaymentEnabled = $store->orange_money_payment_enabled;
-
-                if(($perfectPayEnabled || $dpoPaymentEnabled || $orangeMoneyPaymentEnabled) && $hasPayableAmounts) {
-
-                    /**
-                     *  @var UserOrderCollectionAssociation $userOrderCollectionAssociation
-                     */
-                    $userOrderCollectionAssociation = $this->getUserOrderCollectionAssociation();
-
-
-                    //  Check if the user and order collection association is provided to determine if we can request payment
-                    if(!is_null($userOrderCollectionAssociation)) {
-
-                        $isAssociatedAsFriend = $userOrderCollectionAssociation->is_associated_as_friend;
-                        $isAssociatedAsCustomer = $userOrderCollectionAssociation->is_associated_as_customer;
-
-                        //  We can request payment if we are associated a the friend or customer listed on this order
-                        return $isAssociatedAsFriend || $isAssociatedAsCustomer;
-
-                    }
-
-                    /**
-                     *  @var UserStoreAssociation $userStoreAssociation
-                     */
-                    $userStoreAssociation = $store->user_store_association;
-
-                    //  Check if the user and store association is provided to determine if we can request payment
-                    if(!is_null($userStoreAssociation)) {
-
-                        return $userStoreAssociation->is_team_member_who_has_joined;
-
-                    }
-
-                }
-
-            } else {
-
-                // Handle the case where the store is not loaded
-                return null;
-
-            }
-
-        }
-
-        return false;
+        if($store == null) return null;
+        $hasPayableAmounts = count($this->payable_amounts) > 0;
+        $hasAutomatedPaymentMethods = $store->has_automated_payment_methods;
+        return $hasPayableAmounts && $hasAutomatedPaymentMethods;
     }
 
     public function getPayableAmountsAttribute()
     {
+        $store = request()->store ?? ($this->relationLoaded('store') ? $this->getRelation('store') : null);
         $options = [];
 
-        // Check if the store is loaded
-        if (request()->store || $this->relationLoaded('store')) {
+        if ($store) {
 
-            /**
-             *  Get the store from the request store otherwise from the eager loaded store
-             *
-             *  @var Store $store
-             */
-            $store = request()->store ?? $this->getRelation('store');
-
-            $amountPaidPercentage = $this->getRawOriginal('amount_paid_percentage');
-            $amountPendingPercentage = $this->getRawOriginal('amount_pending_percentage');
-            $amountOutstandingPercentage = $this->getRawOriginal('amount_outstanding_percentage');
+            $amountPaidPercentage = $this->getRawOriginal('paid_percentage');
+            $amountPendingPercentage = $this->getRawOriginal('paid_pending_percentage');
+            $amountOutstandingPercentage = $this->getRawOriginal('outstanding_percentage');
 
             //  Get the remaining outstanding percentage balance that is still payable
             $remainingPercentage = $amountOutstandingPercentage - $amountPendingPercentage;
@@ -896,25 +592,5 @@ class Order extends BaseModel
     public function getIsCompletedAttribute()
     {
         return $this->isCompleted();
-    }
-
-    public function getIsOrderingForMeAttribute()
-    {
-        return strtolower($this->getRawOriginal('order_for')) === 'me';
-    }
-
-    public function getIsOrderingForMeAndFriendsAttribute()
-    {
-        return strtolower($this->getRawOriginal('order_for')) === 'me and friends';
-    }
-
-    public function getIsOrderingForFriendsOnlyAttribute()
-    {
-        return strtolower($this->getRawOriginal('order_for')) === 'friends only';
-    }
-
-    public function getIsOrderingForBusinessAttribute()
-    {
-        return strtolower($this->getRawOriginal('order_for')) === 'business';
     }
 }

@@ -18,8 +18,8 @@ class Authenticate extends Middleware
     *
     *   I had to overide the default handle() method so that we can first check
     *   if we have already set an authenticated user. This is possible since we
-    *   run the CaptureAuthUserOnRequest middleware before this Authenticate
-    *   middleware. The CaptureAuthUserOnRequest middleware is responsible to
+    *   run the SetAuthUserOnRequest middleware before this Authenticate
+    *   middleware. The SetAuthUserOnRequest middleware is responsible to
     *   search for the authenticated user using the Cache and then returning
     *   that authenticated user, otherwise find the user using the bearer
     *   token and then Cache that user as well as set the user as the
@@ -37,8 +37,8 @@ class Authenticate extends Middleware
     *   found before we proceed with running queries to authenticate the
     *   user before proceeding with the rest of the application. The
     *   Authenticate middleware is still important eventhough we can
-    *   find a user using the CaptureAuthUserOnRequest method. This
-    *   is because the CaptureAuthUserOnRequest will always fetch
+    *   find a user using the SetAuthUserOnRequest method. This
+    *   is because the SetAuthUserOnRequest will always fetch
     *   the user but will never throw an exception if the user
     *   token is incorrect.
     *
@@ -46,7 +46,7 @@ class Authenticate extends Middleware
     *   applied since its not every route that requires an authenticated
     *   user to be present in order to perform the necessary action.
     *
-    *   In this way the CaptureAuthUserOnRequest middleware will focus on
+    *   In this way the SetAuthUserOnRequest middleware will focus on
     *   getting the authenticated user from the cache and setting that
     *   authenticated user on application auth() instance and the
     *   request "auth_user" property. The Authenticate middleware
@@ -79,7 +79,7 @@ class Authenticate extends Middleware
          *  handle() overidden By: Julian B Tabona
          *  --------------------------------------
          *  If request()->auth_user_exists = true but its value is set to false, then we know that the
-         *  CaptureAuthUserOnRequest middleware has attempted to find the user using the provided
+         *  SetAuthUserOnRequest middleware has attempted to find the user using the provided
          *  bearer token, but failed. We do not have to run parent::authenticate() since this will
          *  make an additional request to find the user using the same bearer token but only to
          *  fail. We can just simply run parent::unauthenticated() to fail this request. This
@@ -103,7 +103,7 @@ class Authenticate extends Middleware
     /**
      * Get the path the user should be redirected to when they are not authenticated.
      */
-    protected function redirectTo(Request $request): ?string
+    protected function redirectTo(Request $request): string|null
     {
         /**
          *  Since we are designing an API, we do not want to redirect to the

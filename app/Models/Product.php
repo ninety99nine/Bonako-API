@@ -22,6 +22,9 @@ class Product extends BaseModel
 {
     use HasFactory, ProductTrait;
 
+    public $relationships = ['store', 'photos', 'variations'];
+    public $countableRelationships = ['photos', 'variations'];
+
     const ALLOWED_QUANTITY_PER_ORDER = ['Limited', 'Unlimited'];
     CONST STOCK_QUANTITY_TYPE = ['Limited', 'Unlimited'];
     const FILTERS = ['All', 'Visible', 'Hidden'];
@@ -49,6 +52,8 @@ class Product extends BaseModel
 
     const POSITION_MAX = 255;                               //  since we use unsignedTinyInteger() table schema
 
+    const MAXIMUM_VARIATIONS_PER_PRODUCT = 100;
+
     protected $casts = [
         'is_free' => 'boolean',
         'on_sale' => 'boolean',
@@ -69,27 +74,27 @@ class Product extends BaseModel
     ];
 
     protected $tranformableCasts = [
-        'maximum_allowed_quantity_per_order' => MaximumAllowedQuantityPerOrder::class,
-        'allowed_quantity_per_order' => AllowedQuantityPerOrder::class,
-        'unit_sale_discount_percentage' => Percentage::class,
-        'stock_quantity_type' => StockQuantityType::class,
-        'unit_profit_percentage' => Percentage::class,
-        'unit_loss_percentage' => Percentage::class,
-        'stock_quantity' => StockQuantity::class,
-        'allow_variations' => Status::class,
-        'show_description' => Status::class,
-        'currency' => Currency::class,
-        'has_price' => Status::class,
-        'has_stock' => Status::class,
         'is_free' => Status::class,
         'on_sale' => Status::class,
         'visible' => Status::class,
+        'has_price' => Status::class,
+        'has_stock' => Status::class,
+        'currency' => Currency::class,
+        'allow_variations' => Status::class,
+        'show_description' => Status::class,
+        'stock_quantity' => StockQuantity::class,
+        'unit_loss_percentage' => Percentage::class,
+        'unit_profit_percentage' => Percentage::class,
+        'stock_quantity_type' => StockQuantityType::class,
+        'unit_sale_discount_percentage' => Percentage::class,
+        'allowed_quantity_per_order' => AllowedQuantityPerOrder::class,
+        'maximum_allowed_quantity_per_order' => MaximumAllowedQuantityPerOrder::class,
     ];
 
     protected $fillable = [
 
         /*  General Information  */
-        'name', 'visible', 'visibility_expires_at', 'photo', 'show_description', 'description',
+        'name', 'visible', 'visibility_expires_at', 'show_description', 'description',
 
         /*  Tracking Information  */
         'sku', 'barcode',
@@ -203,20 +208,18 @@ class Product extends BaseModel
      *  RELATIONSHIPS           *
      ***************************/
 
-    /**
-     *  Returns the associated store
-     */
     public function store()
     {
         return $this->belongsTo(Store::class);
     }
 
-    /**
-     *  Returns the associated product variations
-     */
+    public function photos()
+    {
+        return $this->morphMany(MediaFile::class, 'mediable')->where('type', 'product_photo');
+    }
+
     public function variations()
     {
-        // Always eager load the variables on variations
         return $this->hasMany(Product::class, 'parent_product_id')->with('variables');
     }
 

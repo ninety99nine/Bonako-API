@@ -54,12 +54,12 @@ class CouponResource extends BaseResource
          *  sensitive coupon information such as coupon codes. Only the store Team
          *  Members can see those details.
          */
-        if( $this->viewingPublicly() ) {
+        //  if( $this->viewingPublicly() ) {
 
             //  Overide and apply custom fields
-            $this->customExcludeFields = ['code', 'store_id', 'user_id'];
+            //  $this->customExcludeFields = ['code', 'store_id', 'user_id'];
 
-        }
+        //}
 
         return $this->transformedStructure();
 
@@ -67,15 +67,12 @@ class CouponResource extends BaseResource
 
     public function setLinks()
     {
-        $routeNamePrefix = 'coupon.';
-        $couponId = $this->resource->id;
-        $storeId = $this->resource->store_id;
+        $coupon = $this->resource;
 
         $this->resourceLinks = [
-            new ResourceLink('self', route($routeNamePrefix.'show', ['store' => $storeId, 'coupon' => $couponId]), 'Show coupon'),
-            new ResourceLink('update.coupon', route($routeNamePrefix.'update', ['store' => $storeId, 'coupon' => $couponId]), 'Update coupon'),
-            new ResourceLink('delete.coupon', route($routeNamePrefix.'delete', ['store' => $storeId, 'coupon' => $couponId]), 'Delete coupon'),
-            new ResourceLink('confirm.delete.coupon', route($routeNamePrefix.'confirm.delete', ['store' => $storeId, 'coupon' => $couponId]), 'Confirm delete coupon'),
+            new ResourceLink('show.coupon', route('show.coupon', ['couponId' => $coupon->id])),
+            new ResourceLink('update.coupon', route('update.coupon', ['couponId' => $coupon->id])),
+            new ResourceLink('delete.coupon', route('delete.coupon', ['couponId' => $coupon->id])),
         ];
     }
 }

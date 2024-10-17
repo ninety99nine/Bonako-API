@@ -4,7 +4,7 @@ namespace App\Http\Requests\Models\User;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateProfilePhotoRequest extends FormRequest
+class UploadProfilePhotoRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

@@ -7,7 +7,7 @@ use App\Models\Store;
 use App\Models\FriendGroup;
 use Illuminate\Database\Seeder;
 use Database\Seeders\Traits\SeederHelper;
-use App\Models\Pivots\UserFriendGroupAssociation;
+use App\Models\Pivots\FriendGroupUserAssociation;
 
 
 class FriendGroupSeeder extends Seeder
@@ -53,7 +53,7 @@ class FriendGroupSeeder extends Seeder
                     //  Assign this user as the creator
                     $pivots = [
                         $userId => [
-                            'role' => collect(UserFriendGroupAssociation::ROLES)->first()
+                            'role' => collect(FriendGroupUserAssociation::ROLES)->first()
                         ]
                     ];
 
@@ -73,7 +73,7 @@ class FriendGroupSeeder extends Seeder
 
                         //  Assign this user as a member
                         $pivots[$selectedFriendGroupUserId] = [
-                            'role' => collect(UserFriendGroupAssociation::ROLES)->last()
+                            'role' => collect(FriendGroupUserAssociation::ROLES)->last()
                         ];
 
                     }

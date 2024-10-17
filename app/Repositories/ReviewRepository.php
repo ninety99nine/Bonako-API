@@ -2,263 +2,295 @@
 
 namespace App\Repositories;
 
-use App\Models\User;
-use App\Models\Review;
 use App\Models\Store;
+use App\Models\Review;
+use App\Traits\AuthTrait;
+use App\Enums\Association;
 use App\Traits\Base\BaseTrait;
-use App\Repositories\BaseRepository;
+use Illuminate\Support\Collection;
+use App\Services\Filter\FilterService;
+use App\Http\Resources\ReviewResources;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class ReviewRepository extends BaseRepository
 {
-    use BaseTrait;
+    use AuthTrait, BaseTrait;
 
     /**
-     *  Eager load relationships on the given model
+     * Show reviews.
      *
-     *  @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Builder $model
-     *  @return OrderRepository
+     * @param array $data
+     * @return ReviewResources|array
      */
-    public function eagerLoadRelationships($model) {
+    public function showReviews(array $data = []): ReviewResources|array
+    {
+        if($this->getQuery() == null) {
 
-        $relationships = [];
-        $countableRelationships = [];
+            $userId = isset($data['user_id']) ? $data['user_id'] : null;
+            $storeId = isset($data['store_id']) ? $data['store_id'] : null;
+            $association = isset($data['association']) ? Association::tryFrom($data['association']) : null;
 
-        //  Check if we want to eager load the user on this review
-        if( request()->input('with_user') ) {
+            if($association == Association::SUPER_ADMIN) {
+                if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show reviews'];
+                $this->setQuery(Review::latest());
+            }else if($storeId) {
+                $store = Store::find($storeId);
+                if($store) {
+                    $this->setQuery($store->reviews()->latest());
+                }else{
+                    return ['message' => 'This store does not exist'];
+                }
+            }else {
+                $user = in_array($userId, [request()->current_user->id, null]) ? request()->current_user : User::find($userId);
 
-            //  Additionally we can eager load the user on this review
-            array_push($relationships, 'user');
+                if($user) {
+                    $isAuthourized = $this->isAuthourized() || $user->id == request()->auth_user->id;
+                    if(!$isAuthourized) return ['message' => 'You do not have permission to show reviews'];
+                }else{
+                    return ['message' => 'This user does not exist'];
+                }
 
+                if($association == Association::TEAM_MEMBER) {
+                    $this->setQuery(Review::whereHas('store.teamMembersWhoJoined', function ($query) use ($user) {
+                        $query->where('user_store_association.user_id', $user->id);
+                    }));
+                }else{
+                    $this->setQuery($user->reviews()->latest());
+                }
+            }
         }
 
-        //  Check if we want to eager load the store on this review
-        if( request()->input('with_store') ) {
-
-            //  Additionally we can eager load the store on this review
-            array_push($relationships, 'store');
-
-        }
-
-        if( !empty($relationships) ) {
-
-            $model = ($model instanceof Review)
-                ? $model->load($relationships)->loadCount($countableRelationships)
-                : $model->with($relationships)->withCount($countableRelationships);
-
-        }
-
-        $this->setModel($model);
-
-        return $this;
+        return $this->applyFiltersOnQuery()->getOrCountResources();
     }
 
     /**
-     *  Show the user review filters
+     * Create review.
      *
-     *  @param Store $store
-     *  @return array
+     * @param array $data
+     * @return Review|array
      */
-    public function showStoreReviewFilters(Store $store)
+    public function createReview(array $data): Review|array
     {
-        //  Get the store review filters
-        $filters = collect(Review::STORE_REVIEW_FILTERS);
+        $storeId = $data['store_id'];
+        $store = Store::find($storeId);
 
-        /**
-         *  $result = [
-         *      [
-         *          'name' => 'All',
-         *          'total' => 6000,
-         *          'total_summarized' => '6k'
-         *      ],
-         *      [
-         *          'name' => 'Product',
-         *          'total' => 2000,
-         *          'total_summarized' => '2k'
-         *      ],
-         *      [
-         *          'name' => 'Customer Service',
-         *          'total' => 1000k,
-         *          'total_summarized' => '1k'
-         *      ],
-         *      ...
-         *  ];
-         */
-        return $filters->map(function($filter) use ($store) {
+        if($store) {
+            $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+            if(!$isAuthourized) return ['created' => false, 'message' => 'You do not have permission to create reviews'];
+        }else{
+            return ['created' => false, 'message' => 'This store does not exist'];
+        }
 
-            //  Count the store reviews with the specified filter
-            $total = $this->queryStoreReviews($store, $filter)->count();
+        $data = array_merge($data, [
+            'user_id' => request()->current_user->id,
+            'store_id' => $storeId
+        ]);
 
+        $review = Review::create($data);
+        return $this->showCreatedResource($review);
+    }
+
+    /**
+     * Delete reviews.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function deleteReviews(array $data): array
+    {
+        $storeId = $data['store_id'];
+
+        if(is_null($storeId)) {
+            if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete reviews'];
+            $this->setQuery(Review::query());
+        }else{
+
+            $store = Store::find($storeId);
+
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['deleted' => false, 'message' => 'You do not have permission to delete reviews'];
+                $this->setQuery($store->reviews());
+            }else{
+                return ['deleted' => false, 'message' => 'This store does not exist'];
+            }
+
+        }
+
+        $reviewIds = $data['review_ids'];
+        $reviews = $this->getReviewsByIds($reviewIds);
+
+        if($totalReviews = $reviews->count()) {
+
+            foreach($reviews as $review) {
+                $review->delete();
+            }
+
+            return ['deleted' => true, 'message' => $totalReviews . ($totalReviews == 1 ? ' review': ' reviews') . ' deleted'];
+
+        }else{
+            return ['deleted' => false, 'message' => 'No reviews deleted'];
+        }
+    }
+
+    /**
+     * Show review rating options.
+     *
+     * @return array
+     */
+    public function showReviewRatingOptions(): array
+    {
+        $ratingOptions = ['very bad', 'bad', 'ok', 'good', 'very good'];
+
+        $ratingOptions = collect($ratingOptions)->map(function($name, $index) {
             return [
-                'name' => ucwords($filter),
-                'total' => $total,
-                'total_summarized' => $this->convertNumberToShortenedPrefix($total)
+                'name' => ucwords($name),
+                'rating' => $index + 1
             ];
+        });
 
-        })->toArray();
+        return [
+            'rating_subjects' => Review::SUBJECTS(),
+            'rating_options' => $ratingOptions
+        ];
     }
 
     /**
-     *  Show the store reviews
+     * Show review.
      *
-     *  @param User $user
-     *  @return ReviewRepository
+     * @param string $reviewId
+     * @return Review|array|null
      */
-    public function showStoreReviews(Store $store)
+    public function showReview(string $reviewId): Review|array|null
     {
-        //  Get the specified filter
-        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
+        $query = Review::with(['store'])->whereId($reviewId);
+        $this->setQuery($query)->applyEagerLoadingOnQuery();
+        $review = $this->query->first();
 
-        //  Query the store reviews with the specified filter
-        $reviews = $this->queryStoreReviews($store, $filter);
-
-        //  Eager load the review relationships based on request inputs
-        return $this->eagerLoadRelationships($reviews)->get();
-    }
-
-    /**
-     *  Query the stores by the specified filter
-     *
-     *  @param Store $store - The store to load the reviews
-     *  @param string $filter - The filter to query the reviews
-     *  @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function queryStoreReviews($store, $filter)
-    {
-        //  Get the latest reviews first
-        $reviews = $store->reviews()->latest();
-
-        //  Get the specified user id
-        $userId = request()->input('user_id');
-
-        //  Get the specified filter
-        $filter = $this->separateWordsThenLowercase($filter);
-
-        //  Get the review subjects
-        $subjects = collect(Review::SUBJECTS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
-
-        if(collect($subjects)->contains($filter)) {
-
-            $reviews = $reviews->where('subject', $filter);
-
-        }elseif(!empty($userId) || $filter == 'me') {
-
-            $userId = !empty($userId) ? $userId : request()->auth_user->id;
-
-            $reviews = $reviews->where('user_id', $userId);
-
+        if($review) {
+            $store = $review->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to show review'];
+                if(!$this->checkIfHasRelationOnRequest('store')) $review->unsetRelation('store');
+            }else{
+                return ['message' => 'This store does not exist'];
+            }
         }
 
-        return $reviews;
+        return $this->showResourceExistence($review);
     }
 
     /**
-     *  Show the user review filters
+     * Update review.
      *
-     *  @param User $user
-     *  @return array
+     * @param string $reviewId
+     * @param array $data
+     * @return Review|array
      */
-    public function showUserReviewFilters(User $user)
+    public function updateReview(string $reviewId, array $data): Review|array
     {
-        //  Get the user review filters
-        $filters = collect(Review::USER_REVIEW_FILTERS);
+        $review = Review::with(['store'])->find($reviewId);
 
-        /**
-         *  $result = [
-         *      [
-         *          'name' => 'All',
-         *          'total' => 6000,
-         *          'total_summarized' => '6k'
-         *      ],
-         *      [
-         *          'name' => 'Product',
-         *          'total' => 2000,
-         *          'total_summarized' => '2k'
-         *      ],
-         *      [
-         *          'name' => 'Customer Service',
-         *          'total' => 1000k,
-         *          'total_summarized' => '1k'
-         *      ],
-         *      ...
-         *  ];
-         */
-        return $filters->map(function($filter) use ($user) {
+        if($review) {
+            $store = $review->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update review'];
+            }else{
+                return ['updated' => false, 'message' => 'This store does not exist'];
+            }
 
-            //  Count the user reviews with the specified filter
-            $total = $this->queryUserReviews($user, $filter)->count();
+            $review->update($data);
+            return $this->showUpdatedResource($review);
 
-            return [
-                'name' => ucwords($filter),
-                'total' => $total,
-                'total_summarized' => $this->convertNumberToShortenedPrefix($total)
-            ];
-
-        })->toArray();
-    }
-
-    /**
-     *  Show the user reviews
-     *
-     *  @param User $user
-     *  @return ReviewRepository
-     */
-    public function showUserReviews(User $user)
-    {
-        //  Get the specified filter
-        $filter = $this->separateWordsThenLowercase(request()->input('filter'));
-
-        //  Query the user reviews with the specified filter
-        $reviews = $this->queryUserReviews($user, $filter);
-
-        //  Eager load the review relationships based on request inputs
-        return $this->eagerLoadRelationships($reviews)->get();
-    }
-
-    /**
-     *  Query the stores by the specified filter
-     *
-     *  @param User $user - The user to load the reviews
-     *  @param string $filter - The filter to query the reviews
-     *  @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function queryUserReviews($user, $filter)
-    {
-        //  Normalize the filter
-        $filter = $this->separateWordsThenLowercase($filter);
-
-        //  Set the $userReviewAssociation e.g reviewer or team member
-        $userReviewAssociation = $this->separateWordsThenLowercase(request()->input('user_review_association'));
-
-        //  If the user must be associated as a reviewer
-        if($userReviewAssociation == 'reviewer') {
-
-            //  Query the reviews where the user is associated as a customer
-            $reviews = $user->reviews()->latest();
-
-        //  If the user must be associated as a team member
-        }else if($userReviewAssociation == 'team member') {
-
-            //  Query the reviews where the user is associated as a team member
-            $reviews = Review::whereHas('store', function ($query) use ($user) {
-                $query->whereHas('teamMembers', function ($query2) use ($user) {
-                    $query2->joinedTeam()->matchingUserId($user->id);
-                });
-            });
-
+        }else{
+            return ['updated' => false, 'message' => 'This review does not exist'];
         }
+    }
 
-        //  Get the review subjects
-        $subjects = collect(Review::SUBJECTS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
+    /**
+     * Delete review.
+     *
+     * @param string $reviewId
+     * @return array
+     */
+    public function deleteReview(string $reviewId): array
+    {
+        $review = Review::with(['store'])->find($reviewId);
 
-        if(collect($subjects)->contains($filter)) {
+        if($review) {
+            $store = $review->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['deleted' => false, 'message' => 'You do not have permission to delete review'];
+            }else{
+                return ['deleted' => false, 'message' => 'This store does not exist'];
+            }
 
-            $reviews = $reviews->where('subject', $filter);
+            $deleted = $review->delete();
 
+            if ($deleted) {
+                return ['deleted' => true, 'message' => 'Review deleted'];
+            }else{
+                return ['deleted' => false, 'message' => 'Review delete unsuccessful'];
+            }
+        }else{
+            return ['deleted' => false, 'message' => 'This review does not exist'];
         }
+    }
 
-        //  Get the latest reviews first
-        $reviews = $reviews->latest();
+    /***********************************************
+     *             MISCELLANEOUS METHODS           *
+     **********************************************/
 
-        return $reviews;
+    /**
+     * Query review by ID.
+     *
+     * @param Review|string $reviewId
+     * @param array $relationships
+     * @return Builder|Relation
+     */
+    public function queryReviewById(Review|string $reviewId, array $relationships = []): Builder|Relation
+    {
+        return $this->query->where('reviews.id', $reviewId)->with($relationships);
+    }
+
+    /**
+     * Get review by ID.
+     *
+     * @param Review|string $reviewId
+     * @param array $relationships
+     * @return Review|null
+     */
+    public function getReviewById(Review|string $reviewId, array $relationships = []): Review|null
+    {
+        return $this->queryReviewById($reviewId, $relationships)->first();
+    }
+
+    /**
+     * Query reviews by IDs.
+     *
+     * @param array<string> $reviewId
+     * @param string $relationships
+     * @return Builder|Relation
+     */
+    public function queryReviewsByIds($reviewIds): Builder|Relation
+    {
+        return $this->query->whereIn('reviews.id', $reviewIds);
+    }
+
+    /**
+     * Get reviews by IDs.
+     *
+     * @param array<string> $reviewId
+     * @param string $relationships
+     * @return Collection
+     */
+    public function getReviewsByIds($reviewIds): Collection
+    {
+        return $this->queryReviewsByIds($reviewIds)->get();
     }
 }

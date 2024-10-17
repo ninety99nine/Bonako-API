@@ -49,7 +49,7 @@ class UpdateSmsAlertActivityAssociationRequest extends FormRequest
         return [
             'enabled' => ['bail', 'sometimes', 'required', 'boolean'],
             'store_ids' => ['bail', 'array'],
-            'store_ids.*' => ['bail', 'required', 'integer', 'numeric', 'min:1', 'distinct']
+            'store_ids.*' => ['bail', 'required', 'uuid', 'distinct']
         ];
     }
 

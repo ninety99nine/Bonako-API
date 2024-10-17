@@ -2,18 +2,19 @@
 
 namespace App\Services\ShoppingCart;
 
-use App\Enums\CacheName;
 use stdClass;
 use Carbon\Carbon;
 use App\Models\Cart;
+use App\Models\Store;
 use App\Models\Product;
+use App\Enums\CacheName;
+use App\Models\Customer;
 use App\Models\CouponLine;
 use App\Models\ProductLine;
-use App\Traits\Base\BaseTrait;
-use Illuminate\Support\Facades\Cache;
-use App\Exceptions\CartRequiresStoreException;
+use Illuminate\Support\Str;
 use App\Helpers\CacheManager;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use App\Traits\Base\BaseTrait;
+use App\Exceptions\CartRequiresStoreException;
 
 /**
  *  Note that the shopping cart service is instantiated once.
@@ -29,13 +30,11 @@ class ShoppingCartService
     public $currency;
     public $existingCart;
     public $subTotal = 0;
-    public $customerUserId;
     public $grandTotal = 0;
     public $deliveryFee = 0;
     public $relatedProducts;
     public $cartProducts = [];
     public $storeCoupons = [];
-    public $isExistingCustomer;
     public $deliveryDestination;
     public $cartCouponCodes = [];
     public $detectedChanges = [];
@@ -43,6 +42,7 @@ class ShoppingCartService
     public $couponDiscountTotal = 0;
     public $existingCouponLines = [];
     public $allowFreeDelivery = false;
+    public $isExistingCustomer = null;
     public $existingProductLines = [];
     public $specifiedCouponLines = [];
     public $specifiedProductLines = [];
@@ -58,15 +58,52 @@ class ShoppingCartService
     public $totalSpecifiedCancelledProductLineQuantities = 0;
     public $totalSpecifiedUncancelledProductLineQuantities = 0;
 
-    public function __construct()
+    /**
+     *  Get the shopping cart cache manager
+     *
+     *  @return CacheManager
+     */
+    public function getShoppingCartCacheManager()
     {
-        /**
-         *  @var User $user
-         */
-        $user = request()->auth_user;
+        return (new CacheManager(CacheName::SHOPPING_CART))->append($this->store->id)->append(request()->auth_user->id);
+    }
 
+    /**
+     *  Get the "is customer status" cache manager
+     *
+     *  @return CacheManager
+     */
+    public function getIsCustomerStatusCacheManager()
+    {
+        return (new CacheManager(CacheName::IS_CUSTOMER_STATUS))->append($this->store->id)->append(request()->auth_user->id);
+    }
+
+    /**
+     *  Forget the cache values stored in memory
+     *
+     *  @return $this
+     */
+    public function forgetCache()
+    {
+        //  Forget the shopping cart
+        $this->getShoppingCartCacheManager()->forget();
+
+        //  Forget the customer existence status
+        $this->getIsCustomerStatusCacheManager()->forget();
+
+        //  Return the current shopping cart service instance
+        return $this;
+    }
+
+    /**
+     *  Start the cart inspection to determine the cart totals
+     *  and important cart changes before converting the
+     *  current shopping cart into an order
+     */
+    public function startInspection(Store $store)
+    {
         //  Get the shopping store
-        $this->store = request()->store;
+        $this->store = $store;
 
         //  Check that the cart shopping store exists
         if( !$this->store ) throw new CartRequiresStoreException;
@@ -74,34 +111,23 @@ class ShoppingCartService
         //  Get the store coupons
         $this->storeCoupons = $this->store->coupons;
 
-        /**
-         *  Check if the customer user id is provided by the store management (i.e The store team member).
-         *  Normally the customer user id is specified when the authenticated team member is placing an
-         *  order on behalf of the customer.
-         */
-        if( request()->filled('customer_user_id') ) {
+        $customerArray = request()->input('customer');
+        $customerEmail = $customerArray['email'] ?? null;
+        $customerMobileNumber = $customerArray['mobile_number'] ?? null;
 
-            //  The authenticated user must have the permission to manage orders
-            if( $user->hasStorePermission($this->store, 'manage orders') === false ) {
+        if($customerMobileNumber) {
 
-                throw new AccessDeniedHttpException('You do not have permissions to perform this action. Placing orders on behalf of customers requires the permission to manage orders');
+            $this->isExistingCustomer = $this->getIsCustomerStatusCacheManager()->remember(now()->addMinutes(10), function () use ($customerMobileNumber) {
+                return Customer::searchMobileNumber($customerMobileNumber)->first();
+            });
 
-            }
+        }else if($customerEmail) {
 
-            //  Get the customer user id provided by the store management (i.e The store team member)
-            $this->customerUserId = request()->input('customer_user_id');
-
-        }else{
-
-            //  Get the current authenticated user's id as the customer user id
-            $this->customerUserId = request()->auth_user->id;
+            $this->isExistingCustomer = $this->getIsCustomerStatusCacheManager()->remember(now()->addMinutes(10), function () use ($customerEmail) {
+                return Customer::searchEmail($customerEmail)->first();
+            });
 
         }
-
-        //  Check if this is an existing customer
-        $this->isExistingCustomer = $this->getIsCustomerStatusCacheManager()->remember(now()->addMinutes(10), function () {
-            return $this->store->customers()->where('user_id', $this->customerUserId)->exists();
-        });
 
         //  Check if the shopping cart exists in memory
         if( $this->getShoppingCartCacheManager()->has() ) {
@@ -151,62 +177,16 @@ class ShoppingCartService
             $this->deliveryDestinationName = request()->input('delivery_destination_name');
 
         }
-    }
 
-    /**
-     *  Get the shopping cart cache manager
-     *
-     *  @return CacheManager
-     */
-    public function getShoppingCartCacheManager()
-    {
-        $cacheManager = (new CacheManager(CacheName::SHOPPING_CART))->append($this->store->id)->append(request()->auth_user->id);
 
-        //  If the authenticated user is not the same customer shopping i.e the team member is shopping for the customer
-        if( request()->auth_user->id != $this->customerUserId ) {
 
-            //  Append the custom user id
-            $cacheManager->append($this->customerUserId);
 
-        }
 
-        return $cacheManager;
-    }
 
-    /**
-     *  Get the "is customer status" cache manager
-     *
-     *  @return CacheManager
-     */
-    public function getIsCustomerStatusCacheManager()
-    {
-        return (new CacheManager(CacheName::IS_CUSTOMER_STATUS))->append($this->store->id)->append($this->customerUserId);
-    }
 
-    /**
-     *  Forget the cache values stored in memory
-     *
-     *  @return $this
-     */
-    public function forgetCache()
-    {
-        //  Forget the shopping cart
-        $this->getShoppingCartCacheManager()->forget();
 
-        //  Forget the customer existence status
-        $this->getIsCustomerStatusCacheManager()->forget();
 
-        //  Return the current shopping cart service instance
-        return $this;
-    }
 
-    /**
-     *  Start the cart inspection to determine the cart totals
-     *  and important cart changes before converting the
-     *  current shopping cart into an order
-     */
-    public function startInspection()
-    {
         //  Set the store currency
         $this->currency = $this->store->currency;
 
@@ -314,9 +294,6 @@ class ShoppingCartService
             $hasNewCouponAndSaleDiscount = false;
         }
 
-        //  Set the customer user id on this shopping cart
-        $shoppingCart->customer_user_id = $this->customerUserId;
-
         /**
          *  Set whether or not this shopping cart has a new coupon and sale discount.
          *  This could be a discount we received on the first shopping cart request,
@@ -391,6 +368,7 @@ class ShoppingCartService
                                         ->whereIn('id', $cartProductIds)
                                         ->doesNotSupportVariations()
                                         ->get();
+
 
             //  Foreach related product
             return collect($this->relatedProducts)->map(function($relatedProduct) {
@@ -558,7 +536,7 @@ class ShoppingCartService
     public function getSpecifiedCouponLines()
     {
         //  If we have atleast one store coupon
-        if( $this->storeCoupons->count() ) {
+        if( count($this->storeCoupons) ) {
 
             //  Calculate the grand total as it stands before applying any coupons
             $grandTotal = $this->getProductLinePricingTotals()->grandTotal;
@@ -566,7 +544,7 @@ class ShoppingCartService
             //  Convert to money format
             $grandTotal = $this->convertToMoneyFormat($grandTotal, $this->currency);
 
-            return $this->storeCoupons->map(function($storeCoupon) use ($grandTotal) {
+            return collect($this->storeCoupons)->map(function($storeCoupon) use ($grandTotal) {
 
                 $inValid = false;
                 $isCancelled = false;
@@ -753,6 +731,12 @@ class ShoppingCartService
 
                         $cancellationReasons->push('Must be a new customer');
 
+                    }else if( $this->isExistingCustomer == null) {
+
+                        $inValid = true;
+
+                        $cancellationReasons->push('Cannot determine if this is a new customer. Customer mobile number or email has not been provided');
+
                     }
 
                 }
@@ -766,6 +750,12 @@ class ShoppingCartService
                         $inValid = true;
 
                         $cancellationReasons->push('Must be an existing customer');
+
+                    }else if( $this->isExistingCustomer == null) {
+
+                        $inValid = true;
+
+                        $cancellationReasons->push('Cannot determine if this is an existing customer. Customer mobile number or email has not been provided');
 
                     }
 
@@ -873,11 +863,14 @@ class ShoppingCartService
             //  Unset the detected_changes_history
             unset($specifiedProductLine->detected_changes_history);
 
+            //  Set the product line id
+            $specifiedProductLine->id = Str::uuid();
+
             //  Set the cart id
             $specifiedProductLine->cart_id = $cartId;
 
             //  Ready the product line for database insertion
-            return $specifiedProductLine->readyForDatabase($cartId, $convertToJson);
+            return $specifiedProductLine->readyForDatabase($convertToJson);
 
         //  If the product ids specified as an integer or array of integers then we want to extract a specific entry
         })->when(is_array($productIds) || is_int($productIds), function ($specifiedProductLines, $value) use ($productIds) {
@@ -919,11 +912,14 @@ class ShoppingCartService
          */
         $collection = collect($this->specifiedCouponLines)->map(function($specifiedCouponLine) use ($cartId, $couponIds, $convertToJson) {
 
+            //  Set the coupon line id
+            $specifiedCouponLine->id = Str::uuid();
+
             //  Set the cart id
             $specifiedCouponLine->cart_id = $cartId;
 
             //  Ready the coupon line for database insertion
-            return $specifiedCouponLine->readyForDatabase($cartId, $convertToJson);
+            return $specifiedCouponLine->readyForDatabase($convertToJson);
 
         //  If the coupon ids specified as an integer or array of integers then we want to extract a specific entry
         })->when(is_array($couponIds) || is_int($couponIds), function ($specifiedCouponLines, $value) use ($couponIds) {

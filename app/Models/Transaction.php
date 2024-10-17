@@ -2,67 +2,77 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use App\Casts\Money;
 use App\Casts\Currency;
 use App\Casts\Percentage;
-use App\Casts\JsonToArray;
-use Illuminate\Support\Str;
 use App\Models\Base\BaseModel;
 use App\Traits\TransactionTrait;
-use App\Casts\TransactionPaymentStatus;
+use App\Enums\TransactionFailureType;
+use App\Enums\TransactionPaymentStatus;
+use App\Enums\TransactionVerificationType;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Casts\TransactionPaymentStatus as TransactionPaymentStatusCast;
+use App\Enums\TransactionFailureReason;
 
 class Transaction extends BaseModel
 {
     use HasFactory, TransactionTrait;
 
-    const STATUSES = ['Paid', 'Pending Payment', /* 'Refunded', */];
-    const CANCELLATION_REASONS = ['Refund', 'Mistake', 'Other'];
-    const FILTERS = ['All', ...self::STATUSES];
-    const VERIFIERS = ['System', 'User'];
+    public static function PAYMENT_STATUSES(): array
+    {
+        return array_map(fn($status) => $status->value, TransactionPaymentStatus::cases());
+    }
+
+    public static function FAILURE_TYPES(): array
+    {
+        return array_map(fn($failureType) => $failureType->value, TransactionFailureType::cases());
+    }
+
+    public static function VERIFICATION_TYPES(): array
+    {
+        return array_map(fn($verificationType) => $verificationType->value, TransactionVerificationType::cases());
+    }
 
     protected $casts = [
-        'amount' => Money::class,
-        'is_cancelled' => 'boolean',
-        'dpo_payment_url_expires_at' => 'datetime',
-        'dpo_payment_response' => JsonToArray::class,
-        'orange_money_payment_response' => JsonToArray::class,
+        'amount' => Money::class
     ];
 
     protected $tranformableCasts = [
         'currency' => Currency::class,
         'percentage' => Percentage::class,
-        'payment_status' => TransactionPaymentStatus::class,
+        'payment_status' => TransactionPaymentStatusCast::class,
     ];
 
     protected $fillable = [
 
         /*  Basic Information  */
-        'payment_status', 'description', 'proof_of_payment_photo',
+        'payment_status', 'failure_type', 'failure_reason', 'description',
 
         /*  Amount Information  */
-        'currency', 'amount', 'percentage', 'payment_method_id',
+        'currency', 'amount', 'percentage',
 
-        /*  DPO Information  */
-        'dpo_payment_url', 'dpo_payment_url_expires_at', 'dpo_payment_response',
-
-        /*  Orange Money Information  */
-        'orange_money_payment_response',
-
-        /*  Payer Information  */
-        'paid_by_user_id',
-
-        /*  Verifier Information  */
-        'verified_by', 'verified_by_user_id',
+        /*  Metadata Information  */
+        'metadata',
 
         /*  Requester Information  */
         'requested_by_user_id',
 
-        /*  Cancellation Information  */
-        'is_cancelled', 'cancellation_reason', 'cancelled_by_user_id',
+        /*  Verification Information  */
+        'verification_type', 'manually_verified_by_user_id',
 
-        /*  Store Details  */
+        /*  Payment Method Information  */
+        'payment_method_id',
+
+        /*  Customer Information  */
+        'customer_id',
+
+        /*  Store Information  */
         'store_id',
+
+        /*  AI Assistant Information  */
+        'ai_assistant_id',
 
         /*  Owenership Details  */
         'owner_id', 'owner_type'
@@ -81,106 +91,63 @@ class Transaction extends BaseModel
         return $query
             ->where('owner_type', 'like', '%' . $searchWord . '%')
             ->orWhere('description', 'like', '%' . $searchWord . '%')
-            ->orWhereHas('paidByUser', function ($paidByUser) use ($searchWord) {
-                $paidByUser->search($searchWord);
+            ->orWhereHas('customer', function ($customer) use ($searchWord) {
+                $customer->search($searchWord);
             });
     }
 
     public function scopePaid($query)
     {
-        return $query->where('payment_status', 'Paid');
+        return $query->where('payment_status', TransactionPaymentStatus::PAID->value);
+    }
+
+    public function scopeFailedPayment($query)
+    {
+        return $query->where('payment_status', TransactionPaymentStatus::FAILED->value);
     }
 
     public function scopePendingPayment($query)
     {
-        return $query->where('payment_status', 'Pending Payment');
-    }
-
-    public function scopeBelongsToAuth($query)
-    {
-        return $query->where('paid_by_user_id', request()->auth_user->id);
-    }
-
-    public function scopeCancelled($query)
-    {
-        return $query->where('is_cancelled', '1');
-    }
-
-    public function scopeNotCancelled($query)
-    {
-        return $query->where('is_cancelled', '0');
+        return $query->where('payment_status', TransactionPaymentStatus::PENDING->value);
     }
 
     /****************************
      *  RELATIONSHIPS           *
      ***************************/
 
-    /**
-     * Get the owning resource e.g Subscription, Order
-     */
     public function owner()
     {
         return $this->morphTo();
     }
 
-    /**
-     *  Returns the User responsible to pay for this payment transaction.
-     */
-    public function paidByUser()
+    public function customer()
     {
-        return $this->belongsTo(User::class, 'paid_by_user_id');
+        return $this->belongsTo(Customer::class);
     }
 
-    /**
-     *  Returns the associated User that requested this payment transaction.
-     *
-     *  When a payment is requested, this payment is verified by the system,
-     *  therefore when the requestedByUser() is set, then we expect that the
-     *  verifiedByUser() must not be set since the verification is done by
-     *  the system.
-     *
-     *  Either the requestedByUser() is set or the verifiedByUser() is set.
-     *  They cannot be both set since they indicate the verifier, whether
-     *  the transaction is verified by the user or by the system, if the
-     *  transaction is PAID.
-     */
-    public function requestedByUser()
+    public function aiAssistant()
     {
-        return $this->belongsTo(User::class, 'requested_by_user_id');
+        return $this->belongsTo(AiAssistant::class);
     }
 
-    /**
-     *  Returns the User that manually verified this payment transaction.
-     *
-     *  When a payment is verified manually, then the payment is verified by
-     *  the user and not by the system, therefore when the verifiedByUser()
-     *  is set, then we expect that the requestedByUser() must not be set
-     *  since a system verified request is not issued.
-     *
-     *  Either the requestedByUser() is set or the verifiedByUser() is set.
-     *  They cannot be both set since they indicate the verifier, whether
-     *  the transaction is verified by the user or by the system, if the
-     *  transaction is PAID.
-     */
-    public function verifiedByUser()
-    {
-        return $this->belongsTo(User::class, 'verified_by_user_id');
-    }
-
-    /**
-     *  Returns the payment method for this payment transaction.
-     */
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class);
     }
 
-    /**
-     *  Returns the latest payment shortcodes owned by this transaction
-     */
-    public function activePaymentShortcode()
+    public function proofOfPayment()
     {
-        return $this->morphOne(Shortcode::class, 'owner')->action('Pay')->notExpired()->latest();
+        return $this->morphOne(MediaFile::class, 'mediable');
+    }
+
+    public function requestedByUser()
+    {
+        return $this->belongsTo(User::class, 'requested_by_user_id');
+    }
+
+    public function manuallyVerifiedByUser()
+    {
+        return $this->belongsTo(User::class, 'manually_verified_by_user_id');
     }
 
     /****************************
@@ -188,106 +155,123 @@ class Transaction extends BaseModel
      ***************************/
 
     protected $appends = [
-        'number', 'is_paid', 'is_pending_payment', 'is_verified_by_user', 'is_verified_by_system',
-        'is_subject_to_user_verification', 'is_subject_to_system_verification',
-        'dpo_payment_link_has_expired', 'dpo_transaction_token',
-        'can_pay_using_dpo'
+        'number', 'is_paid', 'is_failed_payment', 'is_pending_payment',
+        'is_subject_to_manual_verification', 'is_subject_to_automatic_verification'
     ];
 
-    public function getNumberAttribute()
-    {
-        return str_pad($this->id, 5, 0, STR_PAD_LEFT);
-    }
-
     /**
-     *  Check if the transaction has been paid
+     *  Transaction number
      *
      *  @return bool
      */
-    public function getIsPaidAttribute()
+    protected function number(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => str_pad($this->id, 5, 0, STR_PAD_LEFT)
+        );
+    }
+
+    /**
+     *  Check if transaction has been paid
+     *
+     *  @return bool
+     */
+    protected function getIsPaidAttribute()
     {
         return $this->isPaid();
     }
 
     /**
-     *  Check if the transaction is pending payment
+     *  Check if transaction has failed payment
      *
      *  @return bool
      */
-    public function getIsPendingPaymentAttribute()
+    protected function getIsFailedPaymentAttribute()
+    {
+        return $this->isFailedPayment();
+    }
+
+    /**
+     *  Check if transaction is pending payment
+     *
+     *  @return bool
+     */
+    protected function getIsPendingPaymentAttribute()
     {
         return $this->isPendingPayment();
     }
 
     /**
-     *  Check if the transaction is subject to user verification
+     *  Check if transaction is subject to manual verification
      *
      *  @return bool
      */
-    public function getIsSubjectToUserVerificationAttribute()
+    protected function getIsSubjectToManualVerificationAttribute()
     {
-        return strtolower($this->getRawOriginal('verified_by')) === 'user';
+        return $this->isSubjectToManualVerification();
     }
 
     /**
-     *  Check if the transaction is subject to system verification
+     *  Check if transaction is subject to automatic verification
      *
      *  @return bool
      */
-    public function getIsSubjectToSystemVerificationAttribute()
+    protected function getIsSubjectToAutomaticVerificationAttribute()
     {
-        return strtolower($this->getRawOriginal('verified_by')) === 'system';
+        return $this->isSubjectToAutomaticVerification();
     }
 
     /**
-     *  Check if the transaction payment has been verified by the user
+     * Expound failure reason
      *
-     *  @return bool
+     * @return Attribute
      */
-    public function getIsVerifiedByUserAttribute()
+    protected function failureReason(): Attribute
     {
-        return strtolower($this->getRawOriginal('payment_status')) === 'paid' && strtolower($this->getRawOriginal('verified_by')) === 'user';
+        return Attribute::make(
+            get: function($value) {
+
+                if($value == TransactionFailureType::INACTIVE_ACCOUNT->value) {
+
+                    return TransactionFailureReason::INACTIVE_ACCOUNT->value;
+
+                }else if($value == TransactionFailureType::INSUFFICIENT_FUNDS->value) {
+
+                    return TransactionFailureReason::INSUFFICIENT_FUNDS->value;
+
+                }else if($value == TransactionFailureType::USAGE_CONSUMPTION_MAIN_BALANCE_NOT_FOUND->value) {
+
+                    return TransactionFailureReason::USAGE_CONSUMPTION_MAIN_BALANCE_NOT_FOUND->value;
+
+                }
+
+                return $value;
+            }
+        );
     }
 
     /**
-     *  Check if the transaction payment has been verified by the system
+     *  Expound transaction metadata
      *
-     *  @return bool
+     *  @return Attribute
      */
-    public function getIsVerifiedBySystemAttribute()
+    protected function metadata(): Attribute
     {
-        return strtolower($this->getRawOriginal('payment_status')) === 'paid' && strtolower($this->getRawOriginal('verified_by')) === 'system';
-    }
+        return Attribute::make(
+            get: function($value) {
 
-    public function getDpoPaymentLinkHasExpiredAttribute()
-    {
-        if( $this->dpo_payment_url ) {
+                if($value == null) return null;
+                $value = is_string($value) ? json_decode($value, true) : $value;
 
-            return \Carbon\Carbon::parse($this->dpo_payment_url_expires_at)->isBefore(now());
+                if(isset($value['dpo_payment_url'])) {
+                    $value['dpo_payment_url_expires_at'] = Carbon::parse($value['dpo_payment_url_expires_at']);
+                    $value['dpo_payment_link_has_expired'] = $value['dpo_payment_url_expires_at']->isBefore(now());
+                    $value['can_pay_using_dpo'] = $this->is_pending_payment && !$value['dpo_payment_link_has_expired'];
+                }
 
-        }else{
-
-            return null;
-
-        }
-    }
-
-    public function getDpoTransactionTokenAttribute()
-    {
-        if( $this->dpo_payment_url ) {
-
-            return Str::after($this->dpo_payment_url, '?ID=');
-
-        }else{
-
-            return null;
-
-        }
-    }
-
-    public function getCanPayUsingDpoAttribute()
-    {
-        return $this->is_pending_payment && !is_null($this->dpo_payment_url) && !$this->dpo_payment_link_has_expired;
+                return $value;
+            }
+        );
     }
 
 }

@@ -5,7 +5,6 @@ namespace App\Services\Sms;
 use Exception;
 use App\Models\Store;
 use App\Models\SmsMessage;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class SmsService
@@ -19,7 +18,7 @@ class SmsService
      *  @param string|null $senderMobileNumber - The number of the sender sending the sms e.g 26772000001
      *  @param string|null $clientCredentials - The client credentials used for authentication (Provided by Orange BW)
      */
-    public static function sendOrangeSms($content, $recipientMobileNumber, $senderName, $senderMobileNumber, $clientCredentials): bool
+    public static function sendOrangeSms($content, $recipientMobileNumber, $senderName = null, $senderMobileNumber = null, $clientCredentials = null): bool
     {
         try{
 
@@ -39,7 +38,7 @@ class SmsService
                         $senderName = $store->sms_sender_name;
 
                         // Capture the store sender mobile number
-                        $senderMobileNumber = $store->mobile_number->withExtension;
+                        $senderMobileNumber = $store->mobile_number->formatE164();
 
                     }else{
 
@@ -66,21 +65,9 @@ class SmsService
                     $smsMessage = SmsMessage::create([
                         'content' => $content,
                         'sender_name' => $senderName,
+                        'store_id' => $storeProvided ? $store->id : null,
                         'recipient_mobile_number' => $recipientMobileNumber
                     ]);
-
-                    //  If the store is provided
-                    if($storeProvided) {
-
-                        //  Associate this sms message with the provided store
-                        DB::table('sms_message_store_association')->insert([
-                            'sms_message_id' => $smsMessage->id,
-                            'store_id' => $store->id,
-                            'updated_at' => now(),
-                            'created_at' => now(),
-                        ]);
-
-                    }
 
                     if($smsMessage) {
 

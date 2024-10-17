@@ -4,7 +4,6 @@ namespace App\Traits\Base;
 
 use stdClass;
 use Carbon\Carbon;
-use App\Models\User;
 use Illuminate\Support\Str;
 
 trait BaseTrait
@@ -19,16 +18,6 @@ trait BaseTrait
             'value' => $value,
             'value_symbol' => $value.'%',
         ];
-    }
-
-    public function convertToMobileNumberFormat($numberWithExtension)
-    {
-        $obj = new stdClass();
-        $obj->withExtension = $numberWithExtension;
-        $obj->extension = substr($numberWithExtension, 0, 3);
-        $obj->withoutExtension = substr($numberWithExtension, 3);
-
-        return $obj;
     }
 
     public function convertToCurrencyFormat($currencyCode = 'BWP')
@@ -197,106 +186,11 @@ trait BaseTrait
     }
 
     /**
-     *  This method will extract the operator and the date
-     *  from the given value assuming that the value is
-     *  formatted as follows:
+     * Check if the give value is matches any truthy value
      *
-     *  $value = [operator]-[timestamp]
-     *
-     *  e.g
-     *
-     *  $value = gte-1709157600
-     *
-     *  We must return the appropriate operator symbol and
-     *  the Carbon Date Instance of the parsed timestamp
-     *
-     *  ['>=', Carbon Date Instance]
-     */
-    public function extractOperatorAndDate($input)
-    {
-        //  Extract operator and timestamp
-        [$operator, $timestamp] = explode('-', $input);
-
-        //  Extract the operator symbol
-        $operator = $this->extractOperatorSymbol($operator);
-
-        //  Parse timestamp using Carbon
-        $date = Carbon::createFromTimestamp($timestamp);
-
-        //  Return operator and parsed date
-        return [$operator, $date];
-    }
-
-    /**
-     *  This method will extract the operator and the date
-     *  from the given value assuming that the value is
-     *  formatted as follows:
-     *
-     *  $value = [operator]-[amount]
-     *
-     *  e.g
-     *
-     *  $value = gte-2.50
-     *
-     *  We must return the appropriate operator symbol and
-     *  the amount
-     *
-     *  ['>=', 2.50]
-     */
-    public function extractOperatorAndValue($input)
-    {
-        //  Extract operator and value
-        [$operator, $value] = explode('-', $input);
-
-        //  Extract the operator symbol
-        $operator = $this->extractOperatorSymbol($operator);
-
-        //  Return operator and value
-        return [$operator, $value];
-    }
-
-    public function extractOperatorSymbol($operator)
-    {
-        // Map filter operation abbreviations to comparison operator
-        $operatorMap = [
-            'gte' => '>=',
-            'lte' => '<=',
-            'gt'  => '>',
-            'lt'  => '<',
-            'eq'  => '=',
-        ];
-
-        // Map to corresponding comparison operator or default to '='
-        return $operatorMap[$operator] ?? '=';
-    }
-
-    /**
-     *  Check if the give value is matches any truthy value
+     * @param mixed $value
      */
     public function isTruthy($value) {
         return in_array($value, [true, 'true', '1'], true);
-    }
-
-    /**
-     *  Choose the appropriate user to return based on the information provided.
-     *  If this request is performed on the "/users/{user}" then the $user param
-     *  will represent a database user record matching the user id specified.
-     *  This record will have the user information including the user id. If
-     *  this request is performed on the "/auth/user" then the $user param
-     *  will not represent a database user record since the request
-     *  "{user}" is not provided. Instead Laravel will create a
-     *  blank User instance as a placeholder to compansate the
-     *  route (User $user) parameter i.e ($user = new User).
-     *
-     *  We need to check if this request is being performed on the
-     *  "/users/{user}" or "/auth/user" routes. This will allow
-     *  us to choose the appropriate user that this request
-     *  should focus on. We can do this by checking the
-     *  existence of the request user.
-     *
-     *  @return User
-     */
-    private function chooseUser() {
-        return request()->user ? request()->user : request()->auth_user;
     }
 }

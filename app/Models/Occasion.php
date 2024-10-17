@@ -32,4 +32,14 @@ class Occasion extends BaseModel
     {
         return $query->active()->where('name', $searchWord);
     }
+
+    /**
+     *  Get the Order assigned to this Occasion
+     *
+     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasOne
+     */
+    public function order()
+    {
+        return $this->hasOne(Order::class);
+    }
 }

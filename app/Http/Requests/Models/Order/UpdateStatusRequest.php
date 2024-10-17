@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Models\Order;
 
+use App\Enums\OrderStatus;
 use App\Models\Order;
 use Illuminate\Support\Str;
 use App\Traits\Base\BaseTrait;
@@ -37,7 +38,7 @@ class UpdateStatusRequest extends FormRequest
              */
             if($this->has('status')) {
                 $this->merge([
-                    'status' => $this->separateWordsThenLowercase($this->get('status'))
+                    'status' => $this->separateWordsThenLowercase($this->get('status')),
                 ]);
             }
 
@@ -56,7 +57,7 @@ class UpdateStatusRequest extends FormRequest
     public function rules()
     {
         //  Get the available order statuses
-        $statuses = collect(Order::STATUSES)->map(fn($status) => strtolower($status));
+        $statuses = collect(Order::STATUSES())->map(fn($status) => strtolower($status));
 
         //  Get the order status to update this order
         $status = $this->separateWordsThenLowercase(request()->input('status'));
@@ -66,16 +67,11 @@ class UpdateStatusRequest extends FormRequest
          *  extra precautions, so in that case we need to request the
          *  collection code.
          */
-        $requiresConfirmation = $status == 'completed';
+        $requiresConfirmation = $status == strtolower(OrderStatus::COMPLETED->value);
 
         return [
             'status' => ['required', 'string', Rule::in($statuses)],
-
-            //  Collection code
-            'collection_code' => array_merge(
-                ['bail', 'sometimes', 'digits:6'],
-                $requiresConfirmation ? ['required'] : []
-            ),
+            'collection_code' => ['bail', 'sometimes', 'digits:6']
         ];
     }
 
@@ -87,8 +83,8 @@ class UpdateStatusRequest extends FormRequest
     public function messages()
     {
         return [
-            'status.string' => 'Answer "'.collect(Order::STATUSES)->join('", "', '" or "').' to update order status',
-            'status.in' => 'Answer "'.collect(Order::STATUSES)->join('", "', '" or "').' to update order status',
+            'status.string' => 'Answer "'.collect(Order::STATUSES())->join('", "', '" or "').' to update order status',
+            'status.in' => 'Answer "'.collect(Order::STATUSES())->join('", "', '" or "').' to update order status',
         ];
     }
 

@@ -7,17 +7,15 @@ use App\Casts\Money;
 use App\Casts\Currency;
 use App\Traits\StoreTrait;
 use App\Casts\JsonToArray;
-use App\Casts\MobileNumber;
+use App\Enums\CallToAction;
 use App\Models\Base\BaseModel;
-use App\Services\Ussd\UssdService;
+use App\Casts\E164PhoneNumberCast;
 use App\Casts\DeliveryDestinations;
 use App\Traits\UserStoreAssociationTrait;
 use App\Models\Pivots\UserStoreAssociation;
+use Propaganistas\LaravelPhone\PhoneNumber;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Models\Pivots\FriendGroupStoreAssociation;
-use App\Models\Pivots\SmsMessageStoreAssociation;
-use App\Services\MobileNumber\MobileNumberService;
-use App\Models\Pivots\StorePaymentMethodAssociation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Store extends BaseModel
@@ -25,6 +23,7 @@ class Store extends BaseModel
     use HasFactory, StoreTrait, UserStoreAssociationTrait;
 
     const CURRENCY = 'BWP';
+    const DEFAULT_OFFLINE_MESSAGE = 'We are currently offline';
 
     const PERMISSIONS = [
         [
@@ -69,33 +68,16 @@ class Store extends BaseModel
         ],
     ];
 
-    const STORE_FILTERS = [
-        'All', 'Popular Today', 'Popular This Week', 'Popular This Month', 'Popular This Year'
-    ];
-
     const USER_STORE_FILTERS = [
         'All', 'Team Member', 'Team Member Left', 'Team Member Joined', 'Team Member Invited', 'Team Member Declined',
         'Team Member Joined As Creator', 'Team Member Joined As Non Creator', 'Follower', 'Unfollower', 'Invited To Follow',
         'Friend Group Member', 'Customer', 'Assigned', 'Recent Visitor', 'Associated', 'Active Subscription'
     ];
 
-    const REGISTERED_WITH_CIPA_AS = [
-        'Company', 'Business', 'Non profit'
-    ];
-
-    const BANKING_WITH = [
-        'Absa', 'BancABC', 'Bank Gaborone', 'Bank of Baroda',
-        'Bank of India', 'Botswana Savings Bank', 'First Capital Bank',
-        'First National Bank', 'Stanbic Bank Botswana', 'Standard Chartered Bank',
-        'Other'
-    ];
-
-    const COLLECTION_TYPES = [
-        'Delivery', 'Pickup'
-    ];
-
-    const DEFAULT_OFFLINE_MESSAGE = 'We are currently offline';
-    const CALL_TO_ACTION_OPTIONS = ['Buy', 'Order', 'Preorder'];
+    public static function CALL_TO_ACTION_OPTIONS(): array
+    {
+        return array_map(fn($method) => $method->value, CallToAction::cases());
+    }
 
     /**
      *  Magic Numbers
@@ -105,6 +87,8 @@ class Store extends BaseModel
     const MAXIMUM_PRODUCTS = 50;
     const NAME_MIN_CHARACTERS = 3;
     const NAME_MAX_CHARACTERS = 25;
+    const ALIAS_MIN_CHARACTERS = 3;
+    const ALIAS_MAX_CHARACTERS = 25;
     const COMPANY_UIN_CHARACTERS = 13;
     const MAXIMUM_VISIBLE_PRODUCTS = 5;
     const DESCRIPTION_MIN_CHARACTERS = 10;
@@ -117,8 +101,6 @@ class Store extends BaseModel
     const SMS_SENDER_NAME_MAX_CHARACTERS = 11;
     const OFFLINE_MESSAGE_MIN_CHARACTERS = 3;
     const OFFLINE_MESSAGE_MAX_CHARACTERS = 120;
-    const DPO_COMPANY_TOKEN_MIN_CHARACTERS = 3;
-    const DPO_COMPANY_TOKEN_MAX_CHARACTERS = 255;
     CONST NUMBER_OF_EMPLOYEES_MIN_CHARACTERS = 1;
     const PICKUP_DESTINATION_NAME_MIN_CHARACTERS = 3;
     const PICKUP_DESTINATION_NAME_MAX_CHARACTERS = 25;
@@ -136,90 +118,98 @@ class Store extends BaseModel
         'online' => 'boolean',
         'verified' => 'boolean',
         'allow_pickup' => 'boolean',
-        'is_brand_store' => 'boolean',
         'allow_delivery' => 'boolean',
-        'adverts' => JsonToArray::class,
         'identified_orders' => 'boolean',
-        'perfect_pay_enabled' => 'boolean',
-        'dpo_payment_enabled' => 'boolean',
-        'is_influencer_store' => 'boolean',
         'allow_free_delivery' => 'boolean',
-        'registered_with_bank' => 'boolean',
-        'registered_with_cipa' => 'boolean',
         'delivery_flat_fee' => Money::class,
         'allow_deposit_payments' => 'boolean',
-        'mobile_number' => MobileNumber::class,
         'last_subscription_end_at' => 'datetime',
         'allow_installment_payments' => 'boolean',
-        'orange_money_payment_enabled' => 'boolean',
         'deposit_percentages' => JsonToArray::class,
         'pickup_destinations' => JsonToArray::class,
+        'has_automated_payment_methods' => 'boolean',
         'installment_percentages' => JsonToArray::class,
+        'ussd_mobile_number' => E164PhoneNumberCast::class,
+        'contact_mobile_number' => E164PhoneNumberCast::class,
+        'whatsapp_mobile_number' => E164PhoneNumberCast::class,
         'delivery_destinations' => DeliveryDestinations::class,
     ];
 
     protected $tranformableCasts = [
         'currency' => Currency::class,
-
-        //  This property is eager loaded using the withAvg() method
-        'rating' => 'decimal:1'
+        'rating' => 'decimal:1' //  Eager loaded using the withAvg() method
     ];
 
     protected $fillable = [
-        'emoji', 'logo', 'cover_photo', 'adverts', 'name', 'call_to_action', 'description', 'mobile_number', 'currency', 'registered_with_bank', 'banking_with', 'registered_with_cipa', 'registered_with_cipa_as',
-        'company_uin', 'number_of_employees', 'verified', 'online', 'offline_message', 'identified_orders',
-        'user_id', 'last_subscription_end_at', 'allow_delivery', 'allow_free_delivery',
-        'pickup_note', 'delivery_note', 'delivery_fee', 'delivery_flat_fee',
-        'delivery_destinations', 'allow_pickup', 'pickup_note', 'pickup_destinations',
-        'perfect_pay_enabled', 'orange_money_payment_enabled', 'orange_money_merchant_code', 'dpo_payment_enabled', 'dpo_company_token', 'allow_deposit_payments', 'deposit_percentages',
+        'emoji', 'name', 'alias', 'ussd_mobile_number', 'contact_mobile_number', 'whatsapp_mobile_number', 'call_to_action',
+        'description', 'currency', 'verified', 'online', 'offline_message', 'identified_orders', 'user_id',
+        'last_subscription_end_at', 'allow_delivery', 'allow_free_delivery', 'pickup_note', 'delivery_note',
+        'delivery_fee', 'delivery_flat_fee', 'delivery_destinations', 'allow_pickup', 'pickup_note',
+        'pickup_destinations', 'allow_deposit_payments', 'deposit_percentages',
         'allow_installment_payments', 'installment_percentages',
-        'is_brand_store', 'is_influencer_store', 'sms_sender_name'
+        'sms_sender_name', 'has_automated_payment_methods'
     ];
 
-    /*
-     *  Scope: Return stores that are being searched
-     */
+    /************
+     *  SCOPES  *
+     ***********/
+
     public function scopeSearch($query, $searchWord)
     {
-        // Check if the provided string is a Botswana mobile number
-        if (MobileNumberService::isValidOrangeMobileNumber($searchWord)) {
+        $mobileNumber = $searchWord[0] === '+' ? $searchWord : '+' . $searchWord;
+        $isMobileNumber = (new PhoneNumber($searchWord))->isValid();
 
-            return $query->searchMobileNumber()->orWhereHas('teamMembers', function ($teamMembers) use ($searchWord) {
-                $teamMembers->where('team_member_role', 'Creator')
-                            ->searchMobileNumber($searchWord);
-            });
+        if($isMobileNumber) {
 
-        // Check if the provided string is a ussd code e.g *250*100#
-        }else if (UssdService::isValidUssdCode($searchWord) && $code = UssdService::getUssdLastReply($searchWord)) {
-
-            return $query->whereHas('visitShortcode', function ($visitShortcode) use ($code) {
-                $visitShortcode->notExpired()->where('code', $code);
-            });
+            $query->where('stores.ussd_mobile_number', $mobileNumber)
+                 ->orWhere('stores.contact_mobile_number', $mobileNumber)
+                 ->orWhere('stores.whatsapp_mobile_number', $mobileNumber);
 
         }else{
 
-            //  If the search word contains letters, then search by store name
             return $query->searchName($searchWord);
 
         }
     }
 
     /*
-     *  Scope: Return stores that are being searched using the store name
+     *  Scope: Return stores searched by name
      */
     public function scopeSearchName($query, $searchWord)
     {
-        //  If the search word contains letters, then search by store name
-        return $query->where('name', 'like', "%$searchWord%");
+        return $query->where('stores.name', 'like', "%$searchWord%");
     }
 
     /*
-     *  Scope: Return stores that are being searched using the mobile number
+     *  Scope: Return stores searched by alias
      */
-    public function scopeSearchMobileNumber($query, $mobileNumber)
+    public function scopeSearchAlias($query, $searchWord)
     {
-        $mobileNumber = MobileNumberService::addMobileNumberExtension($mobileNumber);
-        return $query->where('stores.mobile_number', $mobileNumber);
+        return $query->where('stores.alias', $searchWord);
+    }
+
+    /*
+     *  Scope: Return stores searched by USSD mobile number
+     */
+    public function scopeSearchUssdMobileNumber($query, $mobileNumber)
+    {
+        return $query->where('stores.ussd_mobile_number', $mobileNumber);
+    }
+
+    /*
+     *  Scope: Return stores searched by contact mobile number
+     */
+    public function scopeSearchContactMobileNumber($query, $mobileNumber)
+    {
+        return $query->where('stores.contact_mobile_number', $mobileNumber);
+    }
+
+    /*
+     *  Scope: Return stores searched by whatsapp mobile number
+     */
+    public function scopeSearchWhatsappMobileNumber($query, $mobileNumber)
+    {
+        return $query->where('stores.whatsapp_mobile_number', $mobileNumber);
     }
 
     /*
@@ -227,80 +217,71 @@ class Store extends BaseModel
      */
     public function scopeHasActiveSubscription($query)
     {
-        return $query->where('last_subscription_end_at', '>' , now());
+        return $query->where('stores.last_subscription_end_at', '>' , now());
     }
 
-    /*
-     *  Scope: Return stores that are brand stores
-     */
-    public function scopeBrandStores($query)
+    /********************
+     *  RELATIONSHIPS   *
+     *******************/
+
+    public function logo()
     {
-        return $query->where('is_brand_store', '1');
+        return $this->morphOne(MediaFile::class, 'mediable')->where('type', 'logo');
     }
 
-    /*
-     *  Scope: Return stores that are influencer stores
-     */
-    public function scopeInfluencerStores($query)
+    public function adverts()
     {
-        return $query->where('is_influencer_store', '1');
+        return $this->morphMany(MediaFile::class, 'mediable')->where('type', 'advert');
     }
 
-    /****************************
-     *  RELATIONSHIPS           *
-     ***************************/
+    public function coverPhoto()
+    {
+        return $this->morphOne(MediaFile::class, 'mediable')->where('type', 'cover_photo');
+    }
 
-    /**
-     *  Returns the associated products
-     */
+    public function address()
+    {
+        return $this->morphOne(Address::class, 'owner');
+    }
+
+    public function storeQuota()
+    {
+        return $this->hasOne(StoreQuota::class);
+    }
+
+    public function paymentMethods()
+    {
+        return $this->hasMany(PaymentMethod::class);
+    }
+
+    public function customers()
+    {
+        return $this->hasMany(Customer::class);
+    }
+
     public function products()
     {
         return $this->hasMany(Product::class);
     }
 
-    /**
-     *  Returns the associated reviews
-     */
     public function reviews()
     {
         return $this->hasMany(Review::class)->latest();
     }
 
-    /**
-     *  Returns the associated coupons
-     */
     public function coupons()
     {
         return $this->hasMany(Coupon::class);
     }
 
-    /**
-     *  Returns the associated carts
-     */
     public function carts()
     {
         return $this->hasMany(Cart::class);
     }
 
-    /**
-     *  Returns the associated orders
-     */
     public function orders()
     {
         return $this->hasMany(Order::class);
-    }
-
-    /**
-     *  Returns the associated payment methods that have been assigned to this store
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function supportedPaymentMethods()
-    {
-        return $this->belongsToMany(PaymentMethod::class, 'store_payment_method_association', 'store_id', 'payment_method_id')
-                    ->withPivot(StorePaymentMethodAssociation::VISIBLE_COLUMNS)
-                    ->using(StorePaymentMethodAssociation::class)
-                    ->as('store_payment_method_association');
     }
 
     /**
@@ -327,14 +308,24 @@ class Store extends BaseModel
                     ->as('user_store_association');
     }
 
-    /**
-     *  Returns the associated users that have been assigned to this store as a team member
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
     public function teamMembers()
     {
         return $this->users()->whereNotNull('team_member_status');
+    }
+
+    public function teamMembersWhoLeft()
+    {
+        return $this->teamMembers()->leftTeam();
+    }
+
+    public function teamMembersWhoJoined()
+    {
+        return $this->teamMembers()->joinedTeam();
+    }
+
+    public function teamMemberAsCreator()
+    {
+        return $this->teamMembers()->joinedTeamAsCreator();
     }
 
     /**
@@ -345,59 +336,6 @@ class Store extends BaseModel
     public function followers()
     {
         return $this->users()->whereNotNull('follower_status');
-    }
-
-    /**
-     *  Returns the associated users that have been assigned to this store as a customer
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function customers()
-    {
-        return $this->users()->where('is_associated_as_customer', '1');
-    }
-
-    /**
-     *  Returns the shortcodes owned by this store
-     */
-    public function shortcodes()
-    {
-        return $this->morphMany(Shortcode::class, 'owner');
-    }
-
-    /**
-     *  Returns the shortcode owned by this store
-     */
-    public function shortcode()
-    {
-        return $this->morphOne(Shortcode::class, 'owner');
-    }
-
-    /**
-     *  Returns the latest payment shortcodes owned by this store
-     *  A single store can have multiple payment shortcodes
-     *  reserved for various users
-     */
-    public function activePaymentShortcodes()
-    {
-        return $this->shortcodes()->action('Pay')->notExpired()->latest();
-    }
-
-    /**
-     *  Returns the latest payment shortcode owned by this store
-     *  and reserved for the current authenticated user
-     */
-    public function authPaymentShortcode()
-    {
-        return $this->shortcode()->action('Pay')->notExpired()->belongsToAuth()->latest();
-    }
-
-    /**
-     *  Returns the latest visit shortcode owned by this store
-     */
-    public function visitShortcode()
-    {
-        return $this->shortcode()->action('Visit')->notExpired()->latest();
     }
 
     /**
@@ -499,10 +437,7 @@ class Store extends BaseModel
      */
     public function smsMessages()
     {
-        return $this->belongsToMany(SmsMessage::class, 'sms_message_store_association', 'sms_message_id', 'store_id')
-                    ->withPivot(SmsMessageStoreAssociation::VISIBLE_COLUMNS)
-                    ->using(SmsMessageStoreAssociation::class)
-                    ->as('user_friend_association');
+        return $this->hasMany(SmsMessage::class);
     }
 
     /****************************
@@ -518,26 +453,6 @@ class Store extends BaseModel
         return new Attribute(
             get: fn() => empty($this->emoji) ? $this->name : $this->emoji.' '.$this->name
         );
-    }
-
-    /**
-     *  Attribute to check if Orange Money payment is enabled for this store
-     */
-    protected function orangeMoneyPaymentEnabled(): Attribute
-    {
-         return new Attribute(
-             get: fn($value) => $value && !empty($this->orange_money_merchant_code)
-         );
-    }
-
-    /**
-     *  Attribute to check if DPO payment is enabled for this store
-     */
-    protected function dpoPaymentEnabled(): Attribute
-    {
-         return new Attribute(
-             get: fn($value) => $value && !empty($this->dpo_company_token)
-         );
     }
 
     /**

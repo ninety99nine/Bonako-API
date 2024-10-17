@@ -2,16 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Transaction;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
 use App\Repositories\TransactionRepository;
-use App\Http\Requests\Models\UncancelRequest;
 use App\Http\Controllers\Base\BaseController;
-use App\Http\Requests\Models\DeleteRequest;
-use App\Http\Requests\Models\Transaction\CancelTransactionRequest;
-use App\Http\Requests\Models\Transaction\UpdateProofOfPaymentPhotoRequest;
-use App\Models\Store;
+use App\Http\Requests\Models\Transaction\ShowTransactionsRequest;
+use App\Http\Requests\Models\Transaction\DeleteTransactionsRequest;
 
 class TransactionController extends BaseController
 {
@@ -20,68 +15,98 @@ class TransactionController extends BaseController
      */
     protected $repository;
 
-    public function showTransactions()
+    /**
+     * TransactionController constructor.
+     *
+     * @param TransactionRepository $repository
+     */
+    public function __construct(TransactionRepository $repository)
     {
-        return $this->prepareOutput($this->repository->showTransactions());
+        $this->repository = $repository;
     }
 
-    public function show(Store $store, Transaction $transaction)
+    /**
+     * Show transactions.
+     *
+     * @param ShowTransactionsRequest $request
+     * @return JsonResponse
+     */
+    public function showTransactions(ShowTransactionsRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($transaction)->show());
+        if($request->storeId) {
+            $request->merge(['store_id' => $request->storeId]);
+        }else if($request->orderId) {
+            $request->merge(['order_id' => $request->orderId]);
+        }else if($request->pricingPlanId) {
+            $request->merge(['pricing_plan_id' => $request->pricingPlanId]);
+        }
+
+        return $this->prepareOutput($this->repository->showTransactions($request->all()));
     }
 
-    public function confirmDelete(Transaction $transaction)
+    /**
+     * Delete transactions.
+     *
+     * @param DeleteTransactionsRequest $request
+     * @return JsonResponse
+     */
+    public function deleteTransactions(DeleteTransactionsRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($transaction)->generateDeleteConfirmationCode());
+        return $this->prepareOutput($this->repository->deleteTransactions($request->all()));
     }
 
-    public function delete(Transaction $transaction)
+    /**
+     * Show transaction.
+     *
+     * @param string $transactionId
+     * @return JsonResponse
+     */
+    public function showTransaction(string $transactionId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($transaction)->deleteTransaction());
+        return $this->prepareOutput($this->repository->showTransaction($transactionId));
     }
 
-    public function renewPaymentLink(Transaction $transaction)
+    /**
+     * Delete transaction.
+     *
+     * @param string $transactionId
+     * @return JsonResponse
+     */
+    public function deleteTransaction(string $transactionId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($transaction)->renewPaymentLink());
+        return $this->prepareOutput($this->repository->deleteTransaction($transactionId));
     }
 
-    public function cancel(CancelTransactionRequest $request, Transaction $transaction)
+    /**
+     * Show transaction proof of payment photo.
+     *
+     * @param string $transactionId
+     * @return JsonResponse
+     */
+    public function showTransactionProofOfPaymentPhoto(string $transactionId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($transaction)->cancel($request));
+        return $this->prepareOutput($this->repository->showTransactionProofOfPaymentPhoto($transactionId));
     }
 
-    public function uncancel(UncancelRequest $request, Transaction $transaction)
+    /**
+     * Upload transaction proof of payment photo.
+     *
+     * @param string $transactionId
+     * @return JsonResponse
+     */
+    public function uploadTransactionProofOfPaymentPhoto(string $transactionId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($transaction)->uncancel($request));
+        return $this->prepareOutput($this->repository->uploadTransactionProofOfPaymentPhoto($transactionId));
     }
 
-    public function showCancellationReasons(Transaction $transaction)
+    /**
+     * Delete transaction proof of payment photo.
+     *
+     * @param string $transactionId
+     * @return JsonResponse
+     */
+    public function deleteTransactionProofOfPaymentPhoto(string $transactionId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($transaction)->showCancellationReasons());
-    }
-
-    public function generatePaymentShortcode(Transaction $transaction)
-    {
-        return $this->prepareOutput($this->setModel($transaction)->generatePaymentShortcode());
-    }
-
-    public function expirePaymentShortcode(Transaction $transaction)
-    {
-        return $this->prepareOutput($this->setModel($transaction)->expirePaymentShortcode());
-    }
-
-    public function showProofOfPaymentPhoto(Transaction $transaction)
-    {
-        return $this->prepareOutput($this->setModel($transaction)->showProofOfPaymentPhoto());
-    }
-
-    public function updateProofOfPaymentPhoto(UpdateProofOfPaymentPhotoRequest $request, Transaction $transaction)
-    {
-        return $this->prepareOutput($this->setModel($transaction)->updateProofOfPaymentPhoto($request), Response::HTTP_CREATED);
-    }
-
-    public function deleteProofOfPaymentPhoto(Transaction $transaction)
-    {
-        return $this->prepareOutput($this->setModel($transaction)->removeExistingProofOfPaymentPhoto());
+        return $this->prepareOutput($this->repository->deleteTransactionProofOfPaymentPhoto($transactionId));
     }
 }

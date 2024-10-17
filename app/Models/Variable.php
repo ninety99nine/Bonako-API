@@ -9,6 +9,8 @@ class Variable extends BaseModel
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $fillable = ['name', 'value', 'product_id'];
 
     /**

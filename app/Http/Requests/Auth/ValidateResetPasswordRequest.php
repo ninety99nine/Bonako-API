@@ -18,7 +18,6 @@ class ValidateResetPasswordRequest extends FormRequest
      */
     public function authorize()
     {
-        //  Everyone is authorized to make this request
         return true;
     }
 

@@ -3,12 +3,59 @@
 namespace App\Services\Ussd;
 
 use GuzzleHttp\Client;
-use App\Models\InstantCart;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 class UssdService
 {
+    private static $ussdCodesByCountryCodes = [
+        'BW' => '250'
+    ];
+
+    /**
+     *  Get main shortcode e.g *250#
+     *
+     *  @param string $countryCode
+     *  @return string|null
+     */
+    public static function getMainShortcode(string $countryCode): string|null
+    {
+        return isset(self::$ussdCodesByCountryCodes[$countryCode]) ? '*'.self::$ussdCodesByCountryCodes[$countryCode].'#' : null;
+    }
+
+    /**
+     *  Append to main shortcode e.g *123*250#
+     *
+     *  @param string $countryCode
+     *  @return string|null
+     */
+    public static function appendToMainShortcode(string $number, string $countryCode): string|null
+    {
+        $number = Str::replace(' ', '', $number);
+        return ($mainShortcode = self::getMainShortcode($countryCode)) ? Str::replaceFirst('#', '*'.$number.'#', $mainShortcode) : null;
+    }
+
+    /**
+     *  Get the mobile verification shortcode e.g *250*0000#
+     *
+     *  @param string $countryCode
+     *  @return string|null
+     */
+    public static function getMobileVerificationShortcode(string $countryCode): string|null
+    {
+        return isset(self::$ussdCodesByCountryCodes[$countryCode]) ? '*'.self::$ussdCodesByCountryCodes[$countryCode].'*0000#' : null;
+    }
+
+    /**
+     *  Verify if the incoming request is from the USSD server
+     *
+     *  @return bool
+     */
+    public static function verifyIfRequestFromUssdServer(): bool
+    {
+        return request()->filled('ussd_token') ? request()->input('ussd_token') == config('app.USSD_TOKEN') : false;
+    }
+
     /**
      *  Get the reserved shortcode range
      *
@@ -24,50 +71,9 @@ class UssdService
      *
      *  @return int
      */
-    public static function getReservedShortcodeRange()
+    public static function getReservedShortcodeRange(): int
     {
         return (int) config('app.USSD_RESERVED_SHORTCODE_RANGE');
-    }
-
-    /**
-     *  Get the main shortcode
-     *  @return string
-     */
-    public static function getMainShortcode()
-    {
-        return '*'.config('app.USSD_MAIN_SHORT_CODE').'#';
-    }
-
-    /**
-     *  Get the mobile verification shortcode
-     *  @return string
-     */
-    public static function getMobileVerificationShortcode()
-    {
-        return '*'.config('app.USSD_MAIN_SHORT_CODE').'*0000#';
-    }
-
-    /**
-     *  Verify if the incoming request is from the USSD server
-     *  @return boolean
-     */
-    public static function verifyIfRequestFromUssdServer()
-    {
-        if( request()->filled('ussd_token') ) {
-
-            //  Validate the ussd token
-            return request()->input('ussd_token') == config('app.USSD_TOKEN');
-
-        }else{
-
-            return false;
-
-        }
-    }
-
-    public static function appendToMainShortcode($code)
-    {
-        return Str::replaceFirst('#', '*'.$code.'#', self::getMainShortcode());
     }
 
     /**
@@ -76,7 +82,7 @@ class UssdService
      * @param string $ussd - The ussd code e.g *250*1#
      * @return bool
      */
-    public static function isValidUssdCode($ussd)
+    public static function isValidUssdCode($ussd): bool
     {
         /**
          *  This Regex pattern will ACCEPT the following:
@@ -108,67 +114,12 @@ class UssdService
      * @param string $ussd - The USSD code (e.g., *250*1#).
      * @return string|null - The last reply or null if not found.
      */
-    public static function getUssdLastReply($ussd)
+    public static function getUssdLastReply($ussd): string|null
     {
         $pattern = '/[*#]/';
         $parts = preg_split($pattern, $ussd, -1, PREG_SPLIT_NO_EMPTY);
 
         return end($parts) ?: null;
-    }
-
-    /**
-     *  This method will generate a new unique code that can be used in relation
-     *  to the specified shortcode e.g This could be a code being generated for
-     *  a shortcode that allows users to visit a store or pay for a subscription
-     *
-     *  @param \Illuminate\Database\Eloquent\Model $shortcode - The shortcode that this code is created for
-     *  @param string $action - The action to be performed by this shortcode e.g Visit, Pay, e.t.c
-     *  @return int
-     */
-    public static function generateResourceCode($shortcode, $action)
-    {
-        /**
-         *  Count the total number of similar short codes so that we
-         *  can know the total number of shortcodes that perform the
-         *  same kind of action.
-         */
-        $total = $shortcode->action($action)->count();
-
-        //  The new code must be an increment of this total
-        $code = ($total + 1);
-
-        //  If this is a "Visit" action
-        if( $action == 'Visit' ) {
-
-            //  If this shortcode is for visiting an instant cart
-            if($shortcode->owner_type == (new InstantCart)->getResourceName()) {
-
-                //  Prepend a single zero before this code
-                $code = '0'.$code;
-
-            //  If this shortcode is for visiting a store
-            }else{
-
-                /**
-                 *  Offset the code by the reserved shortcode range
-                 *  so that we are generating a code that is beyond
-                 *  the range of reserved shortcodes. This is so
-                 *  that we can avoid conflicting shortcode use.
-                 */
-                $code += self::getReservedShortcodeRange();
-
-            }
-
-        }else if( $action == 'Pay' ) {
-
-            //  Prepend double zero before this code
-            $code = '00'.$code;
-
-        }
-
-        //  Return the code
-        return $code;
-
     }
 
     /**
@@ -186,10 +137,10 @@ class UssdService
             $msg = $request->input('msg');
             $sessionId = $request->input('session_id');
             $requestType = $request->input('request_type');
-            $msisdn = $request->auth_user->mobile_number->withExtension;
+            $msisdn = $request->auth_user->mobile_number->formatE164();
 
             if($requestType == '1') {
-                $msg = self::getMainShortcode();
+                $msg = self::getMainShortcode($request->auth_user->mobile_number->getCountry());
             }
 
             //  Set the request options

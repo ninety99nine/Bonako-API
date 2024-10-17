@@ -17,13 +17,12 @@ class AiMessageCategoryResource extends BaseResource
 
     public function setLinks()
     {
-        //  Set the route name prefix
-        $prefix = 'ai.message.category.';
+        $aiMessageCategory = $this->resource;
 
         $this->resourceLinks = [
-            //  new ResourceLink('self', route($prefix.'show'), 'The ai message'),
-            //  new ResourceLink('update.ai.message', route($prefix.'update'), 'Update ai message category'),
-            //  new ResourceLink('delete.ai.message', route($prefix.'delete'), 'Delete ai message category'),
+            new ResourceLink('show.ai.message.category', route('show.ai.message.category', ['aiMessageCategoryId' => $aiMessageCategory->id])),
+            new ResourceLink('update.ai.message.category', route('update.ai.message.category', ['aiMessageCategoryId' => $aiMessageCategory->id])),
+            new ResourceLink('delete.ai.message.category', route('delete.ai.message.category', ['aiMessageCategoryId' => $aiMessageCategory->id])),
         ];
     }
 

@@ -3,10 +3,11 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Traits\Base\BaseTrait;
 use App\Helpers\PayloadNamingConvention;
 use App\Exceptions\InvalidJsonFormatException;
-use App\Traits\Base\BaseTrait;
 
 class FormatRequestPayload
 {
@@ -83,10 +84,6 @@ class FormatRequestPayload
 
         }
 
-        $request->replace(
-            (new PayloadNamingConvention($request->all()))->removeDotNotation()->convertToSnakeCaseFormat()
-        );
-
         /**
          *  In order to maintain consistency, we want to convert non boolean
          *  true/false data types into boolean true/false data types
@@ -103,6 +100,67 @@ class FormatRequestPayload
 
         }
 
+        $request = $this->convertRequestInputsToSnakecaseFormat($request);
+        $this->normaliseMobileNumbers();
+
         return $next($request);
+    }
+
+    /**
+     * Convert request inputs to snakecase format
+     *
+     * @return Request
+     */
+    public function convertRequestInputsToSnakecaseFormat(Request $request): Request
+    {
+        $snakeCaseFormat = (new PayloadNamingConvention($request->all()))->removeDotNotation()->convertToSnakeCaseFormat();
+        $request->replace($snakeCaseFormat);
+        return $request;
+    }
+
+    /**
+     * Normalize mobile numbers.
+     * Recursively append the "+" to mobile number fields at any level.
+     *
+     * @return void
+     */
+    public function normaliseMobileNumbers(): void
+    {
+        $data = request()->all();
+
+        /**
+         * Normalize function to append "+" to the mobile number.
+         */
+        $normalizeMobileNumber = function($mobileNumber) {
+            if (is_string($mobileNumber) || is_int($mobileNumber)) {
+                if (!Str::startsWith($mobileNumber, '+')) {
+                    $mobileNumber = '+' . (string) $mobileNumber;
+                }
+            }
+            return $mobileNumber;
+        };
+
+        /**
+         * Recursively normalize all mobile number fields.
+         */
+        $normalizeNestedMobileNumbers = function (&$data, $parentKey = null) use (&$normalizeNestedMobileNumbers, $normalizeMobileNumber) {
+            foreach ($data as $key => &$value) {
+                if (is_array($value)) {
+                    // If the value is an array, call the function recursively
+                    $normalizeNestedMobileNumbers($value, $key);
+                } else {
+                    // If the key indicates a mobile number and value is a string or int, normalize it
+                    if (Str::contains($key, 'mobile_number') && (is_string($value) || is_int($value))) {
+                        $value = $normalizeMobileNumber($value);
+                    }
+                }
+            }
+        };
+
+        // Apply normalization to the entire request data
+        $normalizeNestedMobileNumbers($data);
+
+        // Merge the normalized data back into the request
+        request()->merge($data);
     }
 }

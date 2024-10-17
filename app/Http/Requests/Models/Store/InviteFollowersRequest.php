@@ -46,10 +46,9 @@ class InviteFollowersRequest extends FormRequest
      */
     public function rules()
     {
-
         return [
             'mobile_numbers' => ['required', 'array'],
-            'mobile_numbers.*' => ['bail', 'string', 'distinct', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
+            'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
         ];
     }
 
@@ -60,9 +59,7 @@ class InviteFollowersRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-            'mobile_numbers.*.regex' => 'The mobile number must only contain numbers',
-        ];
+        return [];
     }
 
     /**
@@ -72,8 +69,6 @@ class InviteFollowersRequest extends FormRequest
      */
     public function attributes()
     {
-        return [
-            'mobile_numbers.*' => 'mobile number'
-        ];
+        return [];
     }
 }

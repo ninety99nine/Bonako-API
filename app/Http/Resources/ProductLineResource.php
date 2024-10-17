@@ -10,6 +10,7 @@ class ProductLineResource extends BaseResource
 
     public function setLinks()
     {
+        /*
         $routeNamePrefix = 'product.';
         $storeId = $this->resource->store_id;
         $productId = $this->resource->product_id;
@@ -21,5 +22,6 @@ class ProductLineResource extends BaseResource
             ]);
 
         }
+            */
     }
 }

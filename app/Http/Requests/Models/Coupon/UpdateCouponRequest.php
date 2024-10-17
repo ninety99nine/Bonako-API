@@ -101,12 +101,13 @@ class UpdateCouponRequest extends FormRequest
         $activateUsingUsageLimit = request()->filled('activate_using_usage_limit') && $this->isTruthy(request()->input('activate_using_usage_limit'));
 
         return [
+            'return' => ['sometimes', 'boolean'],
 
             /*  General Information  */
             'name' => [
                 'bail', 'sometimes', 'required', 'string', 'min:'.Coupon::NAME_MIN_CHARACTERS, 'max:'.Coupon::NAME_MAX_CHARACTERS,
                 //  Make sure that this coupon name does not already exist for the same store
-                Rule::unique('coupons')->where('store_id', request()->coupon->store->id)->ignore(request()->coupon->id)
+                Rule::unique('coupons')->where('store_id', request()->storeId)->ignore(request()->couponId)
             ],
             'active' => ['bail', 'sometimes', 'required', 'boolean'],
             'description' => ['bail', 'sometimes', 'required', 'string', 'min:'.Coupon::DESCRIPTION_MIN_CHARACTERS, 'max:'.Coupon::DESCRIPTION_MAX_CHARACTERS],

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Models\ShoppingCart;
 
 use App\Models\Coupon;
+use App\Models\Customer;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -66,28 +67,31 @@ class InspectCartRequest extends FormRequest
      */
     public function rules()
     {
-        $deliveryDestinationNames = collect(request()->store->delivery_destinations)->pluck('name')->map(fn($deliveryDestinationName) => strtolower($deliveryDestinationName));
+        //  $deliveryDestinationNames = collect(request()->store->delivery_destinations)->pluck('name')->map(fn($deliveryDestinationName) => strtolower($deliveryDestinationName));
 
         return [
 
             /*  Cart Session Id  */
             'session_id' => ['bail', 'sometimes', 'required', 'string', 'min:1'],
 
-            /*  Cart Customer Id  */
-            'customer_user_id' => ['bail', 'sometimes', 'required', 'integer', 'numeric', 'min:1', 'exists:users,id'],
-
             /*  Cart Products  */
             'cart_products' => ['sometimes', 'array'],
-            'cart_products.*.id' => ['bail', 'required', 'integer', 'numeric', 'min:1', 'distinct'],
-            'cart_products.*.quantity' => ['bail', 'sometimes', 'required', 'integer', 'numeric', 'min:1'],
+            'cart_products.*.id' => ['bail', 'required', 'uuid', 'min:1', 'distinct'],
+            'cart_products.*.quantity' => ['bail', 'sometimes', 'required', 'integer', 'min:1'],
 
             /*  Cart Coupon Codes  */
             'cart_coupon_codes' => ['sometimes', 'array'],
             'cart_coupon_codes.*' => ['string', 'min:'.Coupon::CODE_MIN_CHARACTERS, 'max:'.Coupon::CODE_MAX_CHARACTERS, 'distinct'],
 
             /*  Delivery Destination Name  */
-            'delivery_destination_name' => ['bail', 'sometimes', 'required', 'string', Rule::in($deliveryDestinationNames)],
+            'delivery_destination_name' => ['bail', 'sometimes', 'required', 'string' /*, Rule::in($deliveryDestinationNames)*/],
 
+            /*  Customer */
+            'customer' => ['sometimes', 'array'],
+            'customer.*.email' => ['bail', 'sometimes', 'email'],
+            'customer.*.mobile_number' => ['bail', 'sometimes', 'required', 'phone'],
+            'customer.*.first_name' => ['bail', 'sometimes', 'required', 'string', 'min:'.Customer::FIRST_NAME_MIN_CHARACTERS, 'max:'.Customer::FIRST_NAME_MAX_CHARACTERS],
+            'customer.*.last_name' => ['bail', 'sometimes', 'required', 'string', 'min:'.Customer::LAST_NAME_MIN_CHARACTERS, 'max:'.Customer::LAST_NAME_MAX_CHARACTERS],
         ];
     }
 
@@ -110,8 +114,7 @@ class InspectCartRequest extends FormRequest
     {
         return [
             'cart_products.*.id' => 'cart product id',
-            'cart_products.*.quantity' => 'cart product quantity',
-            'customer_user_id' => 'The customer matching the given id does not exist',
+            'cart_products.*.quantity' => 'cart product quantity'
         ];
     }
 }

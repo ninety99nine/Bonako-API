@@ -2,375 +2,616 @@
 
 namespace App\Repositories;
 
-use App\Enums\CanSaveChanges;
+use App\Models\Store;
 use App\Models\Product;
 use App\Models\Variable;
+use App\Traits\AuthTrait;
 use Illuminate\Support\Arr;
-use Illuminate\Http\Request;
-use App\Repositories\BaseRepository;
-use App\Services\AWS\AWSService;
+use App\Traits\Base\BaseTrait;
+use App\Enums\RequestFileName;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
+use App\Services\Filter\FilterService;
+use App\Http\Resources\ProductResources;
+use Illuminate\Database\Eloquent\Builder;
+use App\Http\Resources\MediaFileResources;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class ProductRepository extends BaseRepository
 {
-    protected $requiresConfirmationBeforeDelete = false;
+    use AuthTrait, BaseTrait;
 
     /**
-     *  Eager load relationships on the given model
+     * Show products.
      *
-     *  @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Builder $model
-     *  @return ProductRepository
+     * @param Store|string|null $storeId
+     * @return ProductResources|array
      */
-    public function eagerLoadProductRelationships($model) {
-
-        $relationships = [];
-        $countableRelationships = [];
-
-        if($model instanceof Product) {
-
-            //  Additionally we can eager load the variables on this product
-            array_push($relationships, 'variables');
-
+    public function showProducts(Store|string|null $storeId = null): ProductResources|array
+    {
+        if($this->getQuery() == null) {
+            if(is_null($storeId)) {
+                if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show products'];
+                $this->setQuery(Product::query()->isNotVariation()->orderBy('position'));
+            }else{
+                $store = $storeId instanceof Store ? $storeId : Store::find($storeId);
+                if($store) {
+                    $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    if(!$isAuthourized) return ['message' => 'You do not have permission to show products'];
+                    $this->setQuery($store->products()->isNotVariation()->orderBy('position'));
+                }else{
+                    return ['message' => 'This store does not exist'];
+                }
+            }
         }
 
-        //  Check if we want to eager load the variables on this product otherwise check if this product is a variation
-        if( request()->input('with_variables') || ($model instanceof Product && $model->is_variation)) {
-
-            //  Additionally we can eager load the variables on this product
-            array_push($relationships, 'variables');
-
-        }
-
-        if( !empty($relationships) ) {
-
-            $model = ($model instanceof Product)
-                ? $model->load($relationships)->loadCount($countableRelationships)
-                : $model->with($relationships)->withCount($countableRelationships);
-
-        }
-
-        $this->setModel($model);
-
-        return $this;
+        return $this->applyFiltersOnQuery()->getOrCountResources();
     }
 
     /**
-     *  Show the product photo
+     * Create product.
      *
-     *  @return array
+     * @param array $data
+     * @return Product|array
      */
-    public function showPhoto() {
+    public function createProduct(array $data): Product|array
+    {
+        $storeId = $data['store_id'];
+        $store = Store::find($storeId);
 
-        return [
-            'photo' => $this->model->photo
-        ];
-
-    }
-
-    /**
-     *  Update the product photo
-     *
-     *  @param \Illuminate\Http\Request $request
-     *  @return array | ProductRepository
-     */
-    public function updatePhoto(Request $request) {
-
-        //  Remove the exiting photo (if any) and save the new photo (if any)
-        return $this->removeExistingPhoto(CanSaveChanges::NO)->storePhoto($request);
-
-    }
-
-    /**
-     *  Remove the existing product photo
-     *
-     *  @param CanSaveChanges $canSaveChanges - Whether to save the product changes after deleting the photo
-     *  @return array | ProductRepository
-     */
-    public function removeExistingPhoto($canSaveChanges = CanSaveChanges::YES) {
-
-        /**
-         *  @var Product $product
-         */
-        $product = $this->model;
-
-        //  Check if we have an existing photo productd
-        $hasExistingPhoto = !empty($product->photo);
-
-        //  If the product has an existing photo productd
-        if( $hasExistingPhoto ) {
-
-            //  Delete the photo file
-            AWSService::delete($product->photo);
-
+        if($store) {
+            $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+            if(!$isAuthourized) return ['created' => false, 'message' => 'You do not have permission to create products'];
+        }else{
+            return ['created' => false, 'message' => 'This store does not exist'];
         }
 
-        //  If we should save these changes on the database
-        if($canSaveChanges == CanSaveChanges::YES) {
+        $data = array_merge($data, [
+            'user_id' => request()->current_user->id,
+            'currency' => $store->currency,
+            'store_id' => $storeId
+        ]);
 
-            //  Save the product changes
-            $this->update(['photo' => null]);
+        $product = Product::create($data);
+        $this->getMediaFileRepository()->createMediaFile(RequestFileName::PRODUCT_PHOTO, $product);
+        return $this->showCreatedResource($product);
+    }
 
-            return [
-                'message' => 'Photo deleted successfully'
-            ];
+    /**
+     * Delete products.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function deleteProducts(array $data): array
+    {
+        $storeId = $data['store_id'];
 
-        //  If we should not save these changes on the database
+        if(is_null($storeId)) {
+            if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete products'];
+            $this->setQuery(Product::query());
         }else{
 
-            //  Remove the photo url reference from the product
-            $product->photo = null;
+            $store = Store::find($storeId);
 
-            //  Set the modified product
-            $this->setModel($product);
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['deleted' => false, 'message' => 'You do not have permission to delete products'];
+                $this->setQuery($store->products());
+            }else{
+                return ['deleted' => false, 'message' => 'This store does not exist'];
+            }
 
         }
 
-        return $this;
+        $productIds = $data['product_ids'];
+        $products = $this->getProductsByIds($productIds);
 
+        if($totalProducts = $products->count()) {
+
+            foreach($products as $product) {
+                $product->delete();
+            }
+
+            return ['deleted' => true, 'message' => $totalProducts . ($totalProducts == 1 ? ' product': ' products') . ' deleted'];
+
+        }else{
+            return ['deleted' => false, 'message' => 'No products deleted'];
+        }
     }
 
     /**
-     *  Store the product photo
+     * Update product visibility
      *
-     *  @param \Illuminate\Http\Request $request
-     *  @return array | ProductRepository
+     * @param array $data
+     * @return array
      */
-    public function storePhoto(Request $request) {
-        /**
-         *  @var Product $product
-         */
-        $product = $this->model;
+    public function updateProductVisibility(array $data): array
+    {
+        $storeId = $data['store_id'];
+        $store = Store::find($storeId);
 
-        //  Check if we have a new photo provided
-        $hasNewPhoto = $request->hasFile('photo');
-
-        /**
-         *  Save the new photo when the following condition is satisfied:
-         *
-         *  1) The photo is provided when we are updating the photo only
-         *
-         *  If the photo is provided while creating or updating the product as
-         *  a whole, then the photo will be updated with the rest of the
-         *  product details as a single query.
-         *
-         *  Refer to the saving() method of the ProductObserver::class
-         */
-        $updatingTheProductPhotoOnly = $request->routeIs('product.photo.update');
-
-        //  If we have a new photo provided
-        if( $hasNewPhoto ) {
-
-            //  Save the photo on AWS and update the product with the photo url
-            $product->photo = AWSService::store('photos', $request->photo);
-
-            //  Set the modified product
-            $this->setModel($product);
-
-            if( $updatingTheProductPhotoOnly ) {
-
-                //  Save the product changes
-                $product->save();
-
-            }
-
+        if($store) {
+            $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+            if(!$isAuthourized) return ['message' => 'You do not have permission to update product visibility'];
+            $this->setQuery($store->products());
+        }else{
+            return ['message' => 'This store does not exist'];
         }
 
-        if( $updatingTheProductPhotoOnly ) {
+        $products = $this->query->get();
+        $productIdsAndVisibility = $data['visibility'];
 
-            //  Return the photo image url
-            return ['photo' => $product->photo];
-
-        }
-
-        return $this;
-
-    }
-
-    /**
-     *  Show the product
-     */
-    public function showProduct()
-    {
-        return $this->eagerLoadProductRelationships($this->model);
-    }
-
-    /**
-     *  Update the product
-     */
-    public function updateProduct(Request $request)
-    {
-        //  Update this product
-        parent::update($request);
-
-        // Check if this product is a variation of another product
-        if($this->model->is_variation) {
-
-            /**
-             *  @var Product $parentProduct
-             */
-            $parentProduct = Product::find($this->model->parent_product_id);
-
-            if($parentProduct) {
-
-                $parentProduct->updateTotalVisibleVariations();
-
-            }
-
-        }
-
-        return $this->eagerLoadProductRelationships($this->model);
-    }
-
-    /**
-     *  Show the product variations
-     */
-    public function showVariations(Request $request)
-    {
-        $variations = $this->model->variations();
-
-        // Convert "color|blue,size|small" into [" color|blue ", " size|small "]
-        $variantAttributeChoices = explode(',', $request->input('variant_attribute_choices'));
-
-        foreach($variantAttributeChoices as $variantAttributeChoice) {
-
-            // Convert [" color|blue "] into [" color", "blue "]
-            $variantAttributeChoice = explode('|', $variantAttributeChoice);
-
-            // Convert [" color", "blue "] into ["color", "blue"]
-            $variantAttributeChoice = array_map('trim', $variantAttributeChoice);
-
-            if(isset($variantAttributeChoice[0]) && isset($variantAttributeChoice[1])) {
-
-                //  Filter by the variable attribute choice
-                $variations->whereHas('variables', function ($query) use ($variantAttributeChoice) {
-
-                    $name = $variantAttributeChoice[0];
-                    $value = $variantAttributeChoice[1];
-
-                    //  Where "name"="color" and where "value"="blue"
-                    $query->where('name', $name)->where('value', $value);
-
-                });
-
-            }
-
-        }
-
-
-        return $this->eagerLoadProductRelationships($variations)->get();
-    }
-
-    /**
-     *  Create or update the product variations
-     */
-    public function createVariations(Request $request)
-    {
-        /**
-         *  Get the variant attributes data e.g
-         *
-         *  $variantAttributes = [
-         *    [
-         *      'name' => 'Color',
-         *      'values' => ["Red", "Green", "Blue"],
-         *      'instruction' => 'Select color'
-         *    ],
-         *    [
-         *      'name' => 'Size',
-         *      'values' => ["L", "M", 'SM'],
-         *      'instruction' => 'Select size'
-         *    ]
-         *  ]
-         */
-        $variantAttributes = $request->input('variant_attributes');
-
-        /**
-         *  Lets make sure that the first letter of every name is capitalized
-         *  and that we have instructions foreach variant attribute otherwise
-         *  set a default instruction.
-         */
-        $variantAttributes = collect($variantAttributes)->map(function($variantAttribute){
-
-            $variantAttribute['name'] = ucfirst($variantAttribute['name']);
-
-            if(!isset($variantAttribute['instruction']) || empty($variantAttribute['instruction'])) {
-                $variantAttribute['instruction'] = 'Select option';
-            }
-
-            return $variantAttribute;
-
+        $existingProductIdsAndVisibility = $products->map(function ($product) {
+            return ['id' => $product->id, 'visible' => $product->visible];
         });
 
-        /**
-         *  Restructure the variant attribute e.g
-         *
-         *  $variantAttributes = [
-         *    "Color" => ["Red", "Green", "Blue"],
-         *    "Size" => ["Large", "Medium", 'Small']
-         *  ]
-         */
-        $variantAttributesRestructured = $variantAttributes->mapWithKeys(function($variantAttribute, $key) {
+        $newProductIdsAndVisibility = collect($productIdsAndVisibility)->filter(function ($item) use ($existingProductIdsAndVisibility) {
+            return $existingProductIdsAndVisibility->contains('id', $item['id']);
+        })->toArray();
+
+        $oldProductIdsAndVisibility = collect($existingProductIdsAndVisibility)->filter(function ($item) use ($productIdsAndVisibility) {
+            return collect($productIdsAndVisibility)->doesntContain('id', $item['id']);
+        })->toArray();
+
+        $finalProductIdsAndVisibility = $newProductIdsAndVisibility + $oldProductIdsAndVisibility;
+        $finalProductIdsAndVisibility = collect($finalProductIdsAndVisibility)->mapWithKeys(fn($item) => [$item['id'] => $item['visible'] ? 1 : 0])->toArray();
+
+        if(count($finalProductIdsAndVisibility)) {
+
+            DB::table('products')
+            ->where('store_id', $store->id)
+            ->whereIn('id', array_keys($finalProductIdsAndVisibility))
+            ->update(['visible' => DB::raw('CASE id ' . implode(' ', array_map(function ($id, $visibility) {
+                return 'WHEN ' . $id . ' THEN ' . $visibility . ' ';
+            }, array_keys($finalProductIdsAndVisibility), $finalProductIdsAndVisibility)) . 'END')]);
+
+            return ['updated' => true, 'message' => 'Product visibility has been updated'];
+
+        }
+
+        return ['updated' => false, 'message' => 'No matching products to update'];
+    }
+
+    /**
+     * Update product arrangement
+     *
+     * @param array $data
+     * @return array
+     */
+    public function updateProductArrangement(array $data): array
+    {
+        $storeId = $data['store_id'];
+        $store = Store::find($storeId);
+
+        if($store) {
+            $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+            if(!$isAuthourized) return ['message' => 'You do not have permission to update product arrangement'];
+            $this->setQuery($store->products()->orderBy('position', 'asc'));
+        }else{
+            return ['message' => 'This store does not exist'];
+        }
+
+        $products = $this->query->get();
+        $originalProductPositions = $products->pluck('position', 'id');
+
+        $arrangementByIds = $data['product_ids'];
+        $arrangement = collect($arrangementByIds)->filter(function ($productId) use ($originalProductPositions) {
+            return collect($originalProductPositions)->keys()->contains($productId);
+        })->toArray();
+
+        $movedProductPositions = collect($arrangement)->mapWithKeys(function ($productId, $newPosition) use ($originalProductPositions) {
+            return [$productId => ($newPosition + 1)];
+        })->toArray();
+
+        $adjustedOriginalProductPositions = $originalProductPositions->except(collect($movedProductPositions)->keys())->keys()->mapWithKeys(function ($id, $index) use ($movedProductPositions) {
+            return [$id => count($movedProductPositions) + $index + 1];
+        })->toArray();
+
+        $productPositions = $movedProductPositions + $adjustedOriginalProductPositions;
+
+        if(count($productPositions)) {
+
+            DB::table('products')
+                ->where('store_id', $store->id)
+                ->whereIn('id', array_keys($productPositions))
+                ->update(['position' => DB::raw('CASE id ' . implode(' ', array_map(function ($id, $position) {
+                    return 'WHEN ' . $id . ' THEN ' . $position . ' ';
+                }, array_keys($productPositions), $productPositions)) . 'END')]);
+
+            return ['updated' => true, 'message' => 'Product arrangement has been updated'];
+
+        }
+
+        return ['updated' => false, 'message' => 'No matching products to update'];
+    }
+
+    /**
+     * Show product.
+     *
+     * @param string $productId
+     * @return Product|array|null
+     */
+    public function showProduct(string $productId): Product|array|null
+    {
+        $query = Product::with(['store'])->whereId($productId);
+        $this->setQuery($query)->applyEagerLoadingOnQuery();
+        $product = $this->query->first();
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to show product'];
+                if(!$this->checkIfHasRelationOnRequest('store')) $product->unsetRelation('store');
+            }else{
+                return ['message' => 'This store does not exist'];
+            }
+        }
+
+        return $this->showResourceExistence($product);
+    }
+
+    /**
+     * Update product.
+     *
+     * @param string $productId
+     * @param array $data
+     * @return Product|array
+     */
+    public function updateProduct(string $productId, array $data): Product|array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update product'];
+            }else{
+                return ['updated' => false, 'message' => 'This store does not exist'];
+            }
+
+            $product->update($data);
+            return $this->showUpdatedResource($product);
+
+        }else{
+            return ['updated' => false, 'message' => 'This product does not exist'];
+        }
+    }
+
+    /**
+     * Delete product.
+     *
+     * @param string $productId
+     * @return array
+     */
+    public function deleteProduct(string $productId): array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['deleted' => false, 'message' => 'You do not have permission to delete product'];
+            }else{
+                return ['deleted' => false, 'message' => 'This store does not exist'];
+            }
+
+            $deleted = $product->delete();
+
+            if ($deleted) {
+                return ['deleted' => true, 'message' => 'Product deleted'];
+            }else{
+                return ['deleted' => false, 'message' => 'Product delete unsuccessful'];
+            }
+        }else{
+            return ['deleted' => false, 'message' => 'This product does not exist'];
+        }
+    }
+
+    /**
+     * Show product photos.
+     *
+     * @param string $productId
+     * @return MediaFileResources|array
+     */
+    public function showProductPhotos(string $productId): MediaFileResources|array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to show product photos'];
+            }else{
+                return ['message' => 'This store does not exist'];
+            }
+            return $this->getMediaFileRepository()->setQuery($product->photos())->showMediaFiles();
+        }else{
+            return ['message' => 'This product does not exist'];
+        }
+    }
+
+    /**
+     * Create product photo(s).
+     *
+     * @param string $productId
+     * @return array
+     */
+    public function createProductPhoto(string $productId): array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to create product photos'];
+            }else{
+                return ['created' => false, 'message' => 'This store does not exist'];
+            }
+            return $this->getMediaFileRepository()->createMediaFile(RequestFileName::PRODUCT_PHOTO, $product);
+        }else{
+            return ['created' => false, 'message' => 'This product does not exist'];
+        }
+    }
+
+    /**
+     * Show product photo.
+     *
+     * @param string $productId
+     * @param string $photoId
+     * @return array
+     */
+    public function showProductPhoto(string $productId, string $photoId): array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to show product photo'];
+            }else{
+                return ['message' => 'This store does not exist'];
+            }
+            return $this->getMediaFileRepository()->setQuery($product->photos())->showMediaFile($photoId);
+        }else{
+            return ['message' => 'This product does not exist'];
+        }
+    }
+
+    /**
+     * Update product photo.
+     *
+     * @param string $productId
+     * @param string $photoId
+     * @return array
+     */
+    public function updateProductPhoto(string $productId, string $photoId): array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to update product photo'];
+            }else{
+                return ['message' => 'This store does not exist'];
+            }
+            return $this->getMediaFileRepository()->setQuery($product->photos())->updateMediaFile($photoId);
+        }else{
+            return ['message' => 'This product does not exist'];
+        }
+    }
+
+    /**
+     * Delete product photo.
+     *
+     * @param string $productId
+     * @param string $photoId
+     * @return array
+     */
+    public function deleteProductPhoto(string $productId, string $photoId): array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to delete product photo'];
+            }else{
+                return ['message' => 'This store does not exist'];
+            }
+            return $this->getMediaFileRepository()->setQuery($product->photos())->deleteMediaFile($photoId);
+        }else{
+            return ['message' => 'This product does not exist'];
+        }
+    }
+
+    /**
+     * Show product variations.
+     *
+     * @param string $productId
+     * @return ProductResources|array
+     */
+    public function showProductVariations(string $productId): ProductResources|array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $this->setQuery($product->variations());
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to show product variations'];
+            }else{
+                return ['message' => 'This store does not exist'];
+            }
+        }else{
+            return ['message' => 'This product does not exist'];
+        }
+
+        return $this->applyFiltersOnQuery()->getOrCountResources();
+    }
+
+    /**
+     *  Create product variations.
+     *
+     * @param Product|string $productId
+     * @param array $data
+     * @return ProductResources|array
+     */
+    public function createProductVariations(Product|string $productId, array $data): ProductResources|array
+    {
+        $product = Product::with(['store'])->find($productId);
+
+        if($product) {
+            $store = $product->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to show create product variations'];
+            }else{
+                return ['message' => 'This store does not exist'];
+            }
+        }else{
+            return ['message' => 'This product does not exist'];
+        }
+
+        $variantAttributes = $data['variant_attributes'];
+        $variantAttributes = $this->normalizeVariantAttributes($variantAttributes);
+        $variantAttributeMatrix = $this->generateVariantAttributeMatrix($variantAttributes);
+        $productVariationTemplates = $this->generateProductVariationTemplates($product, $variantAttributes, $variantAttributeMatrix);
+        [$matchedProductVariations, $unMatchedProductVariations] = $this->matchProductVariations($product, $productVariationTemplates);
+        $totalProductVariations = $matchedProductVariations->count() + $unMatchedProductVariations->count();
+
+        if($totalProductVariations > Product::MAXIMUM_VARIATIONS_PER_PRODUCT) {
+            return ['message' => 'This product has '.$totalProductVariations.' variations which is greater than the maximum limit of '.Product::MAXIMUM_VARIATIONS_PER_PRODUCT.' variations per product'];
+        }
+
+        if ($unMatchedProductVariations->count()) {
+            $this->deleteUnmatchedProductVariations($unMatchedProductVariations);
+        }
+
+        if ($productVariationTemplates->count()) {
+            $this->createNewProductVariations($productVariationTemplates, $product, $variantAttributes);
+        }
+
+        $this->setQuery($product->variations());
+        return $this->applyFiltersOnQuery()->getOrCountResources();
+    }
+
+    /***********************************************
+     *             MISCELLANEOUS METHODS           *
+     **********************************************/
+
+    /**
+     * Query product by ID.
+     *
+     * @param Product|string $productId
+     * @param array $relationships
+     * @return Builder|Relation
+     */
+    public function queryProductById(Product|string $productId, array $relationships = []): Builder|Relation
+    {
+        return $this->query->where('products.id', $productId)->with($relationships);
+    }
+
+    /**
+     * Get product by ID.
+     *
+     * @param Product|string $productId
+     * @param array $relationships
+     * @return Product|null
+     */
+    public function getProductById(Product|string $productId, array $relationships = []): Product|null
+    {
+        return $this->queryProductById($productId, $relationships)->first();
+    }
+
+    /**
+     * Query products by IDs.
+     *
+     * @param array<string> $productId
+     * @param string $relationships
+     * @return Builder|Relation
+     */
+    public function queryProductsByIds($productIds): Builder|Relation
+    {
+        return $this->query->whereIn('products.id', $productIds);
+    }
+
+    /**
+     * Get products by IDs.
+     *
+     * @param array<string> $productId
+     * @param string $relationships
+     * @return Collection
+     */
+    public function getProductsByIds($productIds): Collection
+    {
+        return $this->queryProductsByIds($productIds)->get();
+    }
+
+    /**
+     * Normalize variant attributes.
+     *
+     * @param array $variantAttributes
+     * @return Collection
+     */
+    private function normalizeVariantAttributes(array $variantAttributes): Collection
+    {
+        return collect($variantAttributes)->map(function ($variantAttribute) {
+            $variantAttribute['name'] = ucfirst($variantAttribute['name']);
+            if (!isset($variantAttribute['instruction']) || empty($variantAttribute['instruction'])) {
+                $variantAttribute['instruction'] = 'Select option';
+            }
+            return $variantAttribute;
+        });
+    }
+
+    /**
+     * Generate variant attribute matrix.
+     *
+     * @param Collection $variantAttributes
+     * @return array
+     */
+    private function generateVariantAttributeMatrix(Collection $variantAttributes): array
+    {
+        $variantAttributesRestructured = $variantAttributes->mapWithKeys(function ($variantAttribute) {
             return [$variantAttribute['name'] => $variantAttribute['values']];
         });
 
-        /**
-         *  Cross join the values of each variant attribute values to
-         *  return a cartesian product with all possible permutations
-         *
-         * [
-         *    ["Red","Large"],
-         *    ["Red","Medium"],
-         *    ["Red","Small"],
-         *
-         *    ["Green","Large"],
-         *    ["Green","Medium"],
-         *    ["Green","Small"],
-         *
-         *    ["Blue","Large"],
-         *    ["Blue","Medium"],
-         *    ["Blue","Small"]
-         * ]
-         *
-         *  Cross join the variant attribute values into an Matrix
-         */
-        $variantAttributeMatrix = Arr::crossJoin(...$variantAttributesRestructured->values());
+        return Arr::crossJoin(...$variantAttributesRestructured->values());
+    }
 
-        //  Create the product variation templates
-        $productVariationTemplates = collect($variantAttributeMatrix)->map(function($options) use ($variantAttributesRestructured) {
-
-            /**
-             *  Foreach matrix entry let us create a product variation template.
-             *
-             *  If the main product is called "Summer Dress" and the
-             *
-             *  $options = ["Red", "Large"]
-             *
-             *  Then the variation product is named using both the parent
-             *  product name and the variation options. For example:
-             *
-             *  "Summer Dress (Red and Large)"
-             */
-            $name = $this->model->name.' ('.trim( collect($options)->map(fn($option) => ucfirst($option))->join(', ') ).')';
+    /**
+     * Generate product variation templates.
+     *
+     * @param \App\Models\Product $product
+     * @param Collection $variantAttributes
+     * @param array $variantAttributeMatrix
+     * @return Collection
+     */
+    private function generateProductVariationTemplates(Product $product, Collection $variantAttributes, array $variantAttributeMatrix): Collection
+    {
+        return collect($variantAttributeMatrix)->map(function ($options) use ($product, $variantAttributes) {
+            $name = $product->name . ' (' . trim(collect($options)->map(fn($option) => ucfirst($option))->join(', ')) . ')';
 
             $template = [
                 'name' => $name,
-                'user_id' => request()->auth_user->id,
-                'parent_product_id' => $this->model->id,
-                'store_id' => $this->model->store_id,
                 'created_at' => now(),
                 'updated_at' => now(),
-
-                //  Define the variable templates
-                'variableTemplates' => collect($options)->map(function($option, $key) use ($variantAttributesRestructured) {
-
-                    /**
-                     *  $option = "Red" or "Large"
-                     *
-                     *  $variantAttributeNames = ["Color", "Size"]
-                     *
-                     *  $variantAttributeNames->get($key = 0) returns "Color"
-                     *  $variantAttributeNames->get($key = 1) returns "Size"
-                     */
-                    $variantAttributeNames = $variantAttributesRestructured->keys();
-
+                'store_id' => $product->store_id,
+                'parent_product_id' => $product->id,
+                'user_id' => request()->current_user->id,
+                'variableTemplates' => collect($options)->map(function ($option, $key) use ($variantAttributes) {
+                    $variantAttributeNames = $variantAttributes->keys();
                     return [
                         'name' => $variantAttributeNames->get($key),
                         'value' => $option
@@ -379,183 +620,104 @@ class ProductRepository extends BaseRepository
             ];
 
             return $template;
-
         });
+    }
 
-        //  Get existing product variations and their respective variables
-        $existingProductVariations = $this->model->variations()->with('variables')->get();
+    /**
+     * Match product variations.
+     *
+     * @param Product $product
+     * @param Collection $productVariationTemplates
+     * @return Collection
+     */
+    private function matchProductVariations(Product $product, Collection &$productVariationTemplates): Collection
+    {
+        $existingProductVariations = $product->variations()->with('variables')->get();
 
-        /**
-         *  Group the existing product variations into two groups:
-         *
-         *  (1) Those that have matching variant attributes (Must not be deleted)
-         *  (2) Those that do not have matching variant attributes (Must be deleted)
-         */
-        [$matchedProductVariations, $unMatchedProductVariations] = $existingProductVariations->partition(function ($existingProductVariation) use (&$productVariationTemplates) {
-
-            /**
-             *  Get the name and value for the existing variation
-             *
-             *  $result1 = ["Sizes", "Large"]
-             *
-             */
-            $result1 = $existingProductVariation->variables->mapWithKeys(function($variable){
+        return $existingProductVariations->partition(function ($existingProductVariation) use (&$productVariationTemplates) {
+            $result1 = $existingProductVariation->variables->mapWithKeys(function ($variable) {
                 return [$variable->name => $variable->value];
             });
 
-            /**
-             *  If the variation exists then move it to the $matchedProductVariations,
-             *  but If it does not exist then move it to the $unMatchedProductVariations
-             */
-            return collect($productVariationTemplates)->contains(function($productVariationTemplate, $key) use ($result1, &$productVariationTemplates) {
-
-                /**
-                 *  Get the name and value for the new variation template
-                 *
-                 *  $result2 = ["Sizes", "Large"]
-                 *
-                 */
-                $result2 = collect($productVariationTemplate['variableTemplates'])->mapWithKeys(function($variable){
+            return collect($productVariationTemplates)->contains(function ($productVariationTemplate, $key) use ($result1, &$productVariationTemplates) {
+                $result2 = collect($productVariationTemplate['variableTemplates'])->mapWithKeys(function ($variable) {
                     return [$variable['name'] => $variable['value']];
                 });
 
-                /**
-                 *  If the following checks pass
-                 *
-                 *  (1) There is no difference between the set of result1 vs result2
-                 *  (2) There is no difference between the set of result2 vs result1
-                 *
-                 *  Then we can easily assume that this $productVariationTemplate
-                 *  already exists as $existingProductVariation and must be
-                 *  excluded from the list of new variations to create.
-                 *
-                 */
-                $exists = $result1->diffAssoc($result2)->count() == 0 &&
-                          $result2->diffAssoc($result1)->count() == 0;
+                $exists = $result1->diffAssoc($result2)->isEmpty() && $result2->diffAssoc($result1)->isEmpty();
 
-                //  If the variation does exist
-                if( $exists === true ) {
-
-                    //  Then we must remove the assosiated $productVariationTemplate
+                if ($exists) {
                     $productVariationTemplates->forget($key);
-
                 }
 
                 return $exists;
-
             });
-
         });
+    }
 
-        //  If we have existing variations that have no match
-        if( $unMatchedProductVariations->count() ) {
+    /**
+     * Delete unmatched product variations.
+     *
+     * @param Collection $unMatchedProductVariations
+     */
+    private function deleteUnmatchedProductVariations(Collection $unMatchedProductVariations): void
+    {
+        $unMatchedProductVariations->each(fn($unMatchedProductVariation) => $unMatchedProductVariation->delete());
+    }
 
-            //  Delete each variation
-            $unMatchedProductVariations->each(fn($unMatchedProductVariation) => $unMatchedProductVariation->delete());
+    /**
+     * Create new product variations.
+     *
+     * @param Collection $productVariationTemplates
+     * @param \App\Models\Product $product
+     * @param Collection $variantAttributes
+     */
+    private function createNewProductVariations(Collection $productVariationTemplates, Product $product, Collection $variantAttributes): void
+    {
+        Product::insert(
+            $productVariationTemplates->map(
+                fn($productVariationTemplate) => collect($productVariationTemplate)->only(resolve(Product::class)->getFillable())
+            )->toArray()
+        );
 
-        }
+        $existingProductVariations = $product->variations()->get();
+        $variableTemplates = $this->generateVariableTemplates($existingProductVariations, $productVariationTemplates);
 
-        //  If we have new variations
-        if($productVariationTemplates->count()) {
+        Variable::insert($variableTemplates->toArray());
+        $totalVariations = $product->variations()->count();
+        $totalVisibleVariations = $product->variations()->visible()->count();
 
-            //  Create the new product variations
-            Product::insert(
+        $product->update([
+            'allow_variations' => true,
+            'total_variations' => $totalVariations,
+            'variant_attributes' => $variantAttributes,
+            'total_visible_variations' => $totalVisibleVariations
+        ]);
+    }
 
-                //  Extract only the Product fillable fields
-                $productVariationTemplates->map(
-                    fn($productVariationTemplate) => collect($productVariationTemplate)->only(
-                        resolve(Product::class)->getFillable()
-                    )
-                )->toArray()
+    /**
+     * Generate variable templates.
+     *
+     * @param Collection $existingProductVariations
+     * @param Collection $productVariationTemplates
+     * @return Collection
+     */
+    private function generateVariableTemplates(Collection $existingProductVariations, Collection $productVariationTemplates): Collection
+    {
+        return $existingProductVariations->flatMap(function ($existingProductVariation) use ($productVariationTemplates) {
 
-            );
+            $productVariationTemplate = $productVariationTemplates->first(fn($productVariationTemplate) => $existingProductVariation->name === $productVariationTemplate['name']);
 
-            //  Get the updated product variations
-            $existingProductVariations = $this->model->variations()->get();
+            if ($productVariationTemplate) {
+                $variableTemplates = $productVariationTemplate['variableTemplates'];
 
-            //  Update the product variable templates
-            $variableTemplates = $existingProductVariations->flatMap(function($existingProductVariation) use ($productVariationTemplates) {
-
-                /**
-                 *  Search the product variation template whose name matches this newly created product variation.
-                 *  After finding this match, extract the "variableTemplates" from the "productVariationTemplate"
-                 *
-                 *  $variableTemplates = [
-                 *      [
-                 *          "name": "Colors",
-                 *          "value": "Red"
-                 *      ],
-                 *      [
-                 *          "name": "Sizes",
-                 *          "value": "Large"
-                 *      ]
-                 *  ];
-                 */
-                $productVariationTemplate = $productVariationTemplates->first(function($productVariationTemplate) use ($existingProductVariation) {
-
-                    //  The names must match
-                    return $existingProductVariation->name === $productVariationTemplate['name'];
-
+                return collect($variableTemplates)->map(function ($variableTemplate) use ($existingProductVariation) {
+                    $variableTemplate['product_id'] = $existingProductVariation->id;
+                    return $variableTemplate;
                 });
+            }
 
-                //  If we have a matching $productVariationTemplate
-                if( $productVariationTemplate ) {
-
-                    //  Get the $variableTemplates
-                    $variableTemplates = $productVariationTemplate['variableTemplates'];
-
-                    /**
-                     *  Set the product id that this variable template must relate to
-                     *
-                     *  $variableTemplates = [
-                     *      [
-                     *          "name": "Colors",
-                     *          "value": "Red",
-                     *          "product_id": 2
-                     *      ],
-                     *      [
-                     *          "name": "Sizes",
-                     *          "value": "Large",
-                     *          "product_id": 2
-                     *      ]
-                     *  ];
-                     */
-                    return collect($variableTemplates)->map(function($variableTemplate) use ($existingProductVariation) {
-
-                        //  Set the parent product id
-                        $variableTemplate['product_id'] = $existingProductVariation->id;
-
-                        return $variableTemplate;
-
-                    });
-
-                }
-
-                //  Incase we don't have a match, return an empty array
-                return [];
-
-            });
-
-            //  Create the new variables
-            Variable::insert($variableTemplates->toArray());
-
-            //  Count all the product variations
-            $totalVariations = $this->model->variations()->count();
-
-            //  Count all the visible product variations
-            $totalVisibleVariations = $this->model->variations()->visible()->count();
-
-            //  Update the product
-            $this->model->update([
-                'allow_variations' => true,
-                'total_variations' => $totalVariations,
-                'variant_attributes' => $variantAttributes,
-                'total_visible_variations' => $totalVisibleVariations,
-            ]);
-
-        }
-
-        return $this->showVariations($request);
-
+            return [];
+        });
     }
 }

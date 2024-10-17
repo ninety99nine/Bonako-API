@@ -19,7 +19,7 @@ use NotificationChannels\OneSignal\OneSignalMessage;
  * the OrderNotification class contains additional custom methods
  * specific for order notifications.
  */
-class OrderStatusUpdated extends OrderNotification
+class OrderStatusUpdated extends OrderNotification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 
@@ -60,7 +60,6 @@ class OrderStatusUpdated extends OrderNotification
         $order = $this->order;
         $store = $this->store;
         $updatedByUser = $this->updatedByUser;
-        $isAssociatedAsFriend = $this->checkIfAssociatedAsFriend($order, $notifiable);
         $isAssociatedAsCustomer = $this->checkIfAssociatedAsCustomer($order, $notifiable);
 
         return [
@@ -73,12 +72,10 @@ class OrderStatusUpdated extends OrderNotification
                 'number' => $order->number,
                 'status' => $order->status,
                 'summary' => $order->summary,
-                'isAssociatedAsFriend' => $isAssociatedAsFriend,
                 'isAssociatedAsCustomer' => $isAssociatedAsCustomer
             ],
             'customer' => [
                 'name' => $order->customer_name,
-                'id' => $order->customer_user_id,
                 'firstName' => $order->customer_first_name,
             ],
             'updatedByUser' => [

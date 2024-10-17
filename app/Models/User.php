@@ -3,31 +3,28 @@
 namespace App\Models;
 
 use App\Traits\UserTrait;
-use App\Casts\MobileNumber;
 use Laravel\Sanctum\HasApiTokens;
+use App\Services\Ussd\UssdService;
+use App\Casts\E164PhoneNumberCast;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Base\BaseAuthenticatable;
 use App\Traits\UserStoreAssociationTrait;
-use App\Models\Pivots\UserStoreAssociation;
-use App\Models\Pivots\UserFriendAssociation;
-use App\Traits\UserOrderViewAssociationTrait;
-use App\Traits\UserFriendGroupAssociationTrait;
-use App\Models\Pivots\UserFriendGroupAssociation;
-use App\Models\Pivots\UserOrderCollectionAssociation;
 use App\Notifications\Orders\OrderCreated;
 use App\Notifications\Orders\OrderUpdated;
 use App\Notifications\Stores\StoreCreated;
-use App\Services\MobileNumber\MobileNumberService;
-use App\Services\Ussd\UssdService;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notification;
+use Propaganistas\LaravelPhone\PhoneNumber;
+use App\Models\Pivots\UserStoreAssociation;
+use App\Traits\UserOrderViewAssociationTrait;
+use App\Traits\FriendGroupUserAssociationTrait;
+use App\Models\Pivots\FriendGroupUserAssociation;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends BaseAuthenticatable /* Authenticatable */
 {
     use HasApiTokens, HasFactory, Notifiable, UserTrait, UserStoreAssociationTrait,
-    UserOrderViewAssociationTrait, UserFriendGroupAssociationTrait;
+    UserOrderViewAssociationTrait, FriendGroupUserAssociationTrait;
 
     /**
      *  Magic Numbers
@@ -39,14 +36,13 @@ class User extends BaseAuthenticatable /* Authenticatable */
     const PASSWORD_MIN_CHARACTERS = 6;
     const ABOUT_ME_MAX_CHARACTERS = 200;
     const ABOUT_ME_MIN_CHARACTERS = 3;
-    const NOTIFICATION_FILTERS = ['All', 'Read', 'Unread', 'Orders', 'Followers', 'Invitations', 'Friend Groups'];
 
     protected $casts = [
-        'mobile_number_verified_at' => 'datetime',
-        'mobile_number' => MobileNumber::class,
-        'is_super_admin' => 'boolean',
-        'last_seen_at' => 'datetime',
         'is_guest' => 'boolean',
+        'last_seen_at' => 'datetime',
+        'is_super_admin' => 'boolean',
+        'mobile_number_verified_at' => 'datetime',
+        'mobile_number' => E164PhoneNumberCast::class,
     ];
 
     protected $fillable = [
@@ -100,10 +96,15 @@ class User extends BaseAuthenticatable /* Authenticatable */
      */
     public function scopeSearch($query, $searchWord)
     {
-        return $query->whereRaw('concat(first_name," ",last_name) like ?', "%{$searchWord}%")
-                     ->orWhere('users.mobile_number', 'like', "%{$searchWord}%");
+        $mobileNumber = $searchWord[0] === '+' ? $searchWord : '+' . $searchWord;
+        $isMobileNumber = (new PhoneNumber($searchWord))->isValid();
 
-        //  If the search word contains numbers, then search by shortcode
+        if($isMobileNumber) {
+            return $query->where('users.mobile_number', $mobileNumber);
+        }else{
+            return $query->whereRaw('concat(first_name," ",last_name) like ?', "%{$searchWord}%");
+
+        }
     }
 
     /*
@@ -111,19 +112,21 @@ class User extends BaseAuthenticatable /* Authenticatable */
      */
     public function scopeSearchMobileNumber($query, $mobileNumber)
     {
-        $mobileNumber = MobileNumberService::addMobileNumberExtension($mobileNumber);
         return $query->where('users.mobile_number', $mobileNumber);
+    }
+
+    /*
+     *  Scope: Return users that are being searched using the mobile number
+     */
+    public function scopeNotGuest($query)
+    {
+        return $query->where('is_guest', '0');
     }
 
     /****************************
      *  RELATIONSHIPS           *
      ***************************/
 
-    /**
-     *  Returns the associated stores that have been assigned to this user
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
     public function stores()
     {
         return $this->belongsToMany(Store::class, 'user_store_association', 'user_id', 'store_id')
@@ -132,144 +135,29 @@ class User extends BaseAuthenticatable /* Authenticatable */
                     ->as('user_store_association');
     }
 
-    /**
-     *  Get the Stores that have this User assigned as a team member
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function storesAsRecentVisitor()
-    {
-        return $this->stores()->whereNotNull('last_seen_at');
-    }
-
-    /**
-     *  Get the Stores that have this User assigned as a team member
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function storesAsTeamMember()
-    {
-        return $this->stores()->whereNotNull('team_member_status');
-    }
-
-    /**
-     *  Get the Stores that have this User assigned as a follower
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
     public function storesAsFollower()
     {
         return $this->stores()->whereNotNull('follower_status');
     }
 
-    /**
-     *  Get the Stores that have this User assigned as a customer
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
     public function storesAsCustomer()
     {
         return $this->stores()->where('is_associated_as_customer', '1');
     }
 
-    /**
-     *  Get the Stores that have been assigned to this user
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function storesAsAssigned()
+    public function storesAsTeamMember()
     {
-        return $this->stores()->where('is_assigned', '1');
+        return $this->stores()->whereNotNull('team_member_status');
     }
 
-    /**
-     *  Returns the associated reviews that have been submitted by this user
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
-     */
-    public function reviews()
+    public function storesAsRecentVisitor()
     {
-        return $this->hasMany(Review::class);
+        return $this->stores()->whereNotNull('last_seen_at');
     }
 
-    /**
-     *  Returns the associated addresses that have been assigned to this user
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
-     */
     public function addresses()
     {
-        return $this->hasMany(Address::class);
-    }
-
-    /**
-     *  Get the friends (Users) of this User
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function friends()
-    {
-        return $this->belongsToMany(User::class, 'user_friend_association', 'user_id', 'friend_user_id')
-                    ->withPivot(UserFriendAssociation::VISIBLE_COLUMNS)
-                    ->using(UserFriendAssociation::class)
-                    ->as('user_friend_association');
-    }
-
-    /**
-     *  Get the Friend Groups of this User
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function friendGroups()
-    {
-        return $this->belongsToMany(FriendGroup::class, 'user_friend_group_association', 'user_id', 'friend_group_id')
-                    ->withPivot(UserFriendGroupAssociation::VISIBLE_COLUMNS)
-                    ->using(UserFriendGroupAssociation::class)
-                    ->as('user_friend_group_association');
-    }
-
-    /**
-     *  Get the Orders where this User is listed as a customer or friend
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function orders()
-    {
-        return $this->belongsToMany(Order::class, 'user_order_collection_association', 'user_id', 'order_id')
-                    ->withPivot(UserOrderCollectionAssociation::VISIBLE_COLUMNS)
-                    ->using(UserOrderCollectionAssociation::class)
-                    ->as('user_order_collection_association');
-    }
-
-    /**
-     *  Get the Orders where this User is listed as a customer
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function ordersAsCustomerOrFriend()
-    {
-        return $this->orders()->where('user_order_collection_association.role', 'Customer')
-                              ->orWhere('user_order_collection_association.role', 'Friend');
-    }
-
-    /**
-     *  Get the Orders where this User is listed as a customer
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function ordersAsCustomer()
-    {
-        return $this->orders()->where('user_order_collection_association.role', 'Customer');
-    }
-
-    /**
-     *  Get the Orders where this User is listed as a friend
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::belongsToMany
-     */
-    public function ordersAsFriend()
-    {
-        return $this->orders()->where('user_order_collection_association.role', 'Friend');
+        return $this->morphMany(Address::class, 'owner');
     }
 
     public function aiAssistant()
@@ -277,45 +165,50 @@ class User extends BaseAuthenticatable /* Authenticatable */
         return $this->hasOne(AiAssistant::class);
     }
 
-    public function aiMessages()
+    public function profilePhoto()
     {
-        return $this->hasMany(AiMessage::class);
+        return $this->morphOne(MediaFile::class, 'mediable')->where('type', 'profile_photo');
     }
 
+    public function placedOrders()
+    {
+        return $this->hasMany(Order::class, 'placed_by_user_id');
+    }
+
+    public function createdOrders()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function friends()
+    {
+        return $this->hasMany(Friend::class);
+    }
+
+    public function aiMessages()
+    {
+        return $this->hasOneThrough(AiMessage::class, AiAssistant::class);
+    }
+
+    public function friendGroups()
+    {
+        return $this->belongsToMany(FriendGroup::class, 'friend_group_user_association', 'user_id', 'friend_group_id')
+                    ->withPivot(FriendGroupUserAssociation::VISIBLE_COLUMNS)
+                    ->using(FriendGroupUserAssociation::class)
+                    ->as('friend_group_user_association');
+    }
+
+    /*  ???
     public function smsAlert()
     {
         return $this->hasOne(SmsAlert::class);
     }
-
-    /**
-     *  Returns transactions where the user is associated as a payer
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
-     */
-    public function transactionsAsPayer()
-    {
-        return $this->hasMany(Transaction::class, 'paid_by_user_id');
-    }
-
-    /**
-     *  Returns paid transactions where the user is associated as a payer
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
-     */
-    public function paidTransactionsAsPayer()
-    {
-        return $this->transactionsAsPayer()->where('payment_status', 'Paid');
-    }
-
-    /**
-     *  Returns latest transaction where the user is associated as a payer
-     *
-     *  @return Illuminate\Database\Eloquent\Concerns\HasRelationships::hasMany
-     */
-    public function latestTransactionAsPayer()
-    {
-        return $this->hasOne(Transaction::class, 'paid_by_user_id')->latest();
-    }
+    */
 
     /****************************
      *  ACCESSORS               *
@@ -332,17 +225,17 @@ class User extends BaseAuthenticatable /* Authenticatable */
         );
     }
 
-    protected function mobileNumberShortcode(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => (UssdService::appendToMainShortcode($this->mobile_number->withoutExtension))
-        );
-    }
-
     protected function requiresPassword(): Attribute
     {
         return Attribute::make(
             get: fn () => empty($this->password)
+        );
+    }
+
+    protected function mobileNumberShortcode(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->mobile_number == null ? null : UssdService::appendToMainShortcode($this->mobile_number->formatNational(), $this->mobile_number->getCountry())
         );
     }
 }

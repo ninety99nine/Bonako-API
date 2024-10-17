@@ -87,6 +87,13 @@
       0 => 'OpenAI\\Laravel\\ServiceProvider',
     ),
   ),
+  'propaganistas/laravel-phone' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Propaganistas\\LaravelPhone\\PhoneServiceProvider',
+    ),
+  ),
   'rajentrivedi/tokenizer-x' => 
   array (
     'providers' => 

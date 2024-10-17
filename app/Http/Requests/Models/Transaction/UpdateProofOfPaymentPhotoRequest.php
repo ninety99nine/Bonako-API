@@ -24,7 +24,7 @@ class UpdateProofOfPaymentPhotoRequest extends FormRequest
     public function rules()
     {
         return [
-            'proof_of_payment_photo' => ['bail', 'nullable', 'mimetypes:image/jpeg,image/png,image/jpg,image/gif,image/bmp', 'max:4096'],
+            'transaction_proof_of_payment_photo' => ['bail', 'nullable', 'mimetypes:image/jpeg,image/png,image/jpg,image/gif,image/bmp', 'max:4096'],
         ];
     }
 
@@ -36,7 +36,7 @@ class UpdateProofOfPaymentPhotoRequest extends FormRequest
     public function messages()
     {
         return [
-            'proof_of_payment_photo.max' => 'The :attribute must not be greater than 4 megabytes',
+            'transaction_proof_of_payment_photo.max' => 'The :attribute must not be greater than 4 megabytes',
         ];
     }
 

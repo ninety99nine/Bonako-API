@@ -22,6 +22,26 @@ class RequestPaymentRequest extends FormRequest
     }
 
     /**
+     *  We want to modify the request input before validating
+     *
+     *  Reference: https://laracasts.com/discuss/channels/requests/modify-request-input-value-before-validation
+     */
+    public function getValidatorInstance()
+    {
+        try {
+
+            if($this->has('payment_method_type')) {
+                $this->merge(['payment_method_type' => $this->separateWordsThenLowercase($this->get('payment_method_type'))]);
+            }
+
+        } catch (\Throwable $th) {
+
+        }
+
+        return parent::getValidatorInstance();
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array
@@ -29,13 +49,10 @@ class RequestPaymentRequest extends FormRequest
     public function rules()
     {
         return [
-            'embed' => ['bail', 'sometimes', 'required', 'boolean'],
+            'payment_method_id' => ['bail', 'required_without:payment_method_type', 'uuid'],
             'percentage' => ['bail', 'required_without:amount', 'numeric', 'min:1', 'max:100'],
-            'payment_method_id' => ['bail', 'required', 'numeric', 'min:1',
-                Rule::exists('payment_methods', 'id')->whereIn('method', ['Orange Money', 'DPO']),
-            ],
             'amount' => ['bail', 'required_without:percentage', 'min:0', 'not_in:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'mobile_number' => ['bail', 'sometimes', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11', 'exists:users,mobile_number'],
+            'payment_method_type' => ['required', 'required_without:payment_method_id', Rule::in(PaymentMethod::PAYMENT_METHOD_TYPES())]
         ];
     }
 
@@ -46,13 +63,7 @@ class RequestPaymentRequest extends FormRequest
      */
     public function messages()
     {
-        $mobileNumberWithoutExtension = $this->convertToMobileNumberFormat(request()->input('mobile_number'))->withoutExtension;
-
-        return [
-            'mobile_number.regex' => 'The mobile number must only contain numbers',
-            'mobile_number.exists' => 'The account using the mobile number '.$mobileNumberWithoutExtension.' does not exist.',
-            'payment_method_id.exists' => 'Answer "'.collect(PaymentMethod::whereIn('method', ['Orange Money', 'DPO'])->orderBy('position', 'asc')->pluck('id'))->join('", "', '" or "').' to indicate the payment method',
-        ];
+        return [];
     }
 
     /**

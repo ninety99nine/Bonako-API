@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Http\Requests\Models\PricingPlan;
+
+use App\Models\PricingPlan;
+use App\Traits\Base\BaseTrait;
+use Illuminate\Validation\Rule;
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdatePricingPlanRequest extends FormRequest
+{
+    use BaseTrait;
+
+    /**
+     * Determine if the user is authorized to make this request.
+     *
+     * @return bool
+     */
+    public function authorize()
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array
+     */
+    public function rules()
+    {
+        return [
+            'active' => ['sometimes', 'boolean'],
+            'name' => ['bail', 'sometimes','required', 'string', 'min:'.PricingPlan::NAME_MIN_CHARACTERS, 'max:'.PricingPlan::NAME_MAX_CHARACTERS],
+            'description' => ['bail', 'sometimes', 'nullable', 'min:'.PricingPlan::DESCRIPTION_MIN_CHARACTERS, 'max:'.PricingPlan::DESCRIPTION_MAX_CHARACTERS],
+            'type' => ['bail', 'sometimes','required', Rule::in(PricingPlan::TYPES())],
+            'billing_type' => ['bail', 'sometimes','required', Rule::in(PricingPlan::BILLING_TYPES())],
+            'currency' => ['bail', 'sometimes', 'required', 'string', 'size:3', Rule::in(collect($this->supportedCurrencySymbols)->keys())],
+            'price' => ['bail', 'sometimes','required', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'discount_percentage_rate' => ['bail', 'sometimes', 'required', 'min:1', 'max:100', 'numeric'],
+            'supports_web' => ['sometimes', 'boolean'],
+            'supports_ussd' => ['sometimes', 'boolean'],
+            'supports_mobile' => ['sometimes', 'boolean'],
+            'platforms.*' => ['string', Rule::in(PricingPlan::PLATFORM_TYPES())],
+            'metadata' => ['sometimes', 'nullable', 'array'],
+            'features' => ['sometimes', 'nullable', 'array'],
+            'features.*' => ['string']
+        ];
+    }
+
+    /**
+     * Get the error messages for the defined validation rules.
+     *
+     * @return array
+     */
+    public function messages()
+    {
+        return [];
+    }
+
+    /**
+     * Get custom attributes for validator errors.
+     *
+     * @return array
+     */
+    public function attributes()
+    {
+        return [
+            'platforms.*' => 'feature',
+            'features.*' => 'feature'
+        ];
+    }
+}

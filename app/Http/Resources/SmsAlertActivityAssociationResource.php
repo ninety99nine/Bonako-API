@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Traits\Base\BaseTrait;
 use App\Http\Resources\BaseResource;
 use App\Repositories\StoreRepository;
 use App\Repositories\SmsAlertRepository;
@@ -11,8 +10,6 @@ use App\Repositories\SmsAlertActivityRepository;
 
 class SmsAlertActivityAssociationResource extends BaseResource
 {
-    use BaseTrait;
-
     protected $resourceRelationships = [
         'stores' => StoreRepository::class,
         'smsAlert' => SmsAlertRepository::class,
@@ -28,7 +25,7 @@ class SmsAlertActivityAssociationResource extends BaseResource
         $userPrefix = 'user.sms.alert.activity.association.';
 
         //  Get the user's id
-        $userId = $this->chooseUser()->id;
+        $userId = request()->current_user->id;
 
         //  Check if this resource belongs to the authenticated
         $isAuthUser = $userId == request()->auth_user->id;

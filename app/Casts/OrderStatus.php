@@ -20,6 +20,8 @@ class OrderStatus implements CastsAttributes
      */
     public function get($order, $key, $value, $attributes)
     {
+        if(is_null($value)) return null;
+
         //  Get the value e.g Waiting
         $name = $value;
 

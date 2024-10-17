@@ -20,8 +20,7 @@ class CartObserver
 
     public function created(Cart $cart)
     {
-        //  Create the cart product lines and coupon lines
-        $this->cartRepository()->setModel($cart)->createProductAndCouponLines();
+        //
     }
 
     public function updated(Cart $cart)

@@ -4,33 +4,28 @@ namespace App\Http\Resources;
 
 use App\Repositories\UserRepository;
 use App\Http\Resources\BaseResource;
-use App\Repositories\ShortcodeRepository;
 use App\Http\Resources\Helpers\ResourceLink;
 use App\Repositories\PaymentMethodRepository;
 
 class TransactionResource extends BaseResource
 {
     protected $resourceRelationships = [
-        'activePaymentShortcode' => ShortcodeRepository::class,
         'paymentMethod' => PaymentMethodRepository::class,
+        'manuallyVerifiedByUser' => UserRepository::class,
         'requestedByUser' => UserRepository::class,
-        'verifiedByUser' => UserRepository::class,
-        'paidByUser' => UserRepository::class,
     ];
 
     public function setLinks()
     {
-        $routeNamePrefix = 'transaction.';
-        $transactionrId = $this->resource->id;
-        $params = ['transaction' => $transactionrId];
+        $transaction = $this->resource;
 
         $this->resourceLinks = [
-            new ResourceLink('self', route($routeNamePrefix.'show', $params), 'The transaction'),
-            new ResourceLink('delete.transaction', route($routeNamePrefix.'delete', $params), 'Delete transaction'),
-            new ResourceLink('renew.payment.link', route($routeNamePrefix.'renew.payment.link', $params), 'Renew payment link'),
-            new ResourceLink('show.proof.of.payment.photo', route($routeNamePrefix.'proof.of.payment.photo.show', $params), 'Show transaction proof of payment photo'),
-            new ResourceLink('update.proof.of.payment.photo', route($routeNamePrefix.'proof.of.payment.photo.update', $params), 'Update transaction proof of payment photo'),
-            new ResourceLink('delete.proof.of.payment.photo', route($routeNamePrefix.'proof.of.payment.photo.delete', $params), 'Delete transaction proof of payment photo'),
+            new ResourceLink('show.transaction', route('show.transaction', ['transactionId' => $transaction->id])),
+            new ResourceLink('update.transaction', route('update.transaction', ['transactionId' => $transaction->id])),
+            new ResourceLink('delete.transaction', route('delete.transaction', ['transactionId' => $transaction->id])),
+            new ResourceLink('show.transaction.proof.of.payment.photo', route('show.transaction.proof.of.payment.photo', ['transactionId' => $transaction->id])),
+            new ResourceLink('upload.transaction.proof.of.payment.photo', route('upload.transaction.proof.of.payment.photo', ['transactionId' => $transaction->id])),
+            new ResourceLink('delete.transaction.proof.of.payment.photo', route('delete.transaction.proof.of.payment.photo', ['transactionId' => $transaction->id])),
         ];
     }
 }

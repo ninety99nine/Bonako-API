@@ -7,7 +7,11 @@ use Illuminate\Http\Response;
 
 class InvalidPerPageException extends Exception
 {
-    protected $message = 'The per page value must be a valid number in order to limit the results';
+    public function __construct(string|null $message = null)
+    {
+        $message = $message ?? "The per page value must be a valid number in order to limit the results";
+        parent::__construct($message, Response::HTTP_BAD_REQUEST);
+    }
 
     /**
      * Render the exception into an HTTP response.
@@ -15,8 +19,8 @@ class InvalidPerPageException extends Exception
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function render()
+    public function render($request)
     {
-        return response(['message' => $this->message], Response::HTTP_BAD_REQUEST);
+        return response()->json(['message' => $this->getMessage()], $this->getCode());
     }
 }

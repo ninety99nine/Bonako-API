@@ -32,30 +32,16 @@ class ProductResource extends BaseResource
 
     public function setLinks()
     {
-        $routeNamePrefix = 'product.';
-        $productId = $this->resource->id;
-        $storeId = $this->resource->store_id;
+        $product = $this->resource;
 
         $this->resourceLinks = [
-            new ResourceLink('self', route($routeNamePrefix.'show', ['store' => $storeId, 'product' => $productId]), 'Show product'),
-            new ResourceLink('update.product', route($routeNamePrefix.'update', ['store' => $storeId, 'product' => $productId]), 'Update product'),
-            new ResourceLink('delete.product', route($routeNamePrefix.'delete', ['store' => $storeId, 'product' => $productId]), 'Delete product'),
-            new ResourceLink('confirm.delete.product', route($routeNamePrefix.'confirm.delete', ['store' => $storeId, 'product' => $productId]), 'Confirm delete product'),
-
-            new ResourceLink('show.photo', route($routeNamePrefix.'photo.show', ['store' => $storeId, 'product' => $productId]), 'Show store photo'),
-            new ResourceLink('update.photo', route($routeNamePrefix.'photo.update', ['store' => $storeId, 'product' => $productId]), 'Update store photo'),
-            new ResourceLink('delete.photo', route($routeNamePrefix.'photo.delete', ['store' => $storeId, 'product' => $productId]), 'Delete store photo'),
-
-            new ResourceLink('show.variations', route($routeNamePrefix.'variations.show', ['store' => $storeId, 'product' => $productId]), 'Show variations'),
-            new ResourceLink('create.variations', route($routeNamePrefix.'variations.create', ['store' => $storeId, 'product' => $productId]), 'Show variations'),
+            new ResourceLink('show.product', route('show.product', ['productId' => $product->id])),
+            new ResourceLink('update.product', route('update.product', ['productId' => $product->id])),
+            new ResourceLink('delete.product', route('delete.product', ['productId' => $product->id])),
+            new ResourceLink('show.product.photos', route('show.product.photos', ['productId' => $product->id])),
+            new ResourceLink('create.product.photo', route('create.product.photo', ['productId' => $product->id])),
+            new ResourceLink('show.product.variations', route('show.product.variations', ['productId' => $product->id])),
+            new ResourceLink('create.product.variations', route('create.product.variations', ['productId' => $product->id])),
         ];
-
-        if(!is_null($this->resource->parent_product_id)) {
-
-            array_push($this->resourceLinks, ...[
-                new ResourceLink('show.parent.product', route($routeNamePrefix.'show', ['store' => $storeId, 'product' => $this->resource->parent_product_id]), 'Show parent product'),
-            ]);
-
-        }
     }
 }

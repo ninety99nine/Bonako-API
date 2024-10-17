@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Http\Resources\BaseResource;
+use App\Http\Resources\Helpers\ResourceLink;
 
 class PaymentMethodResource extends BaseResource
 {
@@ -23,5 +24,16 @@ class PaymentMethodResource extends BaseResource
 
         return $this->transformedStructure();
 
+    }
+
+    public function setLinks()
+    {
+        $paymentMethod = $this->resource;
+
+        $this->resourceLinks = [
+            new ResourceLink('show.payment.method', route('show.payment.method', ['paymentMethodId' => $paymentMethod->id])),
+            new ResourceLink('update.payment.method', route('update.payment.method', ['paymentMethodId' => $paymentMethod->id])),
+            new ResourceLink('delete.payment.method', route('delete.payment.method', ['paymentMethodId' => $paymentMethod->id])),
+        ];
     }
 }

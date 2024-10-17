@@ -4,7 +4,9 @@ namespace App\Http\Requests\Models\FriendGroup;
 
 use App\Models\FriendGroup;
 use App\Traits\Base\BaseTrait;
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Models\Pivots\FriendGroupUserAssociation;
 
 class CreateFriendGroupRequest extends FormRequest
 {
@@ -21,15 +23,56 @@ class CreateFriendGroupRequest extends FormRequest
     }
 
     /**
+     *  We want to modify the request input before validating
+     *
+     *  Reference: https://laracasts.com/discuss/channels/requests/modify-request-input-value-before-validation
+     */
+    public function getValidatorInstance()
+    {
+        try {
+            /**
+             *  Convert the "role" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "Admin" into "admin"
+             */
+            if($this->has('role')) {
+                $this->merge([
+                    'role' => $this->separateWordsThenLowercase($this->get('role'))
+                ]);
+            }
+
+            //  Make sure that the "mobile_numbers" is an array if provided
+            if($this->has('mobile_numbers') && is_string($this->request->all()['mobile_numbers'])) {
+                $this->merge([
+                    'mobile_numbers' => json_decode($this->request->all()['mobile_numbers'])
+                ]);
+            }
+
+        } catch (\Throwable $th) {
+
+        }
+
+        return parent::getValidatorInstance();
+    }
+
+    /**
+     *  Return the user friend group association roles
+     *
+     *  @return \Illuminate\Support\Collection
+     */
+    public function getRoles()
+    {
+        return collect(FriendGroupUserAssociation::ROLES)->reject((fn($role) => $role == 'Creator'))->map(fn($role) => $this->separateWordsThenLowercase($role));
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array
      */
     public function rules()
     {
-
-        //  Get the user's id
-        $userId = $this->chooseUser()->id;
+        $userId = request()->current_user->id;
 
         return [
             'name' => [
@@ -41,7 +84,7 @@ class CreateFriendGroupRequest extends FormRequest
                 function ($attribute, $value, $fail) use ($userId) {
                     $friendGroupExists = FriendGroup::where('name', $value)
                         ->whereHas('users', function ($query) use ($userId) {
-                            $query->where('user_id', $userId);
+                            $query->where('users.id', $userId);
                         })->exists();
 
                     if ($friendGroupExists) {
@@ -50,10 +93,11 @@ class CreateFriendGroupRequest extends FormRequest
                 },
             ],
             'mobile_numbers' => ['array'],
+            'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
             'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
             'shared' => ['bail', 'sometimes', 'required', 'boolean'],
             'can_add_friends' => ['bail', 'sometimes', 'required', 'boolean'],
-            'mobile_numbers.*' => ['bail', 'sometimes', 'string', 'distinct', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
+            'role' => ['bail', 'sometimes', 'required', 'string', Rule::in($this->getRoles())],
             'description' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.FriendGroup::DESCRIPTION_MIN_CHARACTERS, 'max:'.FriendGroup::DESCRIPTION_MAX_CHARACTERS],
         ];
     }
@@ -65,10 +109,7 @@ class CreateFriendGroupRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-            'mobile_numbers.*.regex' => 'The mobile number must only contain numbers',
-            'mobile_numbers.*.exists' => 'The account using this mobile number does not exist',
-        ];
+        return [];
     }
 
     /**

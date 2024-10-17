@@ -6,8 +6,8 @@ use App\Models\User;
 use App\Models\Order;
 use App\Models\Store;
 use App\Models\Transaction;
-use App\Models\PaymentMethod;
 use Illuminate\Bus\Queueable;
+use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,28 +21,24 @@ use NotificationChannels\OneSignal\OneSignalMessage;
  * the OrderNotification class contains additional custom methods
  * specific for order notifications.
  */
-class OrderPaymentRequest extends OrderNotification
+class OrderPaymentRequest extends OrderNotification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 
     public Order $order;
     public Store $store;
-    public User $requestedByUser;
     public Transaction $transaction;
-    public PaymentMethod $paymentMethod;
 
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct(Order $order, Store $store, Transaction $transaction, User $requestedByUser, PaymentMethod $paymentMethod)
+    public function __construct(Order $order, Store $store, Transaction $transaction)
     {
         $this->order = $order;
         $this->store = $store;
-        $this->transaction = $transaction;
-        $this->paymentMethod = $paymentMethod;
-        $this->requestedByUser = $requestedByUser;
+        $this->transaction = $transaction->loadMissing(['requestedByUser', 'paymentMethod']);
     }
 
     /**
@@ -66,8 +62,8 @@ class OrderPaymentRequest extends OrderNotification
         $order = $this->order;
         $store = $this->store;
         $transaction = $this->transaction;
-        $paymentMethod = $this->paymentMethod;
-        $requestedByUser = $this->requestedByUser;
+        $paymentMethod = $this->transaction->paymentMethod;
+        $requestedByUser = $this->transaction->requestedByUser;
 
         /**
          *  @var Store $store
@@ -86,7 +82,6 @@ class OrderPaymentRequest extends OrderNotification
             ],
             'customer' => [
                 'name' => $order->customer_name,
-                'id' => $order->customer_user_id,
                 'firstName' => $order->customer_first_name,
             ],
             'requestedByUser' => [
@@ -101,8 +96,8 @@ class OrderPaymentRequest extends OrderNotification
             'transaction' => [
                 'id' => $transaction->id,
                 'amount' => $transaction->amount,
+                'metadata' => $transaction->metadata,
                 'percentage' => $transaction->percentage,
-                'dpoPaymentUrl' => $transaction->dpo_payment_url
             ],
         ];
     }
@@ -113,9 +108,7 @@ class OrderPaymentRequest extends OrderNotification
         $order = $this->order;
         $transaction = $this->transaction;
         $subject = 'Order payment request';
-        $paymentMethod = $this->paymentMethod;
-        $requestedByUser = $this->requestedByUser;
-        $body = $order->craftOrderPaymentRequestMessage($store, $transaction, $requestedByUser, $paymentMethod);
+        $body = $order->craftOrderPaymentRequestMessage($store, $transaction);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

@@ -131,43 +131,6 @@ trait ProductTrait
     }
 
     /**
-     *  Determine if this product visibility has expired
-     *  The product visibility date and time must be
-     *  equal to or less than the current date and
-     *  time.
-     *
-     *  @return boolean
-     */
-    public function visibilityHasExpired()
-    {
-        return Carbon::parse($this->visibility_expires_at)->lte(now());
-    }
-
-    /**
-     *  Extend the product visibility expiry time
-     *
-     *  @return $this
-     */
-    public function extendVisibility()
-    {
-        //  Extend the expiry time with the current time plus 30 days
-        $this->visibility_expires_at = $this->getExtendVisibilityDateTime();
-
-        return $this;
-    }
-
-    /**
-     *  Get the datetime the product visibility expiry time
-     *
-     *  @return $this
-     */
-    public function getExtendVisibilityDateTime()
-    {
-        //  Return the current time plus 30 days
-        return Carbon::parse(now())->addDays(30);
-    }
-
-    /**
      *  Update the total number of visible variations on this product
      *
      *  @return void
@@ -179,7 +142,4 @@ trait ProductTrait
             'total_visible_variations' => $this->variations()->visible()->count()
         ]);
     }
-
-
-
 }

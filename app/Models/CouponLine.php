@@ -124,19 +124,19 @@ class CouponLine extends BaseModel
      ***************************/
 
     /**
-     *  Returns the associated coupon
-     */
-    public function coupon()
-    {
-        return $this->belongsTo(Coupon::class);
-    }
-
-    /**
      *  Returns the associated cart
      */
     public function cart()
     {
         return $this->belongsTo(Cart::class);
+    }
+
+    /**
+     *  Returns the associated coupon
+     */
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     /**

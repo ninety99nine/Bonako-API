@@ -70,7 +70,6 @@ class Kernel extends HttpKernel
          */
         'request.via.ussd' => \App\Http\Middleware\CheckIfRequestFromUssdServer::class,
         'store.permission' => \App\Http\Middleware\CheckIfHasStorePermissions::class,
-        'assigned.to.store.as.team.member' => \App\Http\Middleware\CheckIfAssignedToStoreAsTeamMember::class,
         'superadmin' => \App\Http\Middleware\CheckIfSuperAdmin::class,
         'format.request.payload' => \App\Http\Middleware\FormatRequestPayload::class,
         'format.response.payload' => \App\Http\Middleware\FormatResponsePayload::class,
@@ -78,7 +77,8 @@ class Kernel extends HttpKernel
         'last.seen' => \App\Http\Middleware\LastSeen::class,
         'last.seen.at.store' => \App\Http\Middleware\LastSeenAtStore::class,
         'mark.order.as.seen.by.team.member' => \App\Http\Middleware\MarkOrderAsSeenByTeamMember::class,
-        'capture.auth.user.on.request' => \App\Http\Middleware\CaptureAuthUserOnRequest::class,
+        'set.auth.user.on.request' => \App\Http\Middleware\SetAuthUserOnRequest::class,
+        'set.current.user.on.request' => \App\Http\Middleware\SetCurrentUserOnRequest::class,
     ];
 
     /**
@@ -99,8 +99,10 @@ class Kernel extends HttpKernel
          */
         \App\Http\Middleware\RequireApiHeaders::class,                  //  Require API headers first
         \App\Http\Middleware\FormatRequestPayload::class,               //  Then format the request payload
-        \App\Http\Middleware\CaptureAuthUserOnRequest::class,           //  Then Capture the authenticated user on request (if any)
+        \App\Http\Middleware\SetAuthUserOnRequest::class,               //  Then set the authenticated user on request (if any)
+        \App\Http\Middleware\SetCurrentUserOnRequest::class,            //  Then set the current user on request (if any)
         \App\Http\Middleware\Authenticate::class,                       //  Then Authenticate the request
+        \App\Http\Middleware\LastSeenAtStore::class,                    //  Then update last seen at store
         \Illuminate\Routing\Middleware\ThrottleRequests::class,         //  Then check the rate limits against the authenticated user (if any)
 
         /**

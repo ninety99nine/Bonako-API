@@ -2,89 +2,28 @@
 
 namespace App\Observers;
 
-use App\Enums\CacheName;
-use App\Helpers\CacheManager;
-use App\Models\User;
 use App\Models\Store;
-use App\Traits\Base\BaseTrait;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use App\Repositories\StoreRepository;
-use App\Repositories\ShortcodeRepository;
-use App\Notifications\Stores\StoreCreated;
+use App\Enums\CacheName;
+use App\Models\StoreQuota;
+use Illuminate\Support\Str;
+use App\Helpers\CacheManager;
 use App\Notifications\Stores\StoreDeleted;
-use App\Repositories\SmsAlertRepository;
 use Illuminate\Support\Facades\Notification;
 
 class StoreObserver
 {
-    use BaseTrait;
-
     public $teamMembers = [];
 
-    /**
-     *  Return the StoreRepository instance
-     *
-     *  @return StoreRepository
-     */
-    public function storeRepository()
-    {
-        return resolve(StoreRepository::class);
-    }
-
-    /**
-     *  Return the ShortcodeRepository instance
-     *
-     *  @return ShortcodeRepository
-     */
-    public function shortcodeRepository()
-    {
-        return resolve(ShortcodeRepository::class);
-    }
-
-    /**
-     *  Return the SmsAlertRepository instance
-     *
-     *  @return SmsAlertRepository
-     */
-    public function smsAlertRepository()
-    {
-        return resolve(SmsAlertRepository::class);
-    }
-
-    /**
-     *  The saving event will dispatch when a model is creating or updating
-     *  the model even if the model's attributes have not been changed.
-     *
-     *  Refererence: https://laravel.com/docs/9.x/eloquent#events
-     */
     public function saving(Store $store)
     {
+        $store = $this->setStoreAlias($store);
     }
 
     public function creating(Store $store)
     {
-        /**
-         *  Update the store logo (if any)
-         *
-         *  Note that updateLogo() will work when creating a store but will not work when updating
-         *  a store. This is because the $request->hasFile('logo') requires that the request must
-         *  be a POST request. This is fine when we are creating a store since we do use a POST
-         *  request, but doesn't work for us when we are updating a store since we then use a
-         *  PUT request. In that case we update the logo separately using a POST route that
-         *  is dedicated to updating the logo only. For this reason we will put this logic
-         *  on the creating method since the saving method is triggered for both creating
-         *  and updating. This way we can create a logo when creating a store and update
-         *  the logo separately when we need to set a new logo or update the existing
-         *  logo.
-         *
-         *  While implemeting a POST request the $request->hasFile('logo') will return "true",
-         *  where as while implemeting a PUT request the same method will return "false".
-         */
-        $store = $this->storeRepository()->setModel($store)->updateLogo(request())->getModel();
-
-        //  Do the same thing to update the cover photo (if any)
-        $store = $this->storeRepository()->setModel($store)->updateCoverPhoto(request())->getModel();
+        $store = $this->setStoreUssdMobileNumber($store);
+        $store = $this->setStoreContactMobileNumber($store);
+        $store = $this->setStoreWhatsappMobileNumber($store);
     }
 
     public function updating(Store $store)
@@ -93,11 +32,7 @@ class StoreObserver
 
     public function created(Store $store)
     {
-        //  Add the authenticated user as a team member
-        resolve(storeRepository::class)->setModel($store)->addCreator($this->chooseUser());
-
-        //  Add this store as an sms alertable store
-        $this->smsAlertRepository()->addSmsAlertableStore($this->chooseUser(), $store);
+        StoreQuota::create(['store_id' => $store->id]);
     }
 
     public function updated(Store $store)
@@ -132,9 +67,6 @@ class StoreObserver
          */
         $store->subscriptions()->delete();
 
-        //  Expire active shortcodes
-        $this->shortcodeRepository()->setModel($store->shortcodes())->expireShortcode();
-
         //  Set the cache manager
         $cacheManager = (new CacheManager(CacheName::STORE_TEAM_MEMBERS))->append($store->id);
 
@@ -156,8 +88,86 @@ class StoreObserver
     {
     }
 
-    public function getTeamMembersCacheName(Store $store)
+    /**
+     * Set store alias.
+     *
+     * @param Store $store
+     * @return Store
+     */
+    private function setStoreAlias(Store $store): Store
     {
-        return 'store_'.$store->id.'_team_members';
+        if (empty($store->alias)) {
+            $baseAlias = Str::slug($store->name, '-');
+            $similarAliases = Store::where('alias', 'like', "{$baseAlias}%")->pluck('alias')->toArray();
+
+            if (!in_array($baseAlias, $similarAliases)) {
+                $store->alias = $baseAlias;
+            } else {
+                $maxSuffix = $this->getMaxSuffix($baseAlias, $similarAliases);
+                $store->alias = "{$baseAlias}-" . ($maxSuffix + 1);
+            }
+        } else {
+            $store->alias = Str::slug($store->alias, '-');
+        }
+
+        return $store;
+    }
+
+    /**
+     * Set store USSD mobile number.
+     *
+     * @param Store $store
+     * @return Store
+     */
+    private function setStoreUssdMobileNumber(Store $store): Store
+    {
+        if(is_null($store->ussd_mobile_number)) $store->ussd_mobile_number = request()->current_user->mobile_number->formatE164();
+        return $store;
+    }
+
+    /**
+     * Set store contact mobile number.
+     *
+     * @param Store $store
+     * @return Store
+     */
+    private function setStoreContactMobileNumber(Store $store): Store
+    {
+        if(is_null($store->contact_mobile_number)) $store->contact_mobile_number = request()->current_user->mobile_number->formatE164();
+        return $store;
+    }
+
+    /**
+     * Set store whatsapp mobile number.
+     *
+     * @param Store $store
+     * @return Store
+     */
+    private function setStoreWhatsappMobileNumber(Store $store): Store
+    {
+        if(is_null($store->whatsapp_mobile_number)) $store->whatsapp_mobile_number = request()->current_user->mobile_number->formatE164();
+        return $store;
+    }
+
+    /**
+     * Get the highest numeric suffix for the base alias.
+     *
+     * @param string $baseAlias
+     * @param array $similarAliases
+     * @return int
+     */
+    private function getMaxSuffix(string $baseAlias, array $similarAliases): int
+    {
+        $maxSuffix = 0;
+
+        foreach ($similarAliases as $alias) {
+
+            if (preg_match('/^' . preg_quote($baseAlias, '/') . '-(\d+)$/', $alias, $matches)) {
+                $suffix = intval($matches[1]);
+                $maxSuffix = max($maxSuffix, $suffix);
+            }
+        }
+
+        return $maxSuffix;
     }
 }

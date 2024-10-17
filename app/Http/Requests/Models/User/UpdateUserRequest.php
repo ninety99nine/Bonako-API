@@ -3,17 +3,14 @@
 namespace App\Http\Requests\Models\User;
 
 use App\Models\User;
-use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
-use App\Services\Ussd\UssdService;
 use App\Models\MobileVerification;
+use App\Services\Ussd\UssdService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateUserRequest extends FormRequest
 {
-    use BaseTrait;
-
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -21,7 +18,6 @@ class UpdateUserRequest extends FormRequest
      */
     public function authorize()
     {
-        //  Everyone is authorized to make this request
         return true;
     }
 
@@ -32,19 +28,19 @@ class UpdateUserRequest extends FormRequest
      */
     public function rules()
     {
-        $user = $this->chooseUser();
-
         /**
          *  @var User $authUser
          */
         $authUser = request()->auth_user;
+        $currentUser = request()->current_user;
         $authUserIsSuperAdmin = $authUser->isSuperAdmin();
+        $requestFromUssdServer = UssdService::verifyIfRequestFromUssdServer();
 
-        $alreadyHasPassword = !empty($user->password);
-        $uniqueMobileNumber = Rule::unique('users')->ignore($user->id);
-        $passwordHasBeenChanged = request()->filled('password') ? !(Hash::check(request()->input('password'), $user->password)) : false;
+        $alreadyHasPassword = !empty($currentUser->password);
+        $uniqueMobileNumber = Rule::unique('users')->ignore($currentUser->id);
+        $passwordHasBeenChanged = request()->filled('password') ? !(Hash::check(request()->input('password'), $currentUser->password)) : false;
         $mobileNumberHasBeenChanged = request()->filled('mobile_number') ? (
-            request()->input('mobile_number') != $user->mobile_number->withExtension
+            request()->input('mobile_number') != $currentUser->mobile_number->formatInternational()
         ) : false;
 
         return [
@@ -52,8 +48,7 @@ class UpdateUserRequest extends FormRequest
             'last_name' => ['bail', 'sometimes', 'required', 'string', 'min:'.User::LAST_NAME_MIN_CHARACTERS, 'max:'.User::LAST_NAME_MAX_CHARACTERS],
             'about_me' => ['bail', 'nullable', 'string', 'min:'.User::ABOUT_ME_MIN_CHARACTERS, 'max:'.User::ABOUT_ME_MAX_CHARACTERS],
             'mobile_number' => [
-                'bail', 'sometimes', 'required', 'string', 'starts_with:267',
-                'regex:/^[0-9]+$/', 'size:11', $uniqueMobileNumber
+                'bail', 'sometimes', 'required', 'phone', $uniqueMobileNumber
             ],
 
             /**
@@ -75,7 +70,7 @@ class UpdateUserRequest extends FormRequest
              *  on the current password are applied if the user
              *  already has a password set.
              */
-            'current_password' => $alreadyHasPassword && $passwordHasBeenChanged && !$authUserIsSuperAdmin ? [
+            'current_password' => $alreadyHasPassword && $passwordHasBeenChanged && !($authUserIsSuperAdmin || $requestFromUssdServer) ? [
                 'bail', 'required', 'string', 'min:'.User::PASSWORD_MIN_CHARACTERS, 'current_password:sanctum'
             ] : [],
 
@@ -87,7 +82,7 @@ class UpdateUserRequest extends FormRequest
              *  this mobile number.
              */
             'verification_code' => $mobileNumberHasBeenChanged && !$authUserIsSuperAdmin ? [
-                'bail', 'required', 'string', 'size:'.MobileVerification::CODE_CHARACTERS, 'regex:/^[0-9]+$/',
+                'bail', 'required', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS,
                 Rule::exists('mobile_verifications', 'code')->where('mobile_number', request()->input('mobile_number')),
             ] : []
         ];
@@ -101,8 +96,6 @@ class UpdateUserRequest extends FormRequest
     public function messages()
     {
         return [
-            'mobile_number.regex' => 'The mobile number must only contain numbers',
-            'mobile_number.unique' => 'An account using the mobile number '.request()->input('mobile_number').' already exists.',
             'verification_code.required' => 'The verification code is required to verify ownership of the mobile number ' . request()->input('mobile_number'),
             'verification_code.exists' => 'The verification code is not valid.',
             'verification_code.regex' => 'The verification code must only contain numbers',
@@ -116,8 +109,6 @@ class UpdateUserRequest extends FormRequest
      */
     public function attributes()
     {
-        return [
-
-        ];
+        return [];
     }
 }

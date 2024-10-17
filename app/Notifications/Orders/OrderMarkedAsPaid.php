@@ -21,30 +21,27 @@ use NotificationChannels\OneSignal\OneSignalMessage;
  * the OrderNotification class contains additional custom methods
  * specific for order notifications.
  */
-class OrderMarkedAsPaid extends OrderNotification
+class OrderMarkedAsPaid extends OrderNotification implements ShouldQueue
 {
     use Queueable, BaseTrait;
 
     public Order $order;
     public Store $store;
-    public User $paidByUser;
-    public User $verifiedByUser;
     public Transaction $transaction;
     public PaymentMethod $paymentMethod;
+    public User $manuallyVerifiedByUser;
 
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct(Order $order, Store $store, Transaction $transaction, User $verifiedByUser)
+    public function __construct(Order $order, Store $store, Transaction $transaction, User $manuallyVerifiedByUser)
     {
         $this->order = $order;
         $this->store = $store;
-        $this->transaction = $transaction;
-        $this->verifiedByUser = $verifiedByUser;
-        $this->paidByUser = $this->transaction->paidByUser;
-        $this->paymentMethod = $transaction->paymentMethod;
+        $this->manuallyVerifiedByUser = $manuallyVerifiedByUser;
+        $this->transaction = $transaction->loadMissing(['paymentMethod']);
     }
 
     /**
@@ -67,12 +64,10 @@ class OrderMarkedAsPaid extends OrderNotification
     {
         $order = $this->order;
         $store = $this->store;
-        $paidByUser = $this->paidByUser;
         $transaction = $this->transaction;
-        $paymentMethod = $this->paymentMethod;
-        $verifiedByUser = $this->verifiedByUser;
+        $paymentMethod = $this->transaction->paymentMethod;
         $paidByYou = $notifiable->id == $transaction->payer_id;
-        $isAssociatedAsFriend = $this->checkIfAssociatedAsFriend($order, $notifiable);
+        $manuallyVerifiedByUser = $this->manuallyVerifiedByUser;
         $isAssociatedAsCustomer = $this->checkIfAssociatedAsCustomer($order, $notifiable);
 
         return [
@@ -83,16 +78,13 @@ class OrderMarkedAsPaid extends OrderNotification
             'order' => [
                 'id' => $order->id,
                 'number' => $order->number,
-                'isAssociatedAsFriend' => $isAssociatedAsFriend,
+                'customer_last_name' => $order->customer_last_name,
                 'isAssociatedAsCustomer' => $isAssociatedAsCustomer,
+                'customer_first_name' => $order->customer_first_name,
             ],
-            'verifiedByUser' => [
-                'id' => $verifiedByUser->id,
-                'name' => $verifiedByUser->name
-            ],
-            'paidByUser' => [
-                'id' => $paidByUser->id,
-                'name' => $paidByUser->name
+            'manuallyVerifiedByUser' => [
+                'id' => $manuallyVerifiedByUser->id,
+                'name' => $manuallyVerifiedByUser->name
             ],
             'paymentMethod' => [
                 'id' => $paymentMethod->id,
@@ -112,9 +104,9 @@ class OrderMarkedAsPaid extends OrderNotification
         $store = $this->store;
         $order = $this->order;
         $transaction = $this->transaction;
-        $verifiedByUser = $this->verifiedByUser;
         $subject = 'Order payment confirmation';
-        $body = $order->craftOrderMarkedAsPaidMessage($store, $transaction, $verifiedByUser);
+        $manuallyVerifiedByUser = $this->manuallyVerifiedByUser;
+        $body = $order->craftOrderMarkedAsPaidMessage($store, $transaction, $manuallyVerifiedByUser);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

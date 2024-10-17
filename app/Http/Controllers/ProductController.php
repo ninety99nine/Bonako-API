@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Store;
-use App\Models\Product;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
 use App\Repositories\ProductRepository;
-use App\Http\Requests\Models\DeleteRequest;
+use App\Http\Resources\ProductResources;
 use App\Http\Controllers\Base\BaseController;
-use App\Http\Requests\Models\Product\UpdatePhotoRequest;
+use App\Http\Requests\Models\Product\ShowProductRequest;
+use App\Http\Requests\Models\Product\ShowProductsRequest;
+use App\Http\Requests\Models\Product\CreateProductRequest;
 use App\Http\Requests\Models\Product\UpdateProductRequest;
-use App\Http\Requests\Models\Product\CreateVariationsRequest;
-use App\Http\Requests\Models\Product\ShowVariationsRequest;
+use App\Http\Requests\Models\Product\DeleteProductsRequest;
+use App\Http\Requests\Models\Product\CreateProductVariationsRequest;
+use App\Http\Requests\Models\Product\UpdateProductVisibilityRequest;
+use App\Http\Requests\Models\Product\UpdateProductArrangementRequest;
 
 class ProductController extends BaseController
 {
@@ -21,53 +22,184 @@ class ProductController extends BaseController
      */
     protected $repository;
 
-    public function index(Request $request)
+    /**
+     * ProductController constructor.
+     *
+     * @param ProductRepository $repository
+     */
+    public function __construct(ProductRepository $repository)
     {
-        return $this->prepareOutput($this->repository->get());
+        $this->repository = $repository;
     }
 
-    public function show(Store $store, Product $product)
+    /**
+     * Show products.
+     *
+     * @param ShowProductsRequest $request
+     * @param string|null $storeId
+     * @return JsonResponse
+     */
+    public function showProducts(ShowProductsRequest $request, string|null $storeId = null): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($product)->showProduct());
+        return $this->prepareOutput($this->repository->showProducts($storeId ?? $request->input('store_id')));
     }
 
-    public function update(UpdateProductRequest $request, Store $store, Product $product)
+    /**
+     * Create product.
+     *
+     * @param CreateProductRequest $request
+     * @return JsonResponse
+     */
+    public function createProduct(CreateProductRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($product)->updateProduct($request));
+        return $this->prepareOutput($this->repository->createProduct($request->all()));
     }
 
-    public function confirmDelete(Store $store, Product $product)
+    /**
+     * Delete products.
+     *
+     * @param DeleteProductsRequest $request
+     * @return JsonResponse
+     */
+    public function deleteProducts(DeleteProductsRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($product)->generateDeleteConfirmationCode());
+        return $this->prepareOutput($this->repository->deleteProducts($request->all()));
     }
 
-    public function delete(Store $store, Product $product)
+    /**
+     * Update product visibility.
+     *
+     * @param CreateProductRequest $request
+     * @return JsonResponse
+     */
+    public function updateProductVisibility(UpdateProductVisibilityRequest $request)
     {
-        return $this->prepareOutput($this->setModel($product)->delete());
+        return $this->prepareOutput($this->repository->updateProductVisibility($request->all()));
     }
 
-    public function showPhoto(Store $store, Product $product)
+    /**
+     * Update product arrangement.
+     *
+     * @param CreateProductRequest $request
+     * @return JsonResponse
+     */
+    public function updateProductArrangement(UpdateProductArrangementRequest $request)
     {
-        return $this->prepareOutput($this->setModel($product)->showPhoto());
+        return $this->prepareOutput($this->repository->updateProductArrangement($request->all()));
     }
 
-    public function updatePhoto(UpdatePhotoRequest $request, Store $store, Product $product)
+    /**
+     * Show product.
+     *
+     * @param string $productId
+     * @return JsonResponse
+     */
+    public function showProduct(string $productId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($product)->updatePhoto($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->repository->showProduct($productId));
     }
 
-    public function deletePhoto(Store $store, Product $product)
+    /**
+     * Update product.
+     *
+     * @param UpdateProductRequest $request
+     * @param string $productId
+     * @return JsonResponse
+     */
+    public function updateProduct(UpdateProductRequest $request, string $productId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($product)->removeExistingPhoto());
+        return $this->prepareOutput($this->repository->updateProduct($productId, $request->all()));
     }
 
-    public function showVariations(ShowVariationsRequest $request, Store $store, Product $product)
+    /**
+     * Delete product.
+     *
+     * @param string $productId
+     * @return JsonResponse
+     */
+    public function deleteProduct(string $productId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($product)->showVariations($request));
+        return $this->prepareOutput($this->repository->deleteProduct($productId));
     }
 
-    public function createVariations(CreateVariationsRequest $request, Store $store, Product $product)
+    /**
+     * Show product photos.
+     *
+     * @param string $productId
+     * @return JsonResponse
+     */
+    public function showProductPhotos(string $productId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($product)->createVariations($request), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->repository->showProductPhotos($productId));
+    }
+
+    /**
+     * Create product photo(s).
+     *
+     * @param string $productId
+     * @return JsonResponse
+     */
+    public function createProductPhoto(string $productId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->createProductPhoto($productId));
+    }
+
+    /**
+     * Show product photo.
+     *
+     * @param string $productId
+     * @param string $photoId
+     * @return JsonResponse
+     */
+    public function showProductPhoto(string $productId, string $photoId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showProductPhoto($productId, $photoId));
+    }
+
+    /**
+     * Update product photo.
+     *
+     * @param string $productId
+     * @param string $photoId
+     * @return JsonResponse
+     */
+    public function updateProductPhoto(string $productId, string $photoId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->updateProductPhoto($productId, $photoId));
+    }
+
+    /**
+     * Delete product photo.
+     *
+     * @param string $productId
+     * @param string $photoId
+     * @return JsonResponse
+     */
+    public function deleteProductPhoto(string $productId, string $photoId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->deleteProductPhoto($productId, $photoId));
+    }
+
+    /**
+     * Show product variations.
+     *
+     * @param string $productId
+     * @return JsonResponse
+     */
+    public function showProductVariations(string $productId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showProductVariations($productId));
+    }
+
+    /**
+     * Create product variations.
+     *
+     * @param CreateProductVariationsRequest $request
+     * @param string $productId
+     * @return JsonResponse
+     */
+    public function createProductVariations(CreateProductVariationsRequest $request, string $productId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->createProductVariations($productId, $request->all()));
     }
 }

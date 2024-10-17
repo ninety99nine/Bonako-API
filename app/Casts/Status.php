@@ -46,7 +46,7 @@ class Status implements CastsAttributes
                 break;
             case 'has_stock':
                 $name = $value ? 'Has Stock' : 'No Stock';
-                $description = 'This '.$descriptionName.' '.($value ? 'has' : 'does not have').' a price';
+                $description = 'This '.$descriptionName.' '.($value ? 'has' : 'does not have').' stock';
                 break;
             case 'visible':
                 $name = $value ? 'Visible' : 'Hidden';

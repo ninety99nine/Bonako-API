@@ -1,0 +1,11 @@
+<?php
+
+namespace App\Enums;
+
+enum Association:string {
+    case FOLLOWER = 'follower';
+    case CUSTOMER = 'customer';
+    case TEAM_MEMBER = 'team member';
+    case SUPER_ADMIN = 'super admin';
+    case RECENT_VISITOR = 'recent visitor';
+}

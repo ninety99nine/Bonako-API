@@ -63,7 +63,6 @@ class ShowUserStoresRequest extends FormRequest
             'with_auth_active_subscription' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_count_team_members' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_visible_products' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_visit_shortcode' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_count_followers' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_count_products' => ['bail', 'sometimes', 'required', 'boolean'],
             'with_count_coupons' => ['bail', 'sometimes', 'required', 'boolean'],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use Illuminate\Support\Str;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -16,7 +17,6 @@ class AccountExistsRequest extends FormRequest
      */
     public function authorize()
     {
-        //  Everyone is authorized to make this request
         return true;
     }
 
@@ -28,7 +28,7 @@ class AccountExistsRequest extends FormRequest
     public function rules()
     {
         return [
-            'mobile_number' => ['bail', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
+            'mobile_number' => ['bail', 'required', 'phone']
         ];
     }
 
@@ -39,9 +39,7 @@ class AccountExistsRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-            'mobile_number.regex' => 'The mobile number must only contain numbers',
-        ];
+        return [];
     }
 
     /**

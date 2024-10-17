@@ -64,7 +64,7 @@ class Cart extends BaseModel
         'instant_cart_id',
 
         /*  Ownership  */
-        'order_id', 'store_id'
+        'store_id'
 
     ];
 
@@ -137,7 +137,7 @@ class Cart extends BaseModel
      */
     public function order()
     {
-        return $this->belongsTo(Order::class);
+        return $this->hasOne(Order::class);
     }
 
     /**

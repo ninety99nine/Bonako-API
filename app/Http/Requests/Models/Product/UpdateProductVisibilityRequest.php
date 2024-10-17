@@ -17,28 +17,6 @@ class UpdateProductVisibilityRequest extends FormRequest
     }
 
     /**
-     *  We want to modify the request input before validating
-     *
-     *  Reference: https://laracasts.com/discuss/channels/requests/modify-request-input-value-before-validation
-     */
-    public function getValidatorInstance()
-    {
-        try {
-            //  Make sure that the "visibility" is an array if provided
-            if($this->has('visibility') && is_string($this->request->all()['visibility'])) {
-                $this->merge([
-                    'visibility' => json_decode($this->request->all()['visibility'])
-                ]);
-            }
-
-        } catch (\Throwable $th) {
-
-        }
-
-        return parent::getValidatorInstance();
-    }
-
-    /**
      * Get the validation rules that apply to the request.
      *
      * @return array
@@ -46,8 +24,9 @@ class UpdateProductVisibilityRequest extends FormRequest
     public function rules()
     {
         return [
+            'store_id' => ['required', 'uuid'],
             'visibility' => ['required', 'array'],
-            'visibility.*.id' => ['bail', 'required', 'integer', 'numeric', 'min:1', 'distinct'],
+            'visibility.*.id' => ['bail', 'required', 'uuid', 'distinct'],
             'visibility.*.visible' => ['bail', 'required', 'boolean'],
         ];
     }

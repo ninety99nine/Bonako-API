@@ -55,10 +55,11 @@ class CancelOrderRequest extends FormRequest
      */
     public function rules()
     {
-        $cancellationReasons = collect(Order::CANCELLATION_REASONS)->map(fn($cancellationReason) => strtolower($cancellationReason));
+        $cancellationReasons = collect(Order::CANCELLATION_REASONS())->map(fn($cancellationReason) => $this->separateWordsThenLowercase($cancellationReason));
 
         return [
             'cancellation_reason' => ['sometimes', 'bail', 'nullable', Rule::in($cancellationReasons)],
+            'other_cancellation_reason' => ['sometimes', 'bail', 'nullable', 'string', 'min:'.Order::OTHER_CANCELLATION_REASON_MIN_CHARACTERS, 'max:'.Order::OTHER_CANCELLATION_REASON_MAX_CHARACTERS],
         ];
     }
 
@@ -70,7 +71,7 @@ class CancelOrderRequest extends FormRequest
     public function messages()
     {
         return [
-            'cancellation_reason.in' => 'Answer "'.collect(Order::CANCELLATION_REASONS)->join('", "', '" or "').'" for the cancellation reason',
+            'cancellation_reason.in' => 'Answer "'.collect(Order::CANCELLATION_REASONS())->join('", "', '" or "').'" for the cancellation reason',
         ];
     }
 

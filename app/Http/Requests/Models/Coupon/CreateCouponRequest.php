@@ -101,12 +101,14 @@ class CreateCouponRequest extends FormRequest
         $activateUsingUsageLimit = request()->filled('activate_using_usage_limit') && $this->isTruthy(request()->input('activate_using_usage_limit'));
 
         return [
+            'return' => ['sometimes', 'boolean'],
+            'store_id' => ['required', 'uuid'],
 
             /*  General Information  */
             'name' => [
                 'bail', 'required', 'string', 'min:'.Coupon::NAME_MIN_CHARACTERS, 'max:'.Coupon::NAME_MAX_CHARACTERS,
                 //  Make sure that this coupon name does not already exist for the same store
-                Rule::unique('coupons')->where('store_id', request()->store->id)
+                Rule::unique('coupons')->where('store_id', request()->storeId)
             ],
             'active' => ['bail', 'sometimes', 'required', 'boolean'],
             'description' => ['bail', 'sometimes', 'required', 'string', 'min:'.Coupon::DESCRIPTION_MIN_CHARACTERS, 'max:'.Coupon::DESCRIPTION_MAX_CHARACTERS],

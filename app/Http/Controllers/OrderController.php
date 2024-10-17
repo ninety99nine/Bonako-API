@@ -2,176 +2,376 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Store;
-use App\Models\Order;
-use Illuminate\Http\Response;
+use Illuminate\View\View;
+use Illuminate\Http\JsonResponse;
 use App\Repositories\OrderRepository;
-use App\Http\Requests\Models\DeleteRequest;
-use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Models\UncancelRequest;
+use App\Http\Controllers\Base\BaseController;
+use App\Http\Requests\Models\Order\AddOrderFriendGroupRequest;
+use App\Http\Requests\Models\Order\ShowOrdersRequest;
+use App\Http\Requests\Models\Order\MarkAsPaidRequest;
 use App\Http\Requests\Models\Order\UpdateOrderRequest;
 use App\Http\Requests\Models\Order\CancelOrderRequest;
+use App\Http\Requests\Models\Order\CreateOrderRequest;
+use App\Http\Requests\Models\Order\DeleteOrdersRequest;
 use App\Http\Requests\Models\Order\UpdateStatusRequest;
 use App\Http\Requests\Models\Order\RequestPaymentRequest;
-use App\Http\Requests\Models\Order\MarkAsUnverifiedPaymentRequest;
-use App\Models\User;
 
 class OrderController extends BaseController
 {
-    /**
-     *  Explicit Route Model Binding
-     *  Reference: https://laravel.com/docs/10.x/routing#customizing-the-resolution-logic
-     *  ---------------------------------------------------------------------------------
-     *
-     *  The store and order are loaded on each controller method using the technique
-     *  of explicit route model binding (Refer to the RouteServiceProvider.php file).
-     *  This allows us to load the associated store and order with respect to the
-     *  current authenticated user. This means that were possible, we can load
-     *  the (user and store association) or (user and order association) pivot
-     *  tables. This allows us to inspect the relationship that the user
-     *  might have with respect to that specified store or order. Taking
-     *  this into consideration, we can then access these associations
-     *  to decide how to handle the given request or determine the
-     *  right information to return based on these associations.
-     *
-     *  Although the $store model is loaded but not used particularly on some of
-     *  these controller moethods, it still allows us to explicitly query the
-     *  order with respect to that $store (see RouteServiceProvider.php file).
-     *  In this case, while resolving the order we can access this store by
-     *  using the request()->store convention since the store will now be
-     *  accessible on the request.
-     */
+    protected OrderRepository $repository;
 
     /**
-     *  @var OrderRepository
+     * OrderController constructor.
+     *
+     * @param OrderRepository $repository
      */
-    protected $repository;
-
-    public function show(Store $store, Order $order)
+    public function __construct(OrderRepository $repository)
     {
-        return $this->prepareOutput($this->setModel($order)->show());
+        $this->repository = $repository;
     }
 
-    public function update(UpdateOrderRequest $request, Store $store, Order $order)
+    /**
+     * Show orders.
+     *
+     * @param ShowOrdersRequest $request
+     * @return JsonResponse
+     */
+    public function showOrders(ShowOrdersRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->updateOrder($store));
+        if($request->storeId) {
+            $request->merge(['store_id' => $request->storeId]);
+        }else if($request->customerId) {
+            $request->merge(['customer_id' => $request->customerId]);
+        }
+
+        return $this->prepareOutput($this->repository->showOrders($request->all()));
     }
 
-    public function showCart(Store $store, Order $order)
+    /**
+     * Create order.
+     *
+     * @param CreateOrderRequest $request
+     * @return JsonResponse
+     */
+    public function createOrder(CreateOrderRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showOrderCart());
+        return $this->prepareOutput($this->repository->createOrder($request->all()));
     }
 
-    public function showCustomer(Store $store, Order $order)
+    /**
+     * Delete orders.
+     *
+     * @param DeleteOrdersRequest $request
+     * @return JsonResponse
+     */
+    public function deleteOrders(DeleteOrdersRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showOrderCustomer());
+        return $this->prepareOutput($this->repository->deleteOrders($request->all()));
     }
 
-    public function showOccasion(Store $store, Order $order)
+    /**
+     * Show order.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrder(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showOccasion());
+        return $this->prepareOutput($this->repository->showOrder($orderId));
     }
 
-    public function showDeliveryAddress(Store $store, Order $order)
+    /**
+     * Update order.
+     *
+     * @param UpdateOrderRequest $request
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function updateOrder(UpdateOrderRequest $request, string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showDeliveryAddress());
+        return $this->prepareOutput($this->repository->updateOrder($orderId, $request->all()));
     }
 
-    public function showUsers(Store $store, Order $order)
+    /**
+     * Delete order.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function deleteOrder(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showUsers());
+        return $this->prepareOutput($this->repository->deleteOrder($orderId));
     }
 
-    public function cancel(CancelOrderRequest $request, Store $store, Order $order)
+    /**
+     * Cancel order.
+     *
+     * @param CancelOrderRequest $request
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function cancelOrder(CancelOrderRequest $request, string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->cancelOrder($request));
+        return $this->prepareOutput($this->repository->cancelOrder($orderId, $request->all()));
     }
 
-    public function uncancel(UncancelRequest $request, Store $store, Order $order)
+    /**
+     * Uncancel order.
+     *
+     * @param UncancelRequest $request
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function uncancelOrder(UncancelRequest $request, string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->uncancelOrder($request));
+        return $this->prepareOutput($this->repository->uncancelOrder($orderId));
     }
 
-    public function showCancellationReasons(Store $store, Order $order)
+    /**
+     * Show order cancellation reasons.
+     *
+     * @return JsonResponse
+     */
+    public function showOrderCancellationReason(): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showCancellationReasons());
+        return $this->prepareOutput($this->repository->showOrderCancellationReason());
     }
 
-    public function generateCollectionCode(Store $store, Order $order)
+    /**
+     * Generate order collection code.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function generateOrderCollectionCode(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->generateCollectionCode());
+        return $this->prepareOutput($this->repository->generateOrderCollectionCode($orderId));
     }
 
-    public function revokeCollectionCode(Store $store, Order $order)
+    /**
+     * Revoke order collection code.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function revokeOrderCollectionCode(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->revokeCollectionCode());
+        return $this->prepareOutput($this->repository->revokeOrderCollectionCode($orderId));
     }
 
-    public function updateStatus(UpdateStatusRequest $request, Store $store, Order $order)
+    /**
+     * Update order status.
+     *
+     * @param UpdateStatusRequest $request
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function updateOrderStatus(UpdateStatusRequest $request, string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->updateStatus($request));
+        return $this->prepareOutput($this->repository->updateOrderStatus($orderId, $request->all()));
     }
 
-    public function showViewers(Store $store, Order $order)
+    /**
+     * Request order payment.
+     *
+     * @param RequestPaymentRequest $request
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function requestOrderPayment(RequestPaymentRequest $request, string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showViewers());
+        return $this->prepareOutput($this->repository->requestOrderPayment($orderId, $request->all()));
     }
 
-    public function requestPayment(RequestPaymentRequest $request, Store $store, Order $order)
+    /**
+     * Verify order payment.
+     *
+     * @param string $orderId
+     * @param string $transactionId
+     * @return JsonResponse|View
+     */
+    public function verifyOrderPayment(string $orderId, string $transactionId): JsonResponse|View
     {
-        return $this->prepareOutput($this->setModel($order)->requestPayment($request));
+        return $this->prepareOutput($this->repository->verifyOrderPayment($orderId, $transactionId));
     }
 
-    public function showRequestPaymentPaymentMethods(Store $store, Order $order)
+    /**
+     * Show payment methods for requesting order payment.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showPaymentMethodsForRequestingOrderPayment(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showRequestPaymentPaymentMethods($store));
+        return $this->prepareOutput($this->repository->showPaymentMethodsForRequestingOrderPayment($orderId));
     }
 
-    public function markAsVerifiedPayment(Store $store, Order $order)
+    /**
+     * Mark order as paid.
+     *
+     * @param MarkAsPaidRequest $request
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function markOrderAsPaid(MarkAsPaidRequest $request, string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->markAsVerifiedPayment());
+        return $this->prepareOutput($this->repository->markOrderAsPaid($orderId, $request->all()));
     }
 
-    public function markAsUnverifiedPayment(MarkAsUnverifiedPaymentRequest $request, Store $store, Order $order)
+    /**
+     * Show payment methods for marking as paid.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showPaymentMethodsForMarkingAsPaid(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->markAsUnverifiedPayment($request));
+        return $this->prepareOutput($this->repository->showPaymentMethodsForMarkingAsPaid($orderId));
     }
 
-    public function showMarkAsUnverifiedPaymentPaymentMethods(Store $store, Order $order)
+    /**
+     * Show order cart.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderCart(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showMarkAsUnverifiedPaymentPaymentMethods($store));
+        return $this->prepareOutput($this->repository->showOrderCart($orderId));
     }
 
-    public function showOrderPayingUsers(Store $store, Order $order)
+    /**
+     * Show order store.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderStore(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showOrderPayingUsers());
+        return $this->prepareOutput($this->repository->showOrderStore($orderId));
     }
 
-
-
-
-    public function showOrderTransactionFilters(Store $store, Order $order)
+    /**
+     * Show order customer.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderCustomer(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showOrderTransactionFilters());
+        return $this->prepareOutput($this->repository->showOrderCustomer($orderId));
     }
 
-    public function showOrderTransactions(Store $store, Order $order)
+    /**
+     * Show order occasion.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderOccasion(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showOrderTransactions());
+        return $this->prepareOutput($this->repository->showOrderOccasion($orderId));
     }
 
-    public function showOrderTransactionsCount(Store $store, Order $order)
+    /**
+     * Show order placed by user.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderPlacedByUser(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->showOrderTransactionsCount());
+        return $this->prepareOutput($this->repository->showOrderPlacedByUser($orderId));
     }
 
-    public function confirmDelete(Store $store, Order $order)
+    /**
+     * Show order created by user.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderCreatedByUser(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->generateDeleteConfirmationCode());
+        return $this->prepareOutput($this->repository->showOrderCreatedByUser($orderId));
     }
 
-    public function delete(Store $store, Order $order)
+    /**
+     * Show order collection verified by user.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderCollectionVerifiedByUser(string $orderId): JsonResponse
     {
-        return $this->prepareOutput($this->setModel($order)->delete());
+        return $this->prepareOutput($this->repository->showOrderCollectionVerifiedByUser($orderId));
+    }
+
+    /**
+     * Show order delivery address.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderDeliveryAddress(string $orderId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showOrderDeliveryAddress($orderId));
+    }
+
+    /**
+     * Show order friend group.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderFriendGroup(string $orderId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showOrderFriendGroup($orderId));
+    }
+
+    /**
+     * Add order friend group.
+     *
+     * @param AddOrderFriendGroupRequest $request
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function addOrderFriendGroup(AddOrderFriendGroupRequest $request, string $orderId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->addOrderFriendGroup($orderId, $request->input('friend_group_id')));
+    }
+
+    /**
+     * Remove order friend group.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function removeOrderFriendGroup(string $orderId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->removeOrderFriendGroup($orderId));
+    }
+
+    /**
+     * Show order viewers.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderViewers(string $orderId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showOrderViewers($orderId));
+    }
+
+    /**
+     * Show order transactions.
+     *
+     * @param string $storeId
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function showOrderTransactions(string $storeId, string $orderId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showOrderTransactions($storeId, $orderId));
     }
 }

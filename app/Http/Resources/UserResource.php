@@ -2,12 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Traits\AuthTrait;
 use App\Http\Resources\BaseResource;
 use App\Http\Resources\Helpers\ResourceLink;
-use App\Repositories\TransactionRepository;
 
 class UserResource extends BaseResource
 {
+    use AuthTrait;
+
     protected $isProfileOwner;
     protected $customExcludeFields = ['password'];
 
@@ -15,9 +17,7 @@ class UserResource extends BaseResource
         'transactions_as_payer_count', 'paid_transactions_as_payer_count'
     ];
 
-    protected $resourceRelationships = [
-        'latestTransactionAsPayer' => TransactionRepository::class,
-    ];
+    protected $resourceRelationships = [];
 
     private function viewingPrivately() {
         return $this->isSuperAdmin || request()->routeIs([
@@ -116,14 +116,14 @@ class UserResource extends BaseResource
 
         /**
          *  If the user is accessed via an friend group relationship then we can gain access to the user-friend-group
-         *  pivot information. This pivot information is accessed via the "user_friend_group_association" pivot name.
+         *  pivot information. This pivot information is accessed via the "friend_group_user_association" pivot name.
          *  If this property is provided then we can include it with our payload as an attribute
          */
-        if( !empty($this->resource->user_friend_group_association) ) {
+        if( !empty($this->resource->friend_group_user_association) ) {
 
             //  Include the user and friend group association payload
             $this->customIncludeAttributes = array_merge(
-                ($this->customIncludeAttributes ?? []), ['user_friend_group_association']
+                ($this->customIncludeAttributes ?? []), ['friend_group_user_association']
             );
 
         }
@@ -134,131 +134,51 @@ class UserResource extends BaseResource
 
     public function setLinks()
     {
-        //  Check if this resource belongs to the authenticated
-        $isAuthUser = $this->resource->id == request()->auth_user->id;
-
-        //  Auth user route name prefix
-        $authUserPrefix = 'auth.user.';
-
-        //  User route name prefix
-        $userPrefix = 'user.';
-
-        //  Set the route name prefix
-        $prefix = $isAuthUser ? $authUserPrefix : $userPrefix;
-
-        //  User route parameters
-        $userParams = ['user' => $this->resource->id];
-
-        //  Set the route parameters
-        $params = $isAuthUser ? [] : $userParams;
+        $user = $this->resource;
+        $authUser = $this->getAuthUser();
+        $authMatchesUser = $authUser && $authUser->id === $user->id;
+        $prefix = $authMatchesUser ? 'auth.user' : 'user';
 
         $this->resourceLinks = [
+            new ResourceLink('show.user', route("show.$prefix", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('update.user', route("update.$prefix", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('delete.user', route("delete.$prefix", $authMatchesUser ? [] : ['user' => $user->id])),
 
-            //  User
-            new ResourceLink('self', route($prefix.'show', $params),'Show user'),
-            new ResourceLink('update.user', route($prefix.'update', $params),'Update user'),
-            new ResourceLink('delete.user', route($prefix.'delete', $params),'Delete user'),
-            new ResourceLink('confirm.delete.user', route($prefix.'confirm.delete', $params),'Confirm delete user'),
-            new ResourceLink('show.profile.photo', route($prefix.'profile.photo.show', $params), 'Show user profile photo'),
-            new ResourceLink('update.profile.photo', route($prefix.'profile.photo.update', $params), 'Update user profile photo'),
-            new ResourceLink('delete.profile.photo', route($prefix.'profile.photo.delete', $params), 'Delete user profile photo'),
+            new ResourceLink('generate.mobile.verification.code', route("generate.$prefix.mobile.verification.code", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('verify.mobile.verification.code', route("verify.$prefix.mobile.verification.code", $authMatchesUser ? [] : ['user' => $user->id])),
 
-            //  Access Tokens
-            new ResourceLink('logout', route($prefix.'logout', $params),'Logout'),
-            new ResourceLink('show.tokens', route($prefix.'tokens.show', $params),'Show tokens'),
+            new ResourceLink('show.tokens', route("show.$prefix.tokens", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('logout.user', route("logout.$prefix", $authMatchesUser ? [] : ['user' => $user->id])),
 
-            //  Terms And Conditions
-            new ResourceLink('show.terms.and.conditions', route($prefix.'terms.and.conditions.show', $params),'Show terms and conditions'),
+            new ResourceLink('show.profile.photo', route("show.$prefix.profile.photo", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('upload.profile.photo', route("upload.$prefix.profile.photo", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('delete.profile.photo', route("delete.$prefix.profile.photo", $authMatchesUser ? [] : ['user' => $user->id])),
 
-            //  Mobile Verification
-            new ResourceLink('show.mobile.verification.code', route($prefix.'show.mobile.verification.code', $params),'Show mobile verification code'),
-            new ResourceLink('verify.mobile.verification.code', route($prefix.'verify.mobile.verification.code', $params),'Verify mobile verification code'),
-            new ResourceLink('generate.mobile.verification.code', route($prefix.'generate.mobile.verification.code', $params),'Generate mobile verification code'),
+            new ResourceLink('show.ai.assistant', route("show.$prefix.ai.assistant", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.resource.totals', route("show.$prefix.resource.totals", $authMatchesUser ? [] : ['user' => $user->id])),
 
-            //  Addresses
-            new ResourceLink('show.addresses', route($prefix.'addresses.show', $params),'Show addresses'),
-            new ResourceLink('create.addresses', route($prefix.'addresses.create', $params),'Create address'),
-
-            //  Notifications
-            new ResourceLink('show.notification.filters', route($prefix.'notification.filters.show', $params),'Show notification filters'),
-            new ResourceLink('show.notifications', route($prefix.'notifications.show', $params),'Show notifications'),
-            new ResourceLink('count.notifications', route($prefix.'notifications.count', $params),'Count notifications'),
-            new ResourceLink('mark.notifications.as.read', route($prefix.'notifications.mark.as.read', $params),'Mark notifications as read'),
-
-            //  Friends
-            new ResourceLink('show.friends', route($prefix.'friends.show', $params),'Show friends'),
-            new ResourceLink('create.friends', route($prefix.'friends.create', $params),'Create friends'),
-            new ResourceLink('remove.friends', route($prefix.'friends.remove', $params),'Remove friends'),
-            new ResourceLink('show.last.selected.friend', route($prefix.'friends.last.selected.show', $params),'Show last selected friend'),
-            new ResourceLink('update.last.selected.friends', route($prefix.'friends.last.selected.update', $params),'Update last selected friends'),
-            new ResourceLink('show.friend.and.friend.group.filters', route($prefix.'friend.and.friend.group.filters.show', $params),'Show friend and friend group filters'),
-
-            //  Friend Groups
-            new ResourceLink('show.first.created.friend.group', route($prefix.'first.created.friend.group.show', $params),'Show first created friend group'),
-            new ResourceLink('show.last.selected.friend.group', route($prefix.'last.selected.friend.group.show', $params),'Show last selected friend group'),
-            new ResourceLink('update.last.selected.friend.groups', route($prefix.'last.selected.friend.groups.update', $params),'Update last selected friend group'),
-            new ResourceLink('delete.many.friend.groups', route($prefix.'delete.many', $params),'Delete many friend groups'),
-            new ResourceLink('check.invitations.to.join.friend.groups', route($prefix.'friend.groups.check.invitations.to.join.groups', $params),'Check invitations to join groups'),
-            new ResourceLink('accept.all.invitations.to.join.friend.groups', route($prefix.'friend.groups.accept.all.invitations.to.join.groups', $params),'Accept all invitations to join groups'),
-            new ResourceLink('decline.all.invitations.to.join.friend.groups', route($prefix.'friend.groups.decline.all.invitations.to.join.groups', $params),'Decline all invitations to join groups'),
-            new ResourceLink('show.friend.group.filters', route($prefix.'friend.group.filters.show', $params),'Show friend group filters'),
-            new ResourceLink('show.friend.groups', route($prefix.'friend.groups.show', $params),'Show friend groups'),
-            new ResourceLink('create.friend.groups', route($prefix.'friend.groups.create', $params),'Create friend groups'),
-
-            //  AI Assistant
-            new ResourceLink('show.ai.assistant', route($prefix.'ai.assistant.show', $params),'Show AI Assistant'),
-            new ResourceLink('show.ai.assistant.subscriptions', route($prefix.'ai.assistant.subscriptions.show', $params),'Show AI Assistant subscriptions'),
-            new ResourceLink('create.ai.assistant.subscriptions', route($prefix.'ai.assistant.subscriptions.create', $params),'Create AI Assistant subscription'),
-            new ResourceLink('calculate.ai.assistant.subscription.amount', route($prefix.'ai.assistant.subscriptions.calculate.amount', $params),'Calculate AI Assistant subscription amount'),
-            new ResourceLink('generate.ai.assistant.payment.shortcode', route($prefix.'ai.assistant.payment.shortcode.generate', $params), 'Generate a payment shortcode for AI Assistant'),
-
-            //  SMS Alert
-            new ResourceLink('show.sms.alert', route($prefix.'sms.alert.show', $params),'Show SMS alert'),
-            new ResourceLink('show.sms.alert.transactions', route($prefix.'sms.alert.transactions.show', $params),'Show SMS alert transactions'),
-            new ResourceLink('create.sms.alert.transaction', route($prefix.'sms.alert.transactions.create', $params),'Create SMS alert transaction'),
-            new ResourceLink('calculate.sms.alert.transaction.amount', route($prefix.'sms.alert.transactions.calculate.amount', $params),'Calculate SMS alert transaction amount'),
-            new ResourceLink('generate.sms.alert.payment.shortcode', route($prefix.'sms.alert.payment.shortcode.generate', $params), 'Generate a payment shortcode for SMS alert'),
-
-            //  AI Messages
-            new ResourceLink('show.ai.messages', route($prefix.'ai.messages.show', $params),'Show AI messages'),
-            new ResourceLink('create.ai.messages', route($prefix.'ai.messages.create', $params),'Create AI messages'),
-            new ResourceLink('create.ai.messages.while.streaming', route($prefix.'ai.messages.create.while.streaming', $params),'Create AI messages while streaming'),
-
-            //  Orders
-            new ResourceLink('show.order.filters', route($prefix.'order.filters.show', $params),'Show order filters'),
-            new ResourceLink('show.orders', route($prefix.'orders.show', $params),'Show orders'),
-
-            //  reviews
-            new ResourceLink('show.review.filters', route($prefix.'review.filters.show', $params),'Show review filters'),
-            new ResourceLink('show.reviews', route($prefix.'reviews.show', $params),'Show reviews'),
-
-            //  Stores
-            new ResourceLink('show.first.created.store', route($prefix.'first.created.store.show', $params),'Show first store created'),
-            new ResourceLink('show.store.filters', route($prefix.'store.filters.show', $params),'Show store filters'),
-            new ResourceLink('join.stores', route($prefix.'stores.join', $params),'Join store'),
-            new ResourceLink('create.stores', route($prefix.'stores.create', $params),'Create store'),
-            new ResourceLink('show.stores', route($prefix.'stores.show', $params),'Show stores'),
-
-            //  Resource Totals
-            new ResourceLink('show.resource.totals', route($prefix.'resource.totals.show', $params),'Show resource totals'),
-
+            new ResourceLink('show.orders', route("show.$prefix.orders", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.stores', route("show.$prefix.stores", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.reviews', route("show.$prefix.reviews", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.friends', route("show.$prefix.friends", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.addresses', route("show.$prefix.addresses", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.ai.messages', route("show.$prefix.ai.messages", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.notifications', route("show.$prefix.notifications", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.friend.groups', route("show.$prefix.friend.groups", $authMatchesUser ? [] : ['user' => $user->id])),
         ];
 
-        //  If a store exists on this request
-        if( request()->store ) {
+        if( $storeId = request()->storeId ) {
 
             array_push($this->resourceLinks,
 
                 //  Store Team Member Routes
-                new ResourceLink('show.store.team.member', route('store.team.member.show', ['store' => request()->store->id, 'team_member' => $this->resource->id]), 'Show the team member'),
-                new ResourceLink('show.store.team.member.permissions', route('store.team.member.permissions.show', ['store' => request()->store->id, 'team_member' => $this->resource->id]), 'Show the team member permissions'),
-                new ResourceLink('update.store.team.member.permissions', route('store.team.member.permissions.update', ['store' => request()->store->id, 'team_member' => $this->resource->id]), 'Update the team member permissions'),
-
-                //  Store Customer Routes
-                new ResourceLink('show.store.customer', route('store.customer.show', ['store' => request()->store->id, 'customer' => $this->resource->id]), 'Show the customer'),
+                new ResourceLink('show.store.team.member', route('show.store.team.member', ['storeId' => $storeId, 'teamMemberId' => $user->id])),
+                new ResourceLink('show.store.team.member.permissions', route('show.store.team.member.permissions', ['storeId' => $storeId, 'teamMemberId' => $user->id])),
+                new ResourceLink('update.store.team.member.permissions', route('update.store.team.member.permissions', ['storeId' => $storeId, 'teamMemberId' => $user->id])),
 
             );
 
         }
+
     }
 }

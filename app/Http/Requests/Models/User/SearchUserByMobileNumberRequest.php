@@ -16,7 +16,6 @@ class SearchUserByMobileNumberRequest extends FormRequest
      */
     public function authorize()
     {
-        //  Everyone is authorized to make this request
         return true;
     }
 
@@ -28,7 +27,7 @@ class SearchUserByMobileNumberRequest extends FormRequest
     public function rules()
     {
         return [
-            'mobile_number' => ['bail', 'required', 'string', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11']
+            'mobile_number' => ['bail', 'required', 'phone']
         ];
     }
 
@@ -39,9 +38,7 @@ class SearchUserByMobileNumberRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-
-        ];
+        return [];
     }
 
     /**
@@ -51,8 +48,6 @@ class SearchUserByMobileNumberRequest extends FormRequest
      */
     public function attributes()
     {
-        return [
-
-        ];
+        return [];
     }
 }

@@ -2,15 +2,12 @@
 
 namespace App\Http\Requests\Models\FriendGroup;
 
-use App\Models\FriendGroup;
-use App\Traits\Base\BaseTrait;
+use App\Enums\Association;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ShowFriendGroupsRequest extends FormRequest
 {
-    use BaseTrait;
-
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -22,47 +19,16 @@ class ShowFriendGroupsRequest extends FormRequest
     }
 
     /**
-     *  We want to modify the request input before validating
-     *
-     *  Reference: https://laracasts.com/discuss/channels/requests/modify-request-input-value-before-validation
-     */
-    public function getValidatorInstance()
-    {
-        try {
-
-            /**
-             *  Convert the "filter" to the correct format if it has been set on the request inputs
-             *
-             *  Example: convert "waiting" or "Waiting" into "waiting"
-             */
-            if($this->has('filter')) {
-                $this->merge([
-                    'filter' => $this->separateWordsThenLowercase($this->get('filter'))
-                ]);
-            }
-
-        } catch (\Throwable $th) {
-
-        }
-
-        return parent::getValidatorInstance();
-    }
-
-    /**
      * Get the validation rules that apply to the request.
      *
      * @return array
      */
     public function rules()
     {
-        $filters = collect(FriendGroup::FILTERS)->map(fn($filter) => strtolower($filter));
-
         return [
-            'filter' => ['sometimes', 'string', Rule::in($filters)],
-            'with_count_users' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_stores' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_orders' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_friends' => ['bail', 'sometimes', 'required', 'boolean'],
+            'association' => ['bail', 'sometimes', 'nullable', Rule::in(
+                Association::SUPER_ADMIN->value
+            )]
         ];
     }
 
@@ -73,10 +39,7 @@ class ShowFriendGroupsRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-            'filter.string' => 'Answer "'.collect(FriendGroup::FILTERS)->join('", "', '" or "').' to filter friend groups',
-            'filter.in' => 'Answer "'.collect(FriendGroup::FILTERS)->join('", "', '" or "').' to filter friend groups',
-        ];
+        return [];
     }
 
     /**

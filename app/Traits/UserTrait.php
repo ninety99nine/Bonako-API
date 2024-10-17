@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Store;
 use App\Models\Product;
 use App\Enums\CacheName;
+use App\Enums\TeamMemberStatus;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -40,59 +41,30 @@ trait UserTrait
      *  while at a particular store
      *  @return void
      */
-    public function updateLastSeenAtStore(Store $store) {
-
-        $now = now();
+    public function updateLastSeenAtStore(string $storeId) {
 
         $data = [
-            'store_id' => $store->id,
+            'store_id' => $storeId,
             'user_id' => $this->id,
-            'last_seen_at' => $now
+            'last_seen_at' => now()
         ];
 
         $platformManager = new PlatformManager;
 
-        if( $platformManager->isWeb() ) {
-            $data['last_seen_on_web_app_at'] = $now;
-        }else if( $platformManager->isUssd() ) {
-            $data['last_seen_on_ussd_at'] = $now;
+        if( $platformManager->isUssd() ) {
+            $data['last_seen_on_ussd_at'] = now();
+        }else if( $platformManager->isWeb() ) {
+            $data['last_seen_on_web_app_at'] = now();
         }else if( $platformManager->isMobile() ) {
-            $data['last_seen_on_mobile_app_at'] = $now;
+            $data['last_seen_on_mobile_app_at'] = now();
         }else{
             throw new XPlatformHeaderRequiredException;
         }
 
         UserStoreAssociation::updateOrCreate(
-            ['store_id' => $store->id, 'user_id' => $this->id],
+            ['store_id' => $storeId, 'user_id' => $this->id],
             $data
         );
-    }
-
-    /**
-     *  Check if the current authenticated user is assigned to the given store
-     *  with the given roles
-     *
-     *  @param Store|int $store
-     *  @param array $roles
-     *
-     *  @return bool
-     */
-    public function isAssignedToStoreAsTeamMember($store, $roles = [])
-    {
-        $id = $store instanceof Model ? $store->id : $store;
-
-        /**
-         *  Use the specified roles otherwise default to collecting every role
-         */
-        $roles = count($roles) ? $roles : UserStoreAssociation::TEAM_MEMBER_ROLES;
-
-        return Store::where('id', $id)->whereHas('teamMembers', function (Builder $stores) use ($roles) {
-
-            return $stores->where('user_store_association.user_id', $this->id)
-                    ->where('team_member_status', 'Joined')
-                    ->whereIn('team_member_role', $roles);
-
-        })->exists();
     }
 
     /**
@@ -219,7 +191,7 @@ trait UserTrait
      *  Check if the current authenticated user has the given permissions
      *  on the store by checking the cache
      *
-     *  @param int $storeId
+     *  @param string $storeId
      *  @param string $permission
      *
      *  @return bool
@@ -234,7 +206,7 @@ trait UserTrait
      *  has the given permissions on the store. This cache value is valid
      *  for one day.
      *
-     *  @param int $storeId
+     *  @param string $storeId
      *  @param string $permission
      *  @param boolean $status
      *
@@ -249,7 +221,7 @@ trait UserTrait
      *  Remove the cache value which shows that the current authenticated user
      *  has the given permissions on the store
      *
-     *  @param int $storeId
+     *  @param string $storeId
      *  @param string $permission
      *
      *  @return bool

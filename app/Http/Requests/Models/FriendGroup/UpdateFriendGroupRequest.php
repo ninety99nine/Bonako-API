@@ -3,12 +3,10 @@
 namespace App\Http\Requests\Models\FriendGroup;
 
 use App\Models\FriendGroup;
-use App\Traits\Base\BaseTrait;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateFriendGroupRequest extends FormRequest
 {
-    use BaseTrait;
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -26,11 +24,8 @@ class UpdateFriendGroupRequest extends FormRequest
      */
     public function rules()
     {
-        //  Get the friend group id
-        $friendGroupId = request()->friend_group->id;
-
-        //  Get the user's id
-        $userId = $this->chooseUser()->id;
+        $userId = request()->current_user->id;
+        $friendGroupId = request()->friendGroupId;
 
         return [
             'name' => [
@@ -41,9 +36,9 @@ class UpdateFriendGroupRequest extends FormRequest
                  */
                 function ($attribute, $value, $fail) use ($friendGroupId, $userId) {
                     $friendGroupExists = FriendGroup::where('name', $value)
-                        ->where('id', '!=', $friendGroupId)
+                        ->where('friend_groups.id', '!=', $friendGroupId)
                         ->whereHas('users', function ($query) use ($userId) {
-                            $query->where('user_id', $userId);
+                            $query->where('users.id', $userId);
                         })->exists();
 
                     if ($friendGroupExists) {
@@ -54,8 +49,8 @@ class UpdateFriendGroupRequest extends FormRequest
             'mobile_numbers' => ['array'],
             'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
             'shared' => ['bail', 'sometimes', 'required', 'boolean'],
+            'mobile_numbers.*' => ['bail', 'sometimes', 'distinct', 'phone'],
             'can_add_friends' => ['bail', 'sometimes', 'required', 'boolean'],
-            'mobile_numbers.*' => ['bail', 'sometimes', 'string', 'distinct', 'starts_with:267', 'regex:/^[0-9]+$/', 'size:11'],
             'description' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.FriendGroup::DESCRIPTION_MIN_CHARACTERS, 'max:'.FriendGroup::DESCRIPTION_MAX_CHARACTERS],
         ];
     }
@@ -67,10 +62,7 @@ class UpdateFriendGroupRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-            'mobile_numbers.*.regex' => 'The mobile number must only contain numbers',
-            'mobile_numbers.*.exists' => 'The account using this mobile number does not exist',
-        ];
+        return [];
     }
 
     /**

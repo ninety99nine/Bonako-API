@@ -26,7 +26,7 @@ class Subscription extends BaseModel
     protected $fillable = [
 
         /*  Basic Information  */
-        'start_at', 'end_at', 'subscription_plan_id', 'user_id',
+        'start_at', 'end_at', 'user_id', 'transaction_id', 'pricing_plan_id',
 
         /*  Owenership Details  */
         'owner_id', 'owner_type'
@@ -71,7 +71,7 @@ class Subscription extends BaseModel
      ***************************/
 
     /**
-     * Get the owning resource e.g Store, Instant cart, e.t.c
+     * Get the owning resource e.g Store, AI Assistant, e.t.c
      */
     public function owner()
     {
@@ -79,7 +79,7 @@ class Subscription extends BaseModel
     }
 
     /**
-     *  Returns the associated user
+     *  Returns user
      */
     public function user()
     {
@@ -87,15 +87,7 @@ class Subscription extends BaseModel
     }
 
     /**
-     *  Returns the associated subscription plan
-     */
-    public function subscriptionPlan()
-    {
-        return $this->belongsTo(SubscriptionPlan::class);
-    }
-
-    /**
-     *  Returns the associated transaction owned by this subscription
+     *  Returns transaction
      */
     public function transaction()
     {
@@ -103,11 +95,11 @@ class Subscription extends BaseModel
     }
 
     /**
-     *  Returns the latest payment shortcode owned by this subscription
+     *  Returns pricing plan
      */
-    public function activePaymentShortcode()
+    public function pricingPlan()
     {
-        return $this->morphOne(Shortcode::class, 'owner')->notExpired()->latest();
+        return $this->belongsTo(PricingPlan::class);
     }
 
     /****************************
