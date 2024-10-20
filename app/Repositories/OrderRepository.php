@@ -22,21 +22,21 @@ use App\Models\DeliveryAddress;
 use App\Services\AWS\AWSService;
 use App\Enums\OrderPaymentStatus;
 use App\Models\MobileVerification;
+use App\Traits\MessageCrafterTrait;
 use App\Enums\PaymentMethodCategory;
 use App\Enums\TransactionFailureType;
+use App\Http\Resources\UserResources;
 use App\Enums\OrderCancellationReason;
-use App\Services\Filter\FilterService;
 use App\Services\QrCode\QrCodeService;
 use App\Http\Resources\OrderResources;
 use App\Enums\TransactionPaymentStatus;
 use Illuminate\Database\Eloquent\Builder;
 use App\Enums\TransactionVerificationType;
-use App\Http\Resources\PaymentMethodResources;
-use App\Http\Resources\UserResources;
 use App\Notifications\Orders\OrderCreated;
 use App\Notifications\Orders\OrderUpdated;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Notification;
+use App\Http\Resources\PaymentMethodResources;
 use Illuminate\Validation\ValidationException;
 use App\Notifications\Orders\OrderMarkedAsPaid;
 use App\Notifications\Orders\OrderStatusUpdated;
@@ -49,7 +49,7 @@ use App\Services\Billing\DirectPayOnline\DirectPayOnlineService;
 
 class OrderRepository extends BaseRepository
 {
-    use AuthTrait, BaseTrait;
+    use AuthTrait, BaseTrait, MessageCrafterTrait;
 
     /**
      * Show orders.
@@ -462,7 +462,7 @@ class OrderRepository extends BaseRepository
                 $generated = $order->update($data);
 
                 if($order->customer_mobile_number) {
-                    $smsMessage = $order->craftOrderCollectionCodeMessage($store);
+                    $smsMessage = $this->craftOrderCollectionCodeMessage($store);
                     SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
                 }
 
@@ -597,8 +597,8 @@ class OrderRepository extends BaseRepository
                 if($order->customer_mobile_number) {
 
                     $smsMessage = $updateAsCompleted
-                        ? $order->craftOrderCollectedMessage($store, $manuallyVerifiedByUser)
-                        : $order->craftOrderStatusUpdatedMessage($store, $this->getAuthUser());
+                        ? $this->craftOrderCollectedMessage($store, $manuallyVerifiedByUser)
+                        : $this->craftOrderStatusUpdatedMessage($store, $this->getAuthUser());
 
                     SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
 
@@ -681,7 +681,7 @@ class OrderRepository extends BaseRepository
                     if($user) Notification::send($user, new OrderPaymentRequest($order, $store, $transaction));
 
                     $transaction->loadMissing(['requestedByUser']);
-                    $smsMessage = $order->craftOrderPaymentRequestMessage($store, $transaction);
+                    $smsMessage = $this->craftOrderPaymentRequestMessage($store, $transaction);
                     SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
 
                 }
@@ -856,7 +856,7 @@ class OrderRepository extends BaseRepository
                 $user = User::searchMobileNumber($order->customer_mobile_number->formatE164())->first();
                 Notification::send(collect($teamMembers)->merge($user ? [$user] : []), new OrderMarkedAsPaid($order, $store, $transaction, $this->getAuthUser()));
 
-                $smsMessage = $order->craftOrderMarkedAsPaidMessage($store, $transaction, $this->getAuthUser());
+                $smsMessage = $this->craftOrderMarkedAsPaidMessage($store, $transaction, $this->getAuthUser());
                 SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
 
             }
@@ -1863,11 +1863,11 @@ class OrderRepository extends BaseRepository
         Notification::send($teamMembers, new OrderCreated($order));
 
         foreach ($teamMembers as $teamMember) {
-            SendSms::dispatch($order->craftNewOrderForSellerMessage($store), $teamMember->mobile_number->formatE164(), $store);
+            SendSms::dispatch($this->craftNewOrderForSellerMessage($store), $teamMember->mobile_number->formatE164(), $store);
         }
 
         if($order->customer_mobile_number) {
-            SendSms::dispatch($order->craftNewOrderForCustomerMessage($store), $order->customer_mobile_number->formatE164(), $store);
+            SendSms::dispatch($this->craftNewOrderForCustomerMessage($store), $order->customer_mobile_number->formatE164(), $store);
         }
     }
 

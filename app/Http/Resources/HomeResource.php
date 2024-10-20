@@ -26,6 +26,7 @@ class HomeResource extends BaseResource
 
             new ResourceLink('show.users', route('show.users')),
             new ResourceLink('show.stores', route('show.stores')),
+            new ResourceLink('create.store', route('create.store')),
             new ResourceLink('show.orders', route('show.orders')),
             new ResourceLink('show.coupons', route('show.coupons')),
             new ResourceLink('show.friends', route('show.friends')),

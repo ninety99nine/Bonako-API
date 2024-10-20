@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Occasion;
 use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
+use App\Traits\MessageCrafterTrait;
 use Illuminate\Notifications\Messages\SlackMessage;
 use App\Notifications\Orders\Base\OrderNotification;
 use NotificationChannels\OneSignal\OneSignalChannel;
@@ -22,7 +23,7 @@ use NotificationChannels\OneSignal\OneSignalMessage;
  */
 class OrderUpdated extends OrderNotification
 {
-    use Queueable, BaseTrait;
+    use Queueable, BaseTrait, MessageCrafterTrait;
 
     public Store $store;
     public Order $order;

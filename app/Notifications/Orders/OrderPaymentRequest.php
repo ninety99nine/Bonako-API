@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use Illuminate\Bus\Queueable;
 use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
+use App\Traits\MessageCrafterTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Notifications\Orders\Base\OrderNotification;
@@ -23,7 +24,7 @@ use NotificationChannels\OneSignal\OneSignalMessage;
  */
 class OrderPaymentRequest extends OrderNotification implements ShouldQueue
 {
-    use Queueable, BaseTrait;
+    use Queueable, BaseTrait, MessageCrafterTrait;
 
     public Order $order;
     public Store $store;

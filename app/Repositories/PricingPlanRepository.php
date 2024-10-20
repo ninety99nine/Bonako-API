@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use Exception;
 use App\Models\Store;
+use App\Jobs\SendSms;
 use App\Traits\AuthTrait;
 use Illuminate\View\View;
 use App\Models\Transaction;
@@ -13,6 +14,7 @@ use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
 use App\Enums\PaymentMethodType;
 use Illuminate\Support\Collection;
+use App\Traits\MessageCrafterTrait;
 use App\Enums\TransactionFailureType;
 use App\Services\Filter\FilterService;
 use App\Enums\TransactionPaymentStatus;
@@ -28,7 +30,7 @@ use App\Services\Billing\DirectPayOnline\DirectPayOnlineService;
 
 class PricingPlanRepository extends BaseRepository
 {
-    use AuthTrait, BaseTrait;
+    use AuthTrait, BaseTrait, MessageCrafterTrait;
 
     /**
      * Show pricing plans.
@@ -500,14 +502,30 @@ class PricingPlanRepository extends BaseRepository
 
             $message = 'Subscription created';
 
-            if($this->offersStoreSubscription($pricingPlan)) {
+            /** @var PaymentMethod $paymentMethod */
+            $paymentMethod = $transaction->paymentMethod;
+
+            $offersStoreSubscription = $this->offersStoreSubscription($pricingPlan);
+            $offersAiAssistantSubscription = $this->offersAiAssistantSubscription($pricingPlan);
+
+            if($offersStoreSubscription) {
                 $storeSubscriptionPayload = $this->prepareStoreSubscriptionPayload($pricingPlan, $transaction);
-                $this->getSubscriptionRepository()->createSubscription($storeSubscriptionPayload, $store);
+                $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($storeSubscriptionPayload, $store);
+
+                if($paymentMethod->isOrangeAirtime()) {
+                    $smsMessage = $this->craftStoreSubscriptionPaidMessage($store, $transaction, $subscription);
+                    SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
+                }
             }
 
-            if($this->offersAiAssistantSubscription($pricingPlan)) {
+            if($offersAiAssistantSubscription) {
                 $aiAssistantSubscriptionPayload = $this->prepareAiAssistantSubscriptionPayload($pricingPlan, $transaction);
-                $this->getSubscriptionRepository()->createSubscription($aiAssistantSubscriptionPayload, $aiAssistant);
+                $subscription = $this->getSubscriptionRepository()->shouldReturnModel()->createSubscription($aiAssistantSubscriptionPayload, $aiAssistant);
+
+                if($paymentMethod->isOrangeAirtime()) {
+                    $smsMessage = $this->craftAIAssistantSubscriptionPaidMessage($transaction, $subscription);
+                    SendSms::dispatch($smsMessage, $transaction->requestedByUser->mobile_number->formatE164());
+                }
             }
 
         }

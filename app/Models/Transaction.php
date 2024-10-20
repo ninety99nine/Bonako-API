@@ -231,15 +231,15 @@ class Transaction extends BaseModel
         return Attribute::make(
             get: function($value) {
 
-                if($value == TransactionFailureType::INACTIVE_ACCOUNT->value) {
+                if($this->failure_type == TransactionFailureType::INACTIVE_ACCOUNT->value) {
 
                     return TransactionFailureReason::INACTIVE_ACCOUNT->value;
 
-                }else if($value == TransactionFailureType::INSUFFICIENT_FUNDS->value) {
+                }else if($this->failure_type == TransactionFailureType::INSUFFICIENT_FUNDS->value) {
 
                     return TransactionFailureReason::INSUFFICIENT_FUNDS->value;
 
-                }else if($value == TransactionFailureType::USAGE_CONSUMPTION_MAIN_BALANCE_NOT_FOUND->value) {
+                }else if($this->failure_type == TransactionFailureType::USAGE_CONSUMPTION_MAIN_BALANCE_NOT_FOUND->value) {
 
                     return TransactionFailureReason::USAGE_CONSUMPTION_MAIN_BALANCE_NOT_FOUND->value;
 

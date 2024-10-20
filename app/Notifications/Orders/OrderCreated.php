@@ -8,6 +8,7 @@ use App\Models\Store;
 use App\Models\Customer;
 use App\Models\Occasion;
 use Illuminate\Bus\Queueable;
+use App\Traits\MessageCrafterTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\SlackMessage;
@@ -23,7 +24,7 @@ use App\Notifications\Orders\Base\OrderNotification;
  */
 class OrderCreated extends OrderNotification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, MessageCrafterTrait;
 
     public Store $store;
     public Order $order;

@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use App\Casts\Money;
 use App\Casts\Currency;
+use App\Traits\AuthTrait;
 use App\Traits\StoreTrait;
 use App\Casts\JsonToArray;
 use App\Enums\CallToAction;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Store extends BaseModel
 {
-    use HasFactory, StoreTrait, UserStoreAssociationTrait;
+    use HasFactory, StoreTrait, UserStoreAssociationTrait, AuthTrait;
 
     const CURRENCY = 'BWP';
     const DEFAULT_OFFLINE_MESSAGE = 'We are currently offline';
@@ -282,6 +283,16 @@ class Store extends BaseModel
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function placedOrders()
+    {
+        return $this->orders()->where('placed_by_user_id', $this->hasAuthUser() ? $this->getAuthUser()->id : 0);
+    }
+
+    public function createdOrders()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id', $this->hasAuthUser() ? $this->getAuthUser()->id : 0);
     }
 
     /**

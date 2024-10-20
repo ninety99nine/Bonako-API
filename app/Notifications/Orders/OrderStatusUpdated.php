@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Store;
 use Illuminate\Bus\Queueable;
 use App\Traits\Base\BaseTrait;
+use App\Traits\MessageCrafterTrait;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Notifications\Orders\Base\OrderNotification;
@@ -21,7 +22,7 @@ use NotificationChannels\OneSignal\OneSignalMessage;
  */
 class OrderStatusUpdated extends OrderNotification implements ShouldQueue
 {
-    use Queueable, BaseTrait;
+    use Queueable, BaseTrait, MessageCrafterTrait;
 
     public Order $order;
     public Store $store;
