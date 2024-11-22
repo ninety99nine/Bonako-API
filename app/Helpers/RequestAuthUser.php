@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Models\User;
 use App\Enums\CacheName;
+use App\Helpers\CacheManager;
 
 class RequestAuthUser
 {
@@ -187,20 +188,20 @@ class RequestAuthUser
     /**
      *  Get the cache manager for specified bearer token
      *
-     *  @return cacheManager
+     *  @return CacheManager
      */
     public function cacheManagerUsingBearerToken($bearerToken)
     {
-        return (new cacheManager(CacheName::AUTH_USER_ON_REQUEST))->append($bearerToken);
+        return (new CacheManager(CacheName::AUTH_USER_ON_REQUEST))->append($bearerToken);
     }
 
     /**
      *  Get the cache manager for specified access token
      *
-     *  @return cacheManager
+     *  @return CacheManager
      */
     public function cacheManagerUsingAccessToken($accessToken)
     {
-        return (new cacheManager(CacheName::AUTH_USER_ON_REQUEST_BEARER_TOKEN))->append($accessToken->id);
+        return (new CacheManager(CacheName::AUTH_USER_ON_REQUEST_BEARER_TOKEN))->append($accessToken->id);
     }
 }
