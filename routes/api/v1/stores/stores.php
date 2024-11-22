@@ -21,6 +21,8 @@ Route::controller(StoreController::class)
     Route::post('/search-by-alias', 'searchStoreByAlias')->name('search.store.by.alias');
     Route::post('/search-by-ussd-mobile-number', 'searchStoreByUssdMobileNumber')->name('search.store.by.ussd.mobile.number');
 
+    Route::get('/last-visited-store', 'showLastVisitedStore')->name('show.last.visited.store');
+
     //  Follow Store Invitations
     Route::get('/check-invitations-to-follow-stores', 'checkInvitationsToFollowStores')->name('check.invitations.to.follow.stores');
     Route::put('/accept-all-invitations-to-follow-stores', 'acceptAllInvitationsToFollowStores')->name('accept.all.invitations.to.follow.stores');
@@ -49,6 +51,9 @@ Route::controller(StoreController::class)
 
         //  Quick Start Guide
         Route::get('/quick-start-guide', 'showStoreQuickStartGuide')->name('show.store.quick.start.guide');
+
+        //  Insights
+        Route::get('/insights', 'showStoreInsights')->name('show.store.insights');
 
         //  Followers
         Route::prefix('followers')->group(function () {
@@ -86,6 +91,13 @@ Route::controller(StoreController::class)
         //  Invitations To Join Team
         Route::post('/accept-invitation-to-join-store-team', 'acceptInvitationToJoinStoreTeam')->name('accept.invitation.to.join.store.team');
         Route::post('/decline-invitation-to-join-store-team', 'declineInvitationToJoinStoreTeam')->name('decline.invitation.to.join.store.team');
+
+        //  Shopping carts
+        Route::prefix('shopping-cart')->group(function () {
+
+            Route::post('/', 'inspectStoreShoppingCart')->name('inspect.store.shopping.cart');
+
+        });
 
         //  Orders
         Route::controller(OrderController::class)->prefix('orders')->group(function () {
@@ -152,20 +164,6 @@ Route::controller(StoreController::class)
 
             Route::get('/', 'showSharableContent')->name('.show');
             Route::get('/choices', 'showSharableContentChoices')->name('.choices.show');
-
-        });
-
-        //  Shopping carts
-        Route::prefix('shopping-cart')
-            ->name('.shopping.cart')
-            ->group(function () {
-
-            //  Allow the public access to manage their shopping cart and place an order
-            Route::post('/', 'inspectShoppingCart')->name('.inspect');
-            Route::post('/convert', 'convertShoppingCart')->name('.convert');
-            Route::post('/order-for-users', 'showShoppingCartOrderForUsers')->name('.order.for.users.show');
-            Route::get('/order-for-options', 'showShoppingCartOrderForOptions')->name('.order.for.options.show');
-            Route::post('/count-order-for-users', 'countShoppingCartOrderForUsers')->name('.order.for.users.count');
 
         });
 

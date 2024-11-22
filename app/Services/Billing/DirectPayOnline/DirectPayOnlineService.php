@@ -2,8 +2,9 @@
 
 namespace App\Services\Billing\DirectPayOnline;
 
-use Exception;
+use c;
 use Carbon\Carbon;
+use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Support\Str;
 
@@ -22,36 +23,57 @@ class DirectPayOnlineService
      */
     public static function createPaymentLink(string $companyToken, array $data): array
     {
-        $client = new Client();
-        $url = config('app.DPO_CREATE_TOKEN_URL');
+        try {
 
-        $response = $client->post($url, [
-            'headers' => [
-                'Content-Type' => 'application/xml',
-            ],
-            'body' => self::prepareCreateTokenXMLTag($companyToken, $data)
-        ]);
+            $client = new Client();
+            $url = config('app.DPO_CREATE_TOKEN_URL');
 
-        $xmlResponse = simplexml_load_string($response->getBody());
-        $result = (string) $xmlResponse->Result;
+            $response = $client->post($url, [
+                'headers' => [
+                    'Content-Type' => 'application/xml',
+                ],
+                'body' => self::prepareCreateTokenXMLTag($companyToken, $data)
+            ]);
 
-        if($result === '000') {
+            $xmlResponse = simplexml_load_string($response->getBody());
+            $result = (string) $xmlResponse->Result;
 
-            $transToken = (string) $xmlResponse->TransToken;
-            $transReference = (string) $xmlResponse->TransRef;
-            $paymentUrl = config('app.DPO_PAYMENT_URL').'?ID='.$transToken;
+            if($result === '000') {
+
+                $transToken = (string) $xmlResponse->TransToken;
+                $transReference = (string) $xmlResponse->TransRef;
+                $paymentUrl = config('app.DPO_PAYMENT_URL').'?ID='.$transToken;
+
+                return [
+                    'created' => true,
+                    'data' => [
+                        'dpo_payment_url' => $paymentUrl,
+                        'dpo_transaction_token' => $transToken,
+                        'dpo_transaction_reference' => $transReference,
+                        'dpo_payment_url_expires_at' => self::determinePaymentUrlExpiresAt($data)
+                    ]
+                ];
+
+            }else{
+
+                $resultExplanation = (string) $xmlResponse->ResultExplanation;
+
+                throw new Exception($resultExplanation);
+
+            }
+
+        } catch (Exception $e) {
+
+            $message = $e->getMessage();
+
+            if(Str::contains($message, ['429 Too Many Requests'])) {
+                $message = 'Too many requests';
+            }
 
             return [
-                'dpo_payment_url' => $paymentUrl,
-                'dpo_transaction_token' => $transToken,
-                'dpo_transaction_reference' => $transReference,
-                'dpo_payment_url_expires_at' => self::determinePaymentUrlExpiresAt($data)
+                'created' => false,
+                'message' => $message
             ];
-
-        }else{
-
-            $resultExplanation = (string) $xmlResponse->ResultExplanation;
-            throw new Exception($resultExplanation);
 
         }
     }

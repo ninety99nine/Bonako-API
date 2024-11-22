@@ -17,6 +17,9 @@ use Illuminate\Database\Eloquent\Model;
 use App\Casts\MaximumAllowedQuantityPerOrder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\StockQuantityType as _StockQuantityType;
+use App\Enums\AllowedQuantityPerOrder as _AllowedQuantityPerOrder;
+use App\Enums\SortProductBy;
 
 class Product extends BaseModel
 {
@@ -25,9 +28,20 @@ class Product extends BaseModel
     public $relationships = ['store', 'photos', 'variations'];
     public $countableRelationships = ['photos', 'variations'];
 
-    const ALLOWED_QUANTITY_PER_ORDER = ['Limited', 'Unlimited'];
-    CONST STOCK_QUANTITY_TYPE = ['Limited', 'Unlimited'];
-    const FILTERS = ['All', 'Visible', 'Hidden'];
+    public static function SORT_BY_OPTIONS(): array
+    {
+        return array_map(fn($status) => $status->value, SortProductBy::cases());
+    }
+
+    public static function STOCK_QUANTITY_TYPES(): array
+    {
+        return array_map(fn($status) => $status->value, _StockQuantityType::cases());
+    }
+
+    public static function ALLOWED_QUANTITY_PER_ORDER_OPTIONS(): array
+    {
+        return array_map(fn($status) => $status->value, _AllowedQuantityPerOrder::cases());
+    }
 
     /**
      *  Magic Numbers
@@ -221,6 +235,11 @@ class Product extends BaseModel
     public function variations()
     {
         return $this->hasMany(Product::class, 'parent_product_id')->with('variables');
+    }
+
+    public function productLines()
+    {
+        return $this->hasMany(ProductLine::class);
     }
 
     /**

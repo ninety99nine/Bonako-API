@@ -7,6 +7,11 @@ use App\Http\Resources\Helpers\ResourceLink;
 
 class AddressResource extends BaseResource
 {
+    public function toArray($request)
+    {
+        return $this->transformedStructure();
+    }
+
     public function setLinks()
     {
         $address = $this->resource;

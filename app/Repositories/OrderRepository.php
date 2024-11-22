@@ -46,6 +46,7 @@ use App\Services\CodeGenerator\CodeGeneratorService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use App\Services\Billing\OrangeMoney\OrangeMoneyService;
 use App\Services\Billing\DirectPayOnline\DirectPayOnlineService;
+use Illuminate\Support\Facades\DB;
 
 class OrderRepository extends BaseRepository
 {
@@ -214,6 +215,76 @@ class OrderRepository extends BaseRepository
     }
 
     /**
+     * Show order status counts.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function showOrderStatusCounts(array $data): array
+    {
+        $storeId = $data['store_id'];
+        $placedByUserId = $data['placed_by_user_id'];
+        $store = Store::find($storeId);
+
+        if($storeId) {
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['message' => 'You do not have permission to show order resource totals'];
+            }else{
+                if(!$this->isAuthourized()) return ['message' => 'This store does not exist'];
+            }
+        }else{
+            if(!$this->isAuthourized()) return ['You do not have permission to show order resource totals'];
+        }
+
+        $query = DB::table('orders')->selectRaw('
+            COUNT(*) as total_orders,
+            CAST(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as waiting_count,
+            CAST(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as cancelled_count,
+            CAST(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as completed_count,
+            CAST(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as on_its_way_count,
+            CAST(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as ready_for_pickup_count,
+            CAST(SUM(CASE WHEN payment_status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as paid_count,
+            CAST(SUM(CASE WHEN payment_status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as unpaid_count,
+            CAST(SUM(CASE WHEN payment_status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as pending_count,
+            CAST(SUM(CASE WHEN payment_status = ? THEN 1 ELSE 0 END) AS UNSIGNED) as partially_paid_count
+        ', [
+            OrderStatus::WAITING->value,
+            OrderStatus::CANCELLED->value,
+            OrderStatus::COMPLETED->value,
+            OrderStatus::ON_ITS_WAY->value,
+            OrderStatus::READY_FOR_PICKUP->value,
+            OrderPaymentStatus::PAID->value,
+            OrderPaymentStatus::UNPAID->value,
+            OrderPaymentStatus::PENDING->value,
+            OrderPaymentStatus::PARTIALLY_PAID->value,
+        ]);
+
+        if($store) $query->where('store_id', $storeId);
+        if($placedByUserId) $query->where('placed_by_user_id', $placedByUserId);
+
+        $result = $query->first();
+
+        return [
+            'total_orders' => $result->total_orders,
+            'status_counts' => [
+                'waiting' => $result->waiting_count,
+                'completed' => $result->completed_count,
+                'on_its_way' => $result->on_its_way_count,
+                'ready_for_pickup' => $result->ready_for_pickup_count,
+                'cancelled' => $result->cancelled_count,
+            ],
+            'payment_status_counts' => [
+                'paid' => $result->paid_count,
+                'unpaid' => $result->unpaid_count,
+                'pending' => $result->pending_count,
+                'partially_paid' => $result->partially_paid_count,
+            ]
+        ];
+
+    }
+
+    /**
      * Show order.
      *
      * @param string $orderId
@@ -221,7 +292,7 @@ class OrderRepository extends BaseRepository
      */
     public function showOrder(string $orderId): Order|array|null
     {
-        $order = Order::find($orderId);
+        $order = $this->setQuery(Order::whereId($orderId))->applyEagerLoadingOnQuery()->getQuery()->first();
 
         if($order) {
             $store = $order->store;
@@ -331,85 +402,6 @@ class OrderRepository extends BaseRepository
     }
 
     /**
-     * Cancel order.
-     *
-     * @param string $orderId
-     * @param array $data
-     * @return array
-     */
-    public function cancelOrder(string $orderId, array $data): array
-    {
-        $order = Order::with(['store'])->find($orderId);
-
-        if($order) {
-            $store = $order->store;
-            if($store) {
-                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                if(!$isAuthourized) return ['cancelled' => false, 'message' => 'You do not have permission to cancel order'];
-            }else{
-                return ['cancelled' => false, 'message' => 'This store does not exist'];
-            }
-
-            if($order->is_cancelled) return ['cancelled' => false, 'message' => 'Order already cancelled'];
-            $cancellationReason = isset($data['cancellation_reason']) ? $this->separateWordsThenLowercase($data['cancellation_reason']) : null;
-            $otherCancellationReason = $cancellationReason == null ? null : OrderCancellationReason::tryFrom($cancellationReason);
-
-            $cancelled = $order->update([
-                'cancelled_at' => now(),
-                'status' => OrderStatus::CANCELLED->value,
-                'cancellation_reason' => $cancellationReason,
-                'status_before_cancellation' => $order->status,
-                'other_cancellation_reason' => $otherCancellationReason?->value
-            ]);
-
-            if ($cancelled) {
-                return ['cancelled' => true, 'message' => 'Order cancelled'];
-            }else{
-                return ['cancelled' => false, 'message' => 'Order cancellation unsuccessful'];
-            }
-        }else{
-            return ['cancelled' => false, 'message' => 'This order does not exist'];
-        }
-    }
-
-    /**
-     * Uncancel order.
-     *
-     * @param string $orderId
-     * @return array
-     */
-    public function uncancelOrder(string $orderId): array
-    {
-        $order = Order::with(['store'])->find($orderId);
-
-        if($order) {
-            $store = $order->store;
-            if($store) {
-                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                if(!$isAuthourized) return ['uncancelled' => false, 'message' => 'You do not have permission to uncancel order'];
-            }else{
-                return ['uncancelled' => false, 'message' => 'This store does not exist'];
-            }
-
-            $uncancelled = $order->update([
-                'cancelled_at' => null,
-                'cancellation_reason' => null,
-                'other_cancellation_reason' => null,
-                'status_before_cancellation' => null,
-                'status' => $order->status_before_cancellation
-            ]);
-
-            if ($uncancelled) {
-                return ['uncancelled' => true, 'message' => 'Order uncancelled'];
-            }else{
-                return ['uncancelled' => false, 'message' => 'Order uncancellation unsuccessful'];
-            }
-        }else{
-            return ['uncancelled' => false, 'message' => 'This order does not exist'];
-        }
-    }
-
-    /**
      * Show order cancellation reasons.
      *
      * @return array
@@ -462,7 +454,7 @@ class OrderRepository extends BaseRepository
                 $generated = $order->update($data);
 
                 if($order->customer_mobile_number) {
-                    $smsMessage = $this->craftOrderCollectionCodeMessage($store);
+                    $smsMessage = $this->craftOrderCollectionCodeMessage($order);
                     SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
                 }
 
@@ -528,6 +520,80 @@ class OrderRepository extends BaseRepository
     }
 
     /**
+     * Verify order collection.
+     *
+     * @param Order|string $orderId
+     * @param array $data
+     * @return array
+     * @throws ValidationException
+     */
+    public function verifyOrderCollection(Order|string $orderId, array $data): array
+    {
+        $order = $orderId instanceof Order ? $orderId : Order::with(['store'])->find($orderId);
+
+        if($order) {
+            $store = $order->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['verified' => false, 'message' => 'You do not have permission to verify order collection'];
+            }else{
+                return ['verified' => false, 'message' => 'This store does not exist'];
+            }
+
+            $completed = $data['completed'] ?? false;
+            $collectionCode = $data['collection_code'];
+            $manuallyVerifiedByUser = $this->getAuthUser();
+            $collectionNote = $data['collection_note'] ?? null;
+            $customerMobileNumber = $order->customer_mobile_number;
+
+            if($order->collection_verified) return ['verified' => false, 'message' => 'Order collection already verified'];
+            if(!$customerMobileNumber) return ['verified' => false, 'message' => 'The customer mobile number is required to verify order collection'];
+
+            $mobileVerification = MobileVerification::where('mobile_number', $customerMobileNumber->formatE164())->where('code', $collectionCode)->first();
+
+            if($mobileVerification) {
+                AuthRepository::revokeMobileVerificationCode($customerMobileNumber->formatE164());
+            }else{
+
+                if($collectionCode != $order->collection_code) {
+                    throw ValidationException::withMessages(['collection_code' => 'The collection code is incorrect']);
+                }else if($order->collection_code_expires_at && Carbon::parse($order->collection_code_expires_at)->isPast()) {
+                    throw ValidationException::withMessages(['collection_code' => 'This collection code has expired']);
+                }
+
+            }
+
+            if(!empty($order->collection_qr_code) && AWSService::exists($order->collection_qr_code)) AWSService::delete($order->collection_qr_code);
+
+            $data = [
+                'collection_code' => null,
+                'collection_qr_code' => null,
+                'collection_verified' => true,
+                'collection_verified_at' => now(),
+                'collection_code_expires_at' => null,
+                'collection_note' => $collectionNote,
+                'collection_verified_by_user_id' => $manuallyVerifiedByUser->id
+            ];
+
+            if($completed) {
+                $data = array_merge($data, [
+                    'cancelled_at' => null,
+                    'cancellation_reason' => null,
+                    'other_cancellation_reason' => null,
+                    'status' => OrderStatus::COMPLETED->value,
+                ]);
+            }
+
+            $order->update($data);
+
+            return ['verified' => true, 'message' => 'Order collection verified'];
+
+        }else{
+            return ['verified' => false, 'message' => 'This order does not exist'];
+        }
+    }
+
+    /**
      * Update order status.
      *
      * @param string $orderId
@@ -552,41 +618,48 @@ class OrderRepository extends BaseRepository
             $status = OrderStatus::tryFrom($data['status']);
             $hasCollectionCode = isset($data['collection_code']);
             $updateAsCompleted = $status == OrderStatus::COMPLETED;
+            $updateAsCancelled = $status == OrderStatus::CANCELLED;
 
             if($updateAsCompleted && $hasCollectionCode) {
 
-                if($order->collection_verified) return ['updated' => false, 'message' => 'Order collection already verified'];
-                $collectionCode = $data['collection_code'];
-                $customer = $order->customer;
+                $data['completed'] = true;
 
-                if($customer && $customer->mobile_number) {
-                    $mobileVerification = MobileVerification::where('mobile_number', $customer->mobile_number->formatE164())->where('code', $collectionCode)->first();
-                    if($mobileVerification) AuthRepository::revokeMobileVerificationCode($customer->mobile_number->formatE164());
+                $response = $this->authourize()->verifyOrderCollection($order, $data);
+                $updated = $response['verified'];
+
+                if(!$updated) {
+                    $response['updated'] = $updated;
+                    unset($response['verified']);
+                    return $response;
                 }
-
-                if($order->collection_code_expires_at && Carbon::parse($order->collection_code_expires_at)->isPast()) {
-                    throw ValidationException::withMessages(['collection_code' => 'This collection code has expired']);
-                } else if($collectionCode = $order->collection_code) {
-                    throw ValidationException::withMessages(['collection_code' => 'The collection code is incorrect']);
-                }
-
-                if(!empty($order->collection_qr_code) && AWSService::exists($order->collection_qr_code)) AWSService::delete($order->collection_qr_code);
-
-                $collectionNote = $data['collection_note'] ?? null;
-
-                $updated = $order->update([
-                    'collection_code' => null,
-                    'collection_qr_code' => null,
-                    'collection_verified' => true,
-                    'collection_verified_at' => now(),
-                    'collection_note' => $collectionNote,
-                    'collection_code_expires_at' => null,
-                    'status' => OrderStatus::COMPLETED->value,
-                    'collection_verified_by_user_id' => $manuallyVerifiedByUser->id
-                ]);
 
             } else {
-                $updated = $order->update(['status' => $status->value]);
+
+                if($updateAsCancelled) {
+
+                    if($order->is_cancelled) return ['updated' => false, 'message' => 'Order already cancelled'];
+                    $cancellationReason = isset($data['cancellation_reason']) ? $this->separateWordsThenLowercase($data['cancellation_reason']) : null;
+                    $otherCancellationReason = $cancellationReason == null ? null : OrderCancellationReason::tryFrom($cancellationReason);
+
+                    $data = [
+                        'cancelled_at' => now(),
+                        'status' => $status->value,
+                        'cancellation_reason' => $cancellationReason,
+                        'other_cancellation_reason' => $otherCancellationReason?->value
+                    ];
+
+                }else{
+
+                    $data = array_merge($data, [
+                        'cancelled_at' => null,
+                        'status' => $status->value,
+                        'cancellation_reason' => null,
+                        'other_cancellation_reason' => null
+                    ]);
+
+                }
+
+                $updated = $order->update($data);
             }
 
             if ($updated) {
@@ -597,8 +670,8 @@ class OrderRepository extends BaseRepository
                 if($order->customer_mobile_number) {
 
                     $smsMessage = $updateAsCompleted
-                        ? $this->craftOrderCollectedMessage($store, $manuallyVerifiedByUser)
-                        : $this->craftOrderStatusUpdatedMessage($store, $this->getAuthUser());
+                        ? $this->craftOrderCollectedMessage($order, $manuallyVerifiedByUser)
+                        : $this->craftOrderStatusUpdatedMessage($order, $this->getAuthUser());
 
                     SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
 
@@ -655,7 +728,7 @@ class OrderRepository extends BaseRepository
             if(!$paymentMethod->active) return ['requested' => false, 'message' => 'The '.$paymentMethod->name.' payment method has been deactivated'];
 
             $transactionPayload = $this->prepareTransactionPayload($order, TransactionPaymentStatus::PENDING, $paymentMethod, $data);
-            $transaction = $this->getTransactionRepository()->shouldReturnModel()->createTransaction($transactionPayload);
+            $transaction = $this->getTransactionRepository()->authourize()->shouldReturnModel()->createTransaction($transactionPayload);
             $transaction->setRelation('paymentMethod', $paymentMethod);
             $transaction->setRelation('owner', $order);
 
@@ -665,7 +738,13 @@ class OrderRepository extends BaseRepository
 
                     $companyToken = $paymentMethod->metadata['company_token'];
                     $dpoPaymentLinkPayload = $this->prepareDpoPaymentLinkPayload($transaction);
-                    $metadata = DirectPayOnlineService::createPaymentLink($companyToken, $dpoPaymentLinkPayload);
+                    $response = DirectPayOnlineService::createPaymentLink($companyToken, $dpoPaymentLinkPayload);
+
+                    if($response['created']) {
+                        $metadata = $response['data'];
+                    }else{
+                        return ['requested' => false, 'message' => $response['message']];
+                    }
 
                 }else if($paymentMethod->isOrangeMoney()) {
                     $transaction = OrangeMoneyService::createOrderPaymentLink($transaction);
@@ -681,7 +760,7 @@ class OrderRepository extends BaseRepository
                     if($user) Notification::send($user, new OrderPaymentRequest($order, $store, $transaction));
 
                     $transaction->loadMissing(['requestedByUser']);
-                    $smsMessage = $this->craftOrderPaymentRequestMessage($store, $transaction);
+                    $smsMessage = $this->craftOrderPaymentRequestMessage($order, $transaction);
                     SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
 
                 }
@@ -841,22 +920,24 @@ class OrderRepository extends BaseRepository
                 /** @var PaymentMethod|null $paymentMethod */
                 $paymentMethod = PaymentMethod::whereType($paymentMethodType)->first();
                 if(!$paymentMethod) return ['marked_as_paid' => false, 'message' => 'The specified payment method does not exist'];
+            }else{
+                $paymentMethod = null;
             }
 
-            if($paymentMethod->isAutomated()) return ['marked_as_paid' => false, 'message' => 'The '.$paymentMethod->name.' payment method is an automated method of payment. Select a manual payment method instead.'];
-            if(!$paymentMethod->active) return ['marked_as_paid' => false, 'message' => 'The '.$paymentMethod->name.' payment method has been deactivated'];
+            if($paymentMethod && $paymentMethod->isAutomated()) return ['marked_as_paid' => false, 'message' => 'The '.$paymentMethod->name.' payment method is an automated method of payment. Select a manual payment method instead.'];
+            if($paymentMethod && !$paymentMethod->active) return ['marked_as_paid' => false, 'message' => 'The '.$paymentMethod->name.' payment method has been deactivated'];
 
             $transactionPayload = $this->prepareTransactionPayload($order, TransactionPaymentStatus::PAID, $paymentMethod, $data);
-            $transaction = $this->getTransactionRepository()->shouldReturnModel()->createTransaction($transactionPayload);
+            $transaction = $this->getTransactionRepository()->authourize()->shouldReturnModel()->createTransaction($transactionPayload);
 
             if($order->customer_mobile_number) {
 
                 $teamMembers = $store->teamMembers()->joinedTeam()->get();
-                $transaction->setRelation('paymentMethod', $paymentMethod);
+                if($paymentMethod) $transaction->setRelation('paymentMethod', $paymentMethod);
                 $user = User::searchMobileNumber($order->customer_mobile_number->formatE164())->first();
                 Notification::send(collect($teamMembers)->merge($user ? [$user] : []), new OrderMarkedAsPaid($order, $store, $transaction, $this->getAuthUser()));
 
-                $smsMessage = $this->craftOrderMarkedAsPaidMessage($store, $transaction, $this->getAuthUser());
+                $smsMessage = $this->craftOrderMarkedAsPaidMessage($order, $transaction, $this->getAuthUser());
                 SendSms::dispatch($smsMessage, $order->customer_mobile_number->formatE164(), $store);
 
             }
@@ -870,6 +951,37 @@ class OrderRepository extends BaseRepository
 
         }else{
             return ['marked_as_paid' => false, 'message' => 'This order does not exist'];
+        }
+    }
+
+    /**
+     * Mark order as unpaid.
+     *
+     * @param string $orderId
+     * @return array
+     */
+    public function markOrderAsUnpaid(string $orderId): array
+    {
+        $order = Order::with(['store'])->find($orderId);
+
+        if($order) {
+            $store = $order->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['marked_as_unpaid' => false, 'message' => 'You do not have permission to mark order as unpaid'];
+            }else{
+                return ['marked_as_unpaid' => false, 'message' => 'This store does not exist'];
+            }
+
+            $order->transactions()->subjectToManualVerification()->delete();
+            $this->updateOrderAmountBalance($order);
+
+            if(!$this->checkIfHasRelationOnRequest('store')) $order->unsetRelation('store');
+
+            return $this->showSavedResource($order, 'marked as '.$order->payment_status);
+
+        }else{
+            return ['marked_as_unpaid' => false, 'message' => 'This order does not exist'];
         }
     }
 
@@ -1625,12 +1737,12 @@ class OrderRepository extends BaseRepository
      *
      * @param Order $order
      * @param TransactionPaymentStatus $transactionPaymentStatus
-     * @param PaymentMethod $paymentMethod
+     * @param PaymentMethod|null $paymentMethod
      * @param array $data
      * @return array
      * @throws ValidationException
      */
-    private function prepareTransactionPayload(Order $order, TransactionPaymentStatus $transactionPaymentStatus, PaymentMethod $paymentMethod, array $data): array
+    private function prepareTransactionPayload(Order $order, TransactionPaymentStatus $transactionPaymentStatus, PaymentMethod|null $paymentMethod, array $data): array
     {
         $cart = $order->cart;
         $pendingAmount = $order->pending_total->amount;
@@ -1683,7 +1795,7 @@ class OrderRepository extends BaseRepository
             'currency' => $cart->currency,
             'store_id' => $order->store_id,
             'verification_type' => $verificationType,
-            'payment_method_id' => $paymentMethod->id,
+            'payment_method_id' => $paymentMethod?->id,
             'owner_type' =>  $order->getResourceName(),
             'requested_by_user_id' => $requestedByUserId,
             'payment_status' => $transactionPaymentStatus->value,
@@ -1863,11 +1975,11 @@ class OrderRepository extends BaseRepository
         Notification::send($teamMembers, new OrderCreated($order));
 
         foreach ($teamMembers as $teamMember) {
-            SendSms::dispatch($this->craftNewOrderForSellerMessage($store), $teamMember->mobile_number->formatE164(), $store);
+            SendSms::dispatch($this->craftNewOrderForSellerMessage($order), $teamMember->mobile_number->formatE164(), $store);
         }
 
         if($order->customer_mobile_number) {
-            SendSms::dispatch($this->craftNewOrderForCustomerMessage($store), $order->customer_mobile_number->formatE164(), $store);
+            SendSms::dispatch($this->craftNewOrderForCustomerMessage($order), $order->customer_mobile_number->formatE164(), $store);
         }
     }
 

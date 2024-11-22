@@ -105,11 +105,10 @@ class OrderPaymentRequest extends OrderNotification implements ShouldQueue
 
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
-        $store = $this->store;
         $order = $this->order;
         $transaction = $this->transaction;
         $subject = 'Order payment request';
-        $body = $order->craftOrderPaymentRequestMessage($store, $transaction);
+        $body = $order->craftOrderPaymentRequestMessage($order, $transaction);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

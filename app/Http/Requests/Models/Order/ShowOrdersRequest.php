@@ -3,11 +3,14 @@
 namespace App\Http\Requests\Models\Order;
 
 use App\Enums\Association;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ShowOrdersRequest extends FormRequest
 {
+    use BaseTrait;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -16,6 +19,26 @@ class ShowOrdersRequest extends FormRequest
     public function authorize()
     {
         return true;
+    }
+
+    /**
+     *  We want to modify the request input before validating
+     *
+     *  Reference: https://laracasts.com/discuss/channels/requests/modify-request-input-value-before-validation
+     */
+    public function getValidatorInstance()
+    {
+        try {
+
+            if($this->has('association')) {
+                $this->merge(['association' => $this->separateWordsThenLowercase($this->get('association'))]);
+            }
+
+        } catch (\Throwable $th) {
+
+        }
+
+        return parent::getValidatorInstance();
     }
 
     /**

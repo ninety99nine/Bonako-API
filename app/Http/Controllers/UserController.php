@@ -56,7 +56,7 @@ class UserController extends BaseController
      */
     public function createUser(CreateUserRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->repository->createUser($request->all()), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->repository->createUser($request->all()));
     }
 
     /**
@@ -182,7 +182,7 @@ class UserController extends BaseController
      */
     public function uploadUserProfilePhoto(UploadProfilePhotoRequest $_)
     {
-        return $this->prepareOutput($this->repository->uploadUserProfilePhoto(request()->current_user), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->repository->uploadUserProfilePhoto(request()->current_user));
     }
 
     /**

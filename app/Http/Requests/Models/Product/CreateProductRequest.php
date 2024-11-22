@@ -67,8 +67,8 @@ class CreateProductRequest extends FormRequest
     public function rules()
     {
         $moneyRules = ['bail', 'required', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'];
-        $stockQuantityType = collect(Product::STOCK_QUANTITY_TYPE)->map(fn($option) => strtolower($option));
-        $allowedQuantityPerOrder = collect(Product::ALLOWED_QUANTITY_PER_ORDER)->map(fn($option) => strtolower($option));
+        $stockQuantityType = collect(Product::STOCK_QUANTITY_TYPES())->map(fn($option) => strtolower($option));
+        $allowedQuantityPerOrder = collect(Product::ALLOWED_QUANTITY_PER_ORDER_OPTIONS())->map(fn($option) => strtolower($option));
         $wantsToShowDescription = request()->filled('show_description') && $this->isTruthy(request()->input('show_description'));
 
         return [
@@ -140,10 +140,10 @@ class CreateProductRequest extends FormRequest
     public function messages()
     {
         return [
-            'allowed_quantity_per_order.string' => 'Answer "'.collect(Product::ALLOWED_QUANTITY_PER_ORDER)->join('", "', '" or "').'" to indicate the allowed quantity per order',
-            'allowed_quantity_per_order.in' => 'Answer "'.collect(Product::ALLOWED_QUANTITY_PER_ORDER)->join('", "', '" or "').'" to indicate the allowed quantity per order',
-            'stock_quantity_type.string' => 'Answer "'.collect(Product::STOCK_QUANTITY_TYPE)->join('", "', '" or "').'" to indicate the stock quantity type',
-            'stock_quantity_type.in' => 'Answer "'.collect(Product::STOCK_QUANTITY_TYPE)->join('", "', '" or "').'" to indicate the stock quantity type',
+            'allowed_quantity_per_order.string' => 'Answer "'.collect(Product::ALLOWED_QUANTITY_PER_ORDER_OPTIONS())->join('", "', '" or "').'" to indicate the allowed quantity per order',
+            'allowed_quantity_per_order.in' => 'Answer "'.collect(Product::ALLOWED_QUANTITY_PER_ORDER_OPTIONS())->join('", "', '" or "').'" to indicate the allowed quantity per order',
+            'stock_quantity_type.string' => 'Answer "'.collect(Product::STOCK_QUANTITY_TYPES())->join('", "', '" or "').'" to indicate the stock quantity type',
+            'stock_quantity_type.in' => 'Answer "'.collect(Product::STOCK_QUANTITY_TYPES())->join('", "', '" or "').'" to indicate the stock quantity type',
         ];
     }
 

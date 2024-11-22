@@ -10,11 +10,11 @@ use App\Models\Base\BaseModel;
 use App\Traits\TransactionTrait;
 use App\Enums\TransactionFailureType;
 use App\Enums\TransactionPaymentStatus;
+use App\Enums\TransactionFailureReason;
 use App\Enums\TransactionVerificationType;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Casts\TransactionPaymentStatus as TransactionPaymentStatusCast;
-use App\Enums\TransactionFailureReason;
 
 class Transaction extends BaseModel
 {
@@ -111,6 +111,16 @@ class Transaction extends BaseModel
         return $query->where('payment_status', TransactionPaymentStatus::PENDING->value);
     }
 
+    public function scopeSubjectToManualVerification($query)
+    {
+        return $query->where('verification_type', TransactionVerificationType::MANUAL->value);
+    }
+
+    public function scopeSubjectToAutomaticVerification($query)
+    {
+        return $query->where('verification_type', TransactionVerificationType::AUTOMATIC->value);
+    }
+
     /****************************
      *  RELATIONSHIPS           *
      ***************************/
@@ -118,6 +128,11 @@ class Transaction extends BaseModel
     public function owner()
     {
         return $this->morphTo();
+    }
+
+    public function store()
+    {
+        return $this->belongsTo(Store::class);
     }
 
     public function customer()

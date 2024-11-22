@@ -2,115 +2,120 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class PayloadLimiter
 {
     private $payload;
-    private $limiter;
-    private $isCamelCaseFormat;
-    private $payloadNamingConvention;
+    private $limiters;
 
     /**
-     *  -----------------------------
-     *  How to use the PayloadLimiter
-     *  -----------------------------
-     *
-     *  (new PayloadLimiter($payload, $limiter))->getPayload();
-     *
-     *  @var array $payload - The data payload to be limited based on the supplied limiter
-     *  @var string $limiter - The string to limit the payload e.g first_name, last_name, _links.self.href
+     * @param array $payload - The data payload to be limited based on the supplied limiter
+     * @param string $limiter - The string to limit the payload e.g first_name, user.address.country
      */
-    public function __construct(array $payload, string $limiter, $isCamelCaseFormat = null)
+    public function __construct(array $payload, string $limiter)
     {
         $this->payload = $payload;
-        $this->limiter = $limiter;
-
-        $this->payloadNamingConvention = (new PayloadNamingConvention());
-        $this->isCamelCaseFormat = $isCamelCaseFormat ?? $this->payloadNamingConvention->isCamelCaseFormat();
+        $this->limiters = $this->extractLimiters($limiter);
     }
 
     /**
-     *  Get the limited payload
+     *  Extract limiters
+     *
+     * @param string $limiter - The string to limit the payload
      */
-    public function getLimitedPayload(): array
+    public function extractLimiters(string $limiter): array
     {
-        $this->limiter = $this->prepareLimiter($this->limiter);
-        return $this->limitPayload($this->payload, $this->limiter);
+        $limiter = $this->normalizeLimiter($limiter);
+        $limiter = $this->convertFromShortToLongForm($limiter);
+
+        return explode(',', $limiter);
     }
 
     /**
-     *  Prepare the limiter
+     *  Normalize limiter
+     *
+     * @param string $limiter - The string to limit the payload
      */
-    public function prepareLimiter(string $limiter): string
+    public function normalizeLimiter(string $limiter): string
     {
-        /**
-         *  Capture the filters:
-         *
-         *  $limiter = "firstName, lastName, address.home.city+plot"
-         *
-         *  Into:
-         *
-         *  $filters = [
-         *      "first_name",
-         *      "last_name",
-         *      "address.home.city+plot"
-         *  ];
-         */
-
-        // Replace consecutive spaces with nothing
+        // Replace consecutive spaces with nothing  e.g "first_name , last_name , address" into "first_name,last_name,address"
         $limiter = preg_replace('/\s+/', '', $limiter);
 
         // Replace consecutive commas with just one comma e.g "first_name,,last_name,,,address" into "first_name,last_name,address"
         $limiter = preg_replace('/,+/', ',', $limiter);
 
         // Replace consecutive periods with just one period e.g "address..home...city" into "address.home.city"
-        $limiter = preg_replace('/\.+/', '.', $limiter);
+        $limiter = preg_replace('/\.{2,}/', '.', $limiter);
 
-        // Replace consecutive plus symbols with just one plus symbol e.g "address.home.city+++plot" into "address.home.city+plot"
-        $limiter = preg_replace('/\++/', '+', $limiter);
+        // Replace consecutive plus symbols with just one plus symbol e.g "address.home.city|||plot" into "address.home.city|plot"
+        $limiter = preg_replace('/\|{2,}/', '|', $limiter);
 
-        // Replace consecutive plus symbols with just one plus symbol e.g "address.home.city+++plot" into "address.home.city+plot"
-        $limiter = preg_replace('/\++/', '+', $limiter);
+        // Define the regex pattern to match leading or trailing non-alphanumeric characters
+        $pattern = '/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/';
 
-        // Escape special characters for safe use in regex
-        $escapedChars = preg_quote(',.+', '/');
-
-        /**
-         *  Define the regex pattern to match leading or trailing occurrences of the specified characters.
-         *
-         *  This means that we will remove any trailing characters starting or ending with "," or "." or "+"
-         *
-         *  e.g:
-         *
-         *  From: ..,,firstName,lastName,address.home.city..++
-         *  To:   firstName,lastName,address.home.city
-         *
-         *  Notice that the trailing characters are removed from the start and end of the filter string
-         */
-        $pattern = '/^[' . $escapedChars . ']+|[' . $escapedChars . ']+$/';
-
-        // Remove specified characters from the beginning and end of the string using regex
+        // Remove non-alphanumeric characters from the beginning and end of the string using regex
         $limiter = preg_replace($pattern, '', $limiter);
 
-        foreach([",", ".", "+"] as $trailingCharacter) {
+        // Convert to snakecase format
+        $limiter = Str::snake($limiter);
 
-            // Remove specified characters from the beginning and end of the string e.g "...first_name,last_name,,," into "first_name,last_name"
-            $limiter = trim($limiter, $trailingCharacter);
-
-        }
-
+        //  Return the limiters
         return $limiter;
     }
 
     /**
-     *  -------------------------
-     *  How limitPayload() Works:
-     *  -------------------------
+     * Convert from short form to long form
      *
-     *  The data payload that must be limited is provided as the first parameter e.g
+     * From: $limiter = "user.first_name|last_name"
      *
-     *  $payload = [
+     * To: $limiter = "user.first_name,user.last_name"
+     *
+     * @param string $limiter - The string to limit the payload
+     */
+    public function convertFromShortToLongForm(string $limiter): string
+    {
+        $limiters = explode(',', $limiter);
+        $formattedLimiters = [];
+
+        foreach ($limiters as $currLimiter) {
+
+            // If the current limiter contains a '|', we need to convert it
+            if (Str::contains($currLimiter, '|')) {
+
+                // Get the root part before the '|'
+                $root = Str::beforeLast($currLimiter, '.');
+
+                // Get the part after the last dot
+                $afterRoot = Str::afterLast($currLimiter, '.');
+
+                // Split the part after the dot by '|'
+                $shortHandLimiters = explode('|', $afterRoot);
+
+                // Build the full limiters using the root and the shorthand parts
+                foreach ($shortHandLimiters as $shortHandLimiter) {
+                    $formattedLimiters[] = $root . '.' . $shortHandLimiter;
+                }
+
+            } else {
+
+                // If no shorthand, just add the current limiter as is
+                $formattedLimiters[] = $currLimiter;
+
+            }
+        }
+
+        // Return the result as a comma-separated string
+        return implode(',', $formattedLimiters);
+    }
+
+    /**
+     *  ------------------------------
+     *  How getLimitedPayload() Works:
+     *  ------------------------------
+     *
+     *  $this->payload = [
      *      "firstName" => "John",
      *      "lastName" => "Doe",
      *      "address" => [
@@ -187,7 +192,7 @@ class PayloadLimiter
      *      ],
      *  ];
      *
-     *  (6) $limiter = 'first_name, last_name, address.home.city+plot';
+     *  (6) $limiter = 'first_name, last_name, address.home.city|plot';
      *
      *  returns [
      *      "firstName" => "John",
@@ -200,7 +205,7 @@ class PayloadLimiter
      *      ],
      *  ];
      *
-     *  (6) $limiter = 'first_name, last_name, address.home.city+plot, address.work.city+plot';
+     *  (7) $limiter = 'first_name, last_name, address.home.city|plot, address.work.city|plot';
      *
      *  returns [
      *      "firstName" => "John",
@@ -255,24 +260,7 @@ class PayloadLimiter
      *      ]
      *  ];
      *
-     *  (2) $limiter = 'data.*';
-     *
-     *  returns [
-     *      "data" => [
-     *          [
-     *              "firstName" => "John",
-     *              "lastName" => "Doe",
-     *              "age" => 15
-     *          ],
-     *          [
-     *              "firstName" => "Jane",
-     *              "lastName" => "Moe",
-     *              "age" => 15
-     *          ]
-     *      ]
-     *  ];
-     *
-     *  (3) $limiter = 'data.*.firstName';
+     *  (2) $limiter = 'data.firstName';
      *
      *  returns [
      *      "data" => [
@@ -285,7 +273,7 @@ class PayloadLimiter
      *      ]
      *  ];
      *
-     *  (4) $limiter = 'data.*.firstName:lastName';
+     *  (3) $limiter = 'data.firstName:lastName';
      *
      *  returns [
      *      "data" => [
@@ -300,7 +288,7 @@ class PayloadLimiter
      *      ]
      *  ];
      *
-     *  (5) $limiter = 'data.*.firstName:lastName:age';
+     *  (4) $limiter = 'data.firstName:lastName:age';
      *
      *  returns [
      *      "data" => [
@@ -318,553 +306,93 @@ class PayloadLimiter
      *  ];
      *
      */
-    public function limitPayload(array $payload, string $limiter): array
+    public function getLimitedPayload(): array
     {
-        if(!empty($limiter)) {
+        // Flatten the original payload
+        $payloadInDotNotation = $this->flattenPayload($this->payload);
 
-            $filters = Str::of($limiter)->explode(',')->map(function($field1) {
-
-                /**
-                 *  Since a $field1 could be equal to "user.firstName+_links". Running the following:
-                 *
-                 *  $payloadNamingConvention->convertKeyToCamelCaseFormat("user.firstName+_links");
-                 *
-                 *  This would return "user.firstName+Links" which is not ideal.
-                 *
-                 *  We need to continue to explode the string further e.g ['user', 'firstName+_links']
-                 */
-                return Str::of($field1)->explode('.')->map(function($field2) {
-
-                    /**
-                     *  Since a $field2 could be equal to "firstName+_links". Running the following:
-                     *
-                     *  $payloadNamingConvention->convertKeyToCamelCaseFormat("firstName+_links");
-                     *
-                     *  This would return "firstName+Links" which is not ideal.
-                     *
-                     *  We need to continue to explode the string further e.g ['firstName', '_links']
-                     *  so that we can now call the following:
-                     *
-                     *  $payloadNamingConvention->convertKeyToCamelCaseFormat("firstName");
-                     *  $payloadNamingConvention->convertKeyToCamelCaseFormat("_links");
-                     *
-                     *  And then join the resulting outputs e.g Join ['firstName', '_links'] into "firstName+_links"
-                     */
-                    return Str::of($field2)->explode('+')->map(function($field3) {
-
-                        if($this->isCamelCaseFormat) {
-
-                            //  Convert the key to camelcase e.g account_exists to accountExists
-                            return $this->payloadNamingConvention->convertKeyToCamelCaseFormat($field3);
-
-                        }else{
-
-                            //  Convert the key to snakecase e.g accountExists to account_exists
-                            return $this->payloadNamingConvention->convertKeyToSnakeCaseFormat($field3);
-
-                        }
-
-                    })->join('+');
-
-                })->join('.');
-
-            })->toArray();
-
-            $result = [];
-
-            foreach ($filters as $filter) {
+        // Filter the keys by checking exact matches or matching the pattern
+        $limitedPayloadInDotNotation = collect($payloadInDotNotation)
+            ->filter(function ($value, $dotNotation) {
 
                 /**
-                 *  Capture the filters:
+                 *  To support limiting on a list of arrays:
                  *
-                 *  $filter = "first_name" into:
-                 *
-                 *  $nestedKeys = ["first_name"]
-                 *
-                 *  or:
-                 *
-                 *  $filter = "last_name" into:
-                 *
-                 *  $nestedKeys = ["last_name"]
-                 *
-                 *  or:
-                 *
-                 *  $filter = "address.home.city+plot" into:
-                 *
-                 *  $nestedKeys = ["address", "home", "city+plot"]
+                 *  Replace $key = "0.name" or "data.0.name" (Where 0 can be any other index number of a list)
+                 *  With $key = "name" or "data.name"        (Index numbers are removed)
                  */
-                $nestedKeys = explode('.', $filter);
+                $dotNotation = preg_replace('/\d+\./', '', $dotNotation);
 
-                $temp = $payload;
+                //  Convert to snake case format
+                $dotNotation = Str::snake($dotNotation);
 
-                /**
-                 *  For $nestedKeys = ["first_name"]
-                 *  For $nestedKeys = ["last_name"]
-                 *  For $nestedKeys = ["address", "home", "city+plot"]
-                 */
-                foreach ($nestedKeys as $key) {
+                return in_array($dotNotation, $this->limiters) || collect($this->limiters)->contains(function($limiter) use ($dotNotation) {
+                    return Str::startsWith($dotNotation, $limiter.'.');
+                });
 
-                    /**
-                     *  Does the key exist on $temp:
-                     *
-                     *  1) array_key_exists('first_name', $temp) = true
-                     *
-                     *  2) array_key_exists('last_name', $temp) = true
-                     *
-                     *  3) array_key_exists('address', $temp) = true
-                     *     array_key_exists('home', $temp) = true
-                     *     array_key_exists('city+plot', $temp) = false
-                     */
-                    if (!is_null($temp) && array_key_exists($key, $temp)) {
+            })->all();
 
-                        /**
-                         *  $temp = $temp['first_name'] = "John";
-                         *
-                         *  $temp = $temp['last_name'] = "Doe";
-                         *
-                         *  $temp = $temp['address'] = [
-                         *      "home" => [
-                         *          "city" => "Gaborone",
-                         *          "plot" => "Plot 123",
-                         *          "street" => "ABC"
-                         *      ],
-                         *      "work" => [
-                         *          "city" => "Gaborone",
-                         *          "plot" => "Plot 456",
-                         *          "street" => "DEF"
-                         *      ]
-                         *  ];
-                         *
-                         *  $temp = $temp['home'] = [
-                         *      "city" => "Gaborone",
-                         *      "plot" => "Plot 123",
-                         *      "street" => "ABC"
-                         *  ],
-                         *
-                         *  Sometimes the value of the $temp[$key] might be a integer,
-                         *  string, boolean or array. These are good values, however
-                         *  sometimes we might get objects as values e.g Values that
-                         *  have been formated using:
-                         *
-                         *  convertToCurrencyFormat()
-                         *  convertToMoneyFormat()
-                         *  formatPhoneNumber()
-                         *
-                         *  These methods are found in the App\Traits\Base\BaseTrait.php file
-                         *  and can be used to convert values into objects. Now when we need
-                         *  to convert such values into proper arrays to be able to access
-                         *  the values using array keys e.g
-                         *
-                         *  Convert this:
-                         *  {
-                         *      "amount": 2.0,
-                         *      "amountWithoutCurrency": "2.00",
-                         *      "amountWithCurrency": "P2.00"
-                         *  }
-                         *
-                         *  Into this:
-                         *  [
-                         *      "amount" => 2.0,
-                         *      "amountWithoutCurrency" => "2.00",
-                         *      "amountWithCurrency" => "P2.00"
-                         *  ]
-                         *
-                         *  If we do not do this, then array_key_exists($key, $temp) will throw an error:
-                         *
-                         *  array_key_exists(): Argument #2 ($array) must be of type array, stdClass given
-                         */
-                        $temp = $this->convertObjectToArray($temp[$key]);
-
-                    /**
-                     *  If the $key = "*", then this is a wild card. This works for instances such as
-                     *
-                     *  $filter = 'data.*.first_name';
-                     *
-                     *  $payload = [
-                     *      'data' => [
-                     *          [
-                     *              'first_name' => 'John',
-                     *              'last_name' => 'Doe',
-                     *          ],
-                     *          [
-                     *              'first_name' => 'Jane',
-                     *              'last_name' => 'Moe',
-                     *          ],
-                     *          ...
-                     *      ]
-                     *  ]
-                     *
-                     *  The we know that $data['*'] does not exist, which is why we are now here.
-                     *  We can check if the current $key = '*' so that we can handle the filter
-                     *  on multiple entries.
-                     */
-                    } else if($key == '*') {
-
-                        /**
-                         *  Let us check if the the $filter continues anything after the "*" wildcard to specify
-                         *  the specific fields that are wanted e.g $filter = 'data.*.first_name'; would mean
-                         *  that for every entry we want to extract the "first_name" only.
-                         *
-                         *  Otherwise if nothing is specified after the "*" wildcard, then we would not
-                         *  limit any further but return the values as is e.g $filter = 'data.*';
-                         */
-                        if( Str::contains($filter, '*.') ) {
-
-                            //  Get the limiter after the first occurance of "*."
-                            $subLimiter = Str::after($filter, '*.');
-
-                            //  Replace the occurance of ":" with ","
-                            $subLimiter = Str::replace('+', ',', $subLimiter);
-
-                            foreach($temp as $subKey => $subPayload) {
-
-                                //  dd($key, $filter, $subKey, $subPayload, $subLimiter, $this->limitPayload($subPayload, $subLimiter));
-
-                                $temp[$subKey] = $this->limitPayload($subPayload, $subLimiter);
-
-                            }
-
-                            //  Get the limiter before the first occurance of ".*"
-                            $subFilter = Str::before($filter, '.*');
-
-                            // Assign the filtered value to the result
-                            $result = array_merge_recursive($result, self::convertToNestedArray($subFilter, $temp));
-
-                            /**
-                             *  Continue to the next filter in the loop since we are done here
-                             */
-                            continue(2);
-
-                        }else{
-
-                            //  Get the limiter before the first occurance of ".*"
-                            $subFilter = Str::before($filter, '.*');
-
-                            // Assign the filtered value to the result
-                            $result = array_merge_recursive($result, self::convertToNestedArray($subFilter, $temp));
-
-                            /**
-                             *  Continue to the next filter in the loop since we are done here
-                             */
-                            continue(2);
-
-                        }
-
-                    } else if(Str::contains($key, '+')) {
-
-                        /**
-                         *  If a key doesn't exist e.g
-                         *
-                         *  isset($temp['city+plot']) = false
-                         *
-                         *  But contains a "+" symbol e.g
-                         *
-                         *  $key = 'city+plot'
-                         *
-                         *  Simply proceed to the next code logic to execute the
-                         *  array_merge_recursive() method
-                         *
-                         *  ------------------------------------------------
-                         *
-                         *  At this point the the information is as follows:
-                         *
-                         *  $filter = 'address.home.city+plot';
-                         *
-                         *  $key = 'city+plot';
-                         *
-                         *  $temp = [
-                         *      "city" => "Gaborone",
-                         *      "plot" => "Plot 123",
-                         *      "street" => "ABC"
-                         *  ];
-                         */
-
-                    } else {
-
-                        /**
-                         *  If a key doesn't exist e.g
-                         *
-                         *  isset($temp['first_na_me']) = false
-                         *
-                         *  Continue to the next filter in the loop since we are done here
-                         */
-                        continue(2);
-
-                    }
-                }
-
-                // Assign the filtered value to the result
-                $result = array_merge_recursive($result, self::convertToNestedArray($filter, $temp));
-
-            }
-
-            return $result;
-
-        }else{
-
-            return $payload;
-
-        }
-    }
-
-    private function convertObjectToArray($data)
-    {
-        if(is_object($data)) {
-
-            /**
-             *  Convert an object into an array e.g
-             *
-             *  Convert this:
-             *  {
-             *      "amount": 2.0,
-             *      "amountWithoutCurrency": "2.00",
-             *      "amountWithCurrency": "P2.00"
-             *  }
-             *
-             *  Into this:
-             *  [
-             *      "amount" => 2.0,
-             *      "amountWithoutCurrency" => "2.00",
-             *      "amountWithCurrency" => "P2.00"
-             *  ]
-             */
-            $data = (array) $data;
-
-            /**
-             *  Convert keys to the required format e.g
-             *
-             *  Convert this:
-             *  [
-             *      "amount" => 2.0,
-             *      "amountWithoutCurrency" => "2.00",
-             *      "amountWithCurrency" => "P2.00"
-             *  ]
-             *
-             *  Into this:
-             *  [
-             *      "amount" => 2.0,
-             *      "amount_without_currency" => "2.00",
-             *      "amount_with_currency" => "P2.00"
-             *  ]
-             *
-             */
-             if($this->isCamelCaseFormat) {
-
-                return $this->payloadNamingConvention->convertToCamelCaseFormat($data);
-
-            }else{
-
-                return $this->payloadNamingConvention->convertToSnakeCaseFormat($data);
-
-            }
-
-        }else{
-
-            return $data;
-
-        }
+        return Arr::undot($limitedPayloadInDotNotation);
     }
 
     /**
-     *  Convert flattened key to nested array
+     * Flatten the payload, accounting for both arrays and objects at all levels.
      *
-     *  -------------------------------------
-     *  $filter = "first_name"
-     *  $value = "John"
-     *  returns "John"
-     *  -------------------------------------
-     *  $filter = "last_name"
-     *  $value = "Doe"
-     *  returns "Doe"
-     *  -------------------------------------
-     *  $filter = "address.home.city+plot"
-     *  $value = [
-     *      "city" => "Gaborone",
-     *      "plot" => "Plot 123",
-     *      "street" => "ABC"
-     *  ];
-     *  returns [
-     *      "city" => "Gaborone",
-     *      "plot" => "Plot 123"
-     *  ];
+     * @param mixed $payload
+     * @param string $prefix - Used for recursion to build the dot notation
+     * @return array
      */
-    private function convertToNestedArray(string $filter, $value): array
+    public function flattenPayload($payload, $prefix = '')
     {
-        /**
-         *  If we have:
-         *
-         *  $filter = "first_name" then
-         *  $dotKeys = ["first_name"];
-         *
-         *  If we have:
-         *
-         *  $filter = "last_name" then
-         *  $dotKeys = ["last_name"];
-         *
-         *  If we have:
-         *
-         *  $filter = "address.home.city+plot" then
-         *  $dotKeys = ["address", "home", "city+plot"];
-         */
-        $dotKeys = explode('.', $filter);
+        $flattened = [];
+        $stack = new \SplStack();
+        $stack->push([$payload, $prefix]);
 
-        $result = [];
+        while (!$stack->isEmpty()) {
 
-        /**
-         *  Loop from the last item to the first item.
-         *  This means that if we have:
-         *
-         *  $dotKeys = ["address", "home", "city+plot"];
-         *
-         *  Then we start with $i=2, then $i=1 and then $i=0,
-         *  Which means we target
-         *
-         *  First: $dotKeys[2] = "city+plot"
-         *  Then:  $dotKeys[1] = "home"
-         *  Then:  $dotKeys[0] = "address"
-         *
-         */
-        for ($i = count($dotKeys) - 1; $i >= 0; $i--) {
+            // Pop the current level of the stack
+            list($current, $currentPrefix) = $stack->pop();
 
-            /**
-             *  If this is the first dot key we are starting with e.g
-             *
-             *  This works for:
-             *
-             *  $dotKeys[$i] = "first_name"
-             *  $dotKeys[$i] = "last_name"
-             *  $dotKeys[$i] = "city+plot"
-             */
-            if($i == (count($dotKeys) - 1)) {
+            // If the current value is an array or object, iterate over it
+            if (is_array($current) || is_object($current)) {
 
-                /**
-                 *  If we have:
-                 *
-                 *  $dotKeys[$i] = "first_name" then
-                 *  $plusKeys = ["first_name"];
-                 *
-                 *  If we have:
-                 *
-                 *  $dotKeys[$i] = "last_name" then
-                 *  $plusKeys = ["last_name"];
-                 *
-                 *  If we have:
-                 *
-                 *  $dotKeys[$i] = "last_name" then
-                 *  $plusKeys = ["city", "plot"];
-                 */
-                $plusKeys = explode('+', $dotKeys[$i]);
+                // Check this is an empty array is empty
+                if (empty($current)) {
 
-                /**
-                 *  If the $plusKeys have only one entry e.g
-                 *
-                 *  If $plusKeys = ["first_name"];
-                 *  If $plusKeys = ["last_name"];
-                 */
-                if(count($plusKeys) == 1) {
+                    //  Add this empty array to the flattened result
+                    $flattened[$currentPrefix] = [];
+                    continue;
 
-                    /**
-                     *  Capture the value as is e.g
-                     *
-                     *  $result = "John";
-                     *  $result = "Doe";
-                     */
-                    $result = $value;
+                }
 
-                /**
-                 *  If the $plusKeys have more than one entry e.g
-                 *
-                 *  If $plusKeys = ["city", "plot"];
-                 */
-                }else{
+                foreach ($current as $key => $value) {
 
-                    /**
-                     *  Foreach $plusKey key/value pair
-                     */
-                    foreach($plusKeys as $plusKey) {
+                    // Create a new key based on the prefix
+                    $newKey = $currentPrefix != '' ? $currentPrefix . '.' . $key : $key;
 
+                    // Push the next level onto the stack
+                    if (is_array($value) || is_object($value)) {
 
-                        /**
-                         *  Check if the key exists on the value assuming that the value is an array e.g
-                         *
-                         *  array_key_exists('plot', [
-                         *      "city" => "Gaborone",
-                         *      "plot" => "Plot 123",
-                         *      "street" => "ABC"
-                         *  ])
-                         *
-                         *  or
-                         *
-                         *  array_key_exists('city', [
-                         *      "city" => "Gaborone",
-                         *      "plot" => "Plot 123",
-                         *      "street" => "ABC"
-                         *  ])
-                         *
-                         *  Incase we have provided a key that does not exist, this check will prevent any errors e.g
-                         *
-                         *  array_key_exists('country', [
-                         *      "city" => "Gaborone",
-                         *      "plot" => "Plot 123",
-                         *      "street" => "ABC"
-                         *  ])
-                         */
-                        if(array_key_exists($plusKey, $value)) {
+                        $stack->push([$value, $newKey]);  // Continue processing deeper levels
 
-                            /**
-                             *  Capture the key and value e.g
-                             *
-                             *  $result['city'] = ['Gaborone'];
-                             *  $result['plot'] = ['Plot 123'];
-                             */
-                            $result[$plusKey] = $value[$plusKey];
+                    } else {
 
-                        }
+                        // If the value is not an array or object, add it to the result
+                        $flattened[$newKey] = $value;
 
                     }
 
                 }
 
-            }
+            } else {
 
-            /**
-             *  If this dot key does not contain any "+"
-             *
-             *  Allow "first_name", "last_name", "home" and "address"
-             *
-             *  Ignore "city+plot"
-             *
-             *  ----------------------------
-             *
-             *  This prevents the following outcome:
-             *
-             *  $payload = [
-             *      "firstName" => "John",
-             *      "lastName" => "Doe",
-             *      "address" => [
-             *          "home" => [
-             *              "city+plot" => [
-             *                  "city" => "Gaborone",
-             *                  "plot" => "Plot 123"
-             *              ]
-             *          ]
-             *      ],
-             *  ];
-             *
-             *  Notice that the "city+plot" has been used to wrap around the content.
-             *  This is not a desired behaviour and the following code prevents it
-             *  from happening.
-             */
-            if(Str::contains($dotKeys[$i], '+') == false) {
-
-                $result = [
-                    $dotKeys[$i] => $result
-                ];
+                // If the current value is not an array or object, just add it to the result
+                $flattened[$currentPrefix] = $current;
 
             }
-
         }
 
-        return $result;
+        return $flattened;
     }
+
 }

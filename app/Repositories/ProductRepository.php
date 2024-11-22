@@ -7,11 +7,13 @@ use App\Models\Product;
 use App\Models\Variable;
 use App\Traits\AuthTrait;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use App\Enums\SortProductBy;
 use App\Traits\Base\BaseTrait;
 use App\Enums\RequestFileName;
+use App\Enums\StockQuantityType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\ProductResources;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\MediaFileResources;
@@ -163,7 +165,7 @@ class ProductRepository extends BaseRepository
             ->where('store_id', $store->id)
             ->whereIn('id', array_keys($finalProductIdsAndVisibility))
             ->update(['visible' => DB::raw('CASE id ' . implode(' ', array_map(function ($id, $visibility) {
-                return 'WHEN ' . $id . ' THEN ' . $visibility . ' ';
+                return 'WHEN "' . $id . '" THEN ' . $visibility . ' ';
             }, array_keys($finalProductIdsAndVisibility), $finalProductIdsAndVisibility)) . 'END')]);
 
             return ['updated' => true, 'message' => 'Product visibility has been updated'];
@@ -192,11 +194,94 @@ class ProductRepository extends BaseRepository
             return ['message' => 'This store does not exist'];
         }
 
+        if(isset($data['sort_by'])) {
+
+            $query = $store->products();
+
+            switch ($data['sort_by']) {
+
+                case SortProductBy::BEST_SELLING->value;
+
+                /**
+                 *  Best Selling Ranking Algorithm:
+                 *  -------------------------------
+                 *
+                 *  1) Rank each product by sales velocity.
+                 *  2) Products with unlimited or high stock levels have an advantage.
+                 *  3) Do not consider cancelled product lines.
+                 *  4) Do not consider product lines of cancencelled orders.
+                 *
+                 *  Note: Clone query because the query instance is modified.
+                 */
+                $productWithHighestStockQuantity = (clone $query)->where('stock_quantity_type', StockQuantityType::LIMITED->value)->orderBy('stock_quantity', 'desc')->first();
+                $maxStockQuantity = $productWithHighestStockQuantity && $productWithHighestStockQuantity->stock_quantity > 0
+                                    ? $productWithHighestStockQuantity->stock_quantity
+                                    : 1;
+
+                $productIds = $query->select('products.id')
+                ->selectRaw('
+                    (
+                        (
+                            SELECT SUM(product_lines.quantity)
+                            FROM product_lines
+                            INNER JOIN carts ON carts.id = product_lines.cart_id
+                            INNER JOIN orders ON orders.cart_id = carts.id
+                            WHERE product_lines.product_id = products.id
+                            AND product_lines.is_cancelled = 0
+                            AND orders.status != "cancelled"
+                        ) /
+                        GREATEST(
+                            (
+                                SELECT DATEDIFF(MAX(orders.created_at), MIN(orders.created_at))
+                                FROM orders
+                                INNER JOIN carts ON carts.id = orders.cart_id
+                                INNER JOIN product_lines ON product_lines.cart_id = carts.id
+                                WHERE product_lines.product_id = products.id
+                                AND product_lines.is_cancelled = 0
+                            ),
+                            1
+                        )
+                    ) *
+                    (CASE
+                        WHEN products.stock_quantity_type = ?
+                            THEN LEAST(products.stock_quantity / ?, 1)
+                            ELSE 1
+                    END) as sales_rate', [StockQuantityType::LIMITED->value, $maxStockQuantity]
+                )
+                ->orderByDesc('sales_rate')
+                ->pluck('products.id');
+
+                    break;
+                case SortProductBy::MOST_STOCK->value;
+                    $productIds = $query->select('id')->where('stock_quantity_type', StockQuantityType::LIMITED->value)->orderBy('stock_quantity', 'desc')->pluck('id');
+                    break;
+                case SortProductBy::LEAST_STOCK->value;
+                    $productIds = $query->select('id')->where('stock_quantity_type', StockQuantityType::LIMITED->value)->orderBy('stock_quantity', 'asc')->pluck('id');
+                    break;
+                case SortProductBy::MOST_DISCOUNTED->value;
+                    $productIds = $query->select('id')->where('on_sale', '1')->orderBy('unit_sale_discount_percentage', 'desc')->pluck('id');
+                    break;
+                case SortProductBy::MOST_EXPENSIVE->value;
+                    $productIds = $query->select('id')->orderBy('unit_price', 'desc')->pluck('id');
+                    break;
+                case SortProductBy::MOST_AFFORDABLE->value;
+                    $productIds = $query->select('id')->orderBy('unit_price', 'asc')->pluck('id');
+                    break;
+                case SortProductBy::ALPHABETICALLY->value;
+                    $productIds = $query->select('id')->orderBy('name', 'asc')->pluck('id');
+                    break;
+                default:
+                    return ['updated' => false, 'message' => 'Cannot sort using the sort by method provided'];
+            }
+
+        }else{
+            $productIds = $data['product_ids'];
+        }
+
         $products = $this->query->get();
         $originalProductPositions = $products->pluck('position', 'id');
 
-        $arrangementByIds = $data['product_ids'];
-        $arrangement = collect($arrangementByIds)->filter(function ($productId) use ($originalProductPositions) {
+        $arrangement = collect($productIds)->filter(function ($productId) use ($originalProductPositions) {
             return collect($originalProductPositions)->keys()->contains($productId);
         })->toArray();
 
@@ -216,7 +301,7 @@ class ProductRepository extends BaseRepository
                 ->where('store_id', $store->id)
                 ->whereIn('id', array_keys($productPositions))
                 ->update(['position' => DB::raw('CASE id ' . implode(' ', array_map(function ($id, $position) {
-                    return 'WHEN ' . $id . ' THEN ' . $position . ' ';
+                    return 'WHEN "' . $id . '" THEN ' . $position . ' ';
                 }, array_keys($productPositions), $productPositions)) . 'END')]);
 
             return ['updated' => true, 'message' => 'Product arrangement has been updated'];
@@ -234,9 +319,7 @@ class ProductRepository extends BaseRepository
      */
     public function showProduct(string $productId): Product|array|null
     {
-        $query = Product::with(['store'])->whereId($productId);
-        $this->setQuery($query)->applyEagerLoadingOnQuery();
-        $product = $this->query->first();
+        $product = $this->setQuery(Product::with(['store'])->whereId($productId))->applyEagerLoadingOnQuery()->getQuery()->first();
 
         if($product) {
             $store = $product->store;
@@ -604,6 +687,7 @@ class ProductRepository extends BaseRepository
             $name = $product->name . ' (' . trim(collect($options)->map(fn($option) => ucfirst($option))->join(', ')) . ')';
 
             $template = [
+                'id' => Str::uuid(),
                 'name' => $name,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -613,8 +697,9 @@ class ProductRepository extends BaseRepository
                 'variableTemplates' => collect($options)->map(function ($option, $key) use ($variantAttributes) {
                     $variantAttributeNames = $variantAttributes->keys();
                     return [
+                        'id' => Str::uuid(),
+                        'value' => $option,
                         'name' => $variantAttributeNames->get($key),
-                        'value' => $option
                     ];
                 })
             ];
@@ -676,7 +761,7 @@ class ProductRepository extends BaseRepository
     {
         Product::insert(
             $productVariationTemplates->map(
-                fn($productVariationTemplate) => collect($productVariationTemplate)->only(resolve(Product::class)->getFillable())
+                fn($productVariationTemplate) => collect($productVariationTemplate)->only(['id', 'name', 'parent_product_id', 'user_id', 'store_id', 'created_at', 'updated_at'])
             )->toArray()
         );
 

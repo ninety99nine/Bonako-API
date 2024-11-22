@@ -61,6 +61,8 @@ class Order extends BaseModel
     const STORE_NOTE_MAX_CHARACTERS = 1000;
     const CUSTOMER_NOTE_MIN_CHARACTERS = 3;
     const CUSTOMER_NOTE_MAX_CHARACTERS = 400;
+    const COLLECTION_NOTE_MIN_CHARACTERS = 3;
+    const COLLECTION_NOTE_MAX_CHARACTERS = 400;
     const OTHER_CANCELLATION_REASON_MIN_CHARACTERS = 3;
     const OTHER_CANCELLATION_REASON_MAX_CHARACTERS = 400;
 
@@ -86,8 +88,7 @@ class Order extends BaseModel
         'pending_percentage' => Percentage::class,
         'outstanding_percentage' => Percentage::class,
         'payment_status' => OrderPaymentStatus::class,
-        'collection_type' => OrderCollectionType::class,
-        'status_before_cancellation' => OrderStatus::class,
+        'collection_type' => OrderCollectionType::class
     ];
 
     protected $fillable = [
@@ -105,7 +106,7 @@ class Order extends BaseModel
         'customer_note','store_note',
 
         /* Cancellation Information */
-        'status_before_cancellation','cancellation_reason','other_cancellation_reason','cancelled_at',
+        'cancellation_reason','other_cancellation_reason','cancelled_at',
 
         /* Customer Information */
         'customer_first_name', 'customer_last_name', 'customer_mobile_number', 'customer_email', 'customer_id', 'placed_by_user_id',
@@ -216,14 +217,24 @@ class Order extends BaseModel
 
     protected $appends = [
         'customer_name', 'customer_display_name', 'number', 'dial_to_show_collection_code', 'follow_up_statuses',
-        'can_cancel', 'can_uncancel', 'can_delete', 'can_mark_as_paid', 'can_request_payment', 'payable_amounts', 'is_paid', 'is_unpaid', 'is_partially_paid', 'is_pending_payment',
-        'is_waiting', 'is_on_its_way', 'is_ready_for_pickup', 'is_cancelled', 'is_completed'
+        'can_cancel', 'can_uncancel', 'can_delete', 'can_mark_as_paid', 'can_request_payment', 'payable_amounts',
+        'is_paid', 'is_unpaid', 'is_partially_paid', 'is_pending_payment', 'is_waiting', 'is_on_its_way',
+        'is_ready_for_pickup', 'is_cancelled', 'is_completed'
     ];
+
+    protected function number(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => random_int(10000, 90000),
+            set: fn ($value) => $value
+        );
+    }
 
     protected function customerName(): Attribute
     {
         return Attribute::make(
-            get: fn () => trim($this->customer_first_name.' '.$this->customer_last_name)
+            get: fn () => trim($this->getRawOriginal('customer_first_name').' '.$this->getRawOriginal('customer_last_name')),
+            set: fn ($value) => $value
         );
     }
 
@@ -239,7 +250,7 @@ class Order extends BaseModel
     protected function cancellationReason(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => empty($value) ? null : ucwords($value),
+            get: fn ($value) => empty($value) ? null : ucfirst($value),
             set: fn ($value) => empty($value) ? null : strtolower($value)
         );
     }
@@ -252,16 +263,6 @@ class Order extends BaseModel
         );
     }
 
-    public function setCustomerNameAttribute($value)
-    {
-        /**
-         *  This allows us to modify the "customer_name" e.g setting the value to "Null"
-         *  when transforming the order and need to make the "customer_name" anonymous
-         *  when running the makeAnonymous() method.
-         */
-        $this->customer_name = $value;
-    }
-
     public function setCustomerDisplayNameAttribute($value)
     {
         /**
@@ -271,21 +272,6 @@ class Order extends BaseModel
          *  team members and general public see this order.
          */
         $this->customer_display_name = $value;
-    }
-
-    public function getNumberAttribute()
-    {
-        return str_pad($this->id, 5, 0, STR_PAD_LEFT);
-    }
-
-    public function setNumberAttribute($value)
-    {
-        /**
-         *  This allows us to modify the order "number" e.g setting the value to "Null"
-         *  when transforming the order and need to make the "number" anonymous
-         *  when running the makeAnonymous() method.
-         */
-        $this->number = $value;
     }
 
     public function getDialToShowCollectionCodeAttribute()
@@ -313,39 +299,20 @@ class Order extends BaseModel
 
     public function getFollowUpStatusesAttribute()
     {
-        /**
-         *  Since the status might or might not be casted using the OrderStatus class,
-         *  we need to always make sure that we get the original status before casting
-         */
-        $status = $this->getRawOriginal('status');
+        $currentStatus = $this->getRawOriginal('status');
 
         $description = [
-            'Completed' => 'Notify the customer that this order has been completed',
-            'Cancelled' => 'Notify the customer that this order has been cancelled',
-            'Ready For Pickup' => 'Notify the customer that this order is ready for pickup',
-            'On Its Way' => 'Notify the customer that this order is on its way to being delivered',
+            'Waiting' => 'Order is waiting to be processed',
+            'Ready For Pickup' => 'Order is ready for pickup',
+            'On Its Way' => 'Order is on its way to being delivered',
+            'Cancelled' => 'Order has been cancelled',
+            'Completed' => 'Order has been completed',
         ];
 
-        if ($this->isWaiting()) {
-            $statuses = ['On Its Way', 'Ready For Pickup', 'Completed', 'Cancelled'];
-        } elseif ($this->isCancelled()) {
-            $statuses = ['On Its Way', 'Ready For Pickup', 'Completed'];
-        } elseif ($this->isOnItsWay()) {
-            $statuses = ['Ready For Pickup', 'Completed', 'Cancelled'];
-        } elseif ($this->isReadyForPickup()) {
-            $statuses = ['On Its Way', 'Completed', 'Cancelled'];
-        } elseif ($this->isCompleted()) {
-            $statuses = [];
-        } else {
-            $statuses = [];
-        }
-
-        return collect($statuses)->map(function($status) use ($description) {
-            return [
-                'name' => $status,
-                'description' => $description[$status]
-            ];
-        })->toArray();
+        return collect($description)->except(ucwords($currentStatus))
+                ->map(fn($description, $status) => ['name' => $status, 'description' => $description])
+                ->values()
+                ->toArray();
     }
 
     public function getCanCancelAttribute()

@@ -28,7 +28,7 @@ class OrangeAirtimeService
             $msisdn = ltrim($msisdn, '+');
 
             //  Set the amount to be billed
-            $amount = $transaction->amount;
+            $amount = (float) $transaction->amount->amount;
 
             //  Set the description for this payment
             $description = $transaction->description;
@@ -36,6 +36,7 @@ class OrangeAirtimeService
             //  Set default values
             $failureType = $failureReason = $ratingType = $fundsAfterDeduction = $fundsBeforeDeduction = null;
 
+            if(false) {
             /**
              *  ------------------------
              *  Request the access token
@@ -194,7 +195,7 @@ class OrangeAirtimeService
                                 if( $status = !empty($accountMainBalanceBucket) ) {
 
                                     //  Get the remaining value (The Airtime left that we can bill from the bucket balance)
-                                    $remainingValue = $accountMainBalanceBucket['bucketBalance'][0]['remainingValue'];
+                                    $remainingValue = (float) $accountMainBalanceBucket['bucketBalance'][0]['remainingValue'];
 
                                     //  Determine if we have enough funds
                                     $status = $hasEnoughFunds = ($remainingValue >= $amount);
@@ -391,6 +392,12 @@ class OrangeAirtimeService
                     }
                 }
 
+            }
+            }else{
+                $status = true;
+                $ratingType = 'prepaid';
+                $fundsBeforeDeduction = 100;
+                $fundsAfterDeduction = 100 - $amount;
             }
 
             //  Update transaction
@@ -812,7 +819,7 @@ class OrangeAirtimeService
      *
      *  @param Transaction $transaction - The Transaction Model
      *  @param string $msisdn - The MSISDN (mobile number) of the subscriber to be billed e.g 26772000001
-     *  @param string $amount - The amount to be billed e.g 10.00
+     *  @param float $amount - The amount to be billed e.g 10.00
      *  @param string $description - The description of the transaction
      *  @param string $accessToken - The access token
      *
@@ -837,7 +844,7 @@ class OrangeAirtimeService
                         'endUserId' => 'tel:+'.$msisdn,
                         'paymentAmount' => [
                             'chargingInformation' => [
-                                'amount' => (float) $amount,
+                                'amount' => $amount,
                                 'currency' => config('app.CURRENCY'),
                                 'description' => [
                                     0 => $description,

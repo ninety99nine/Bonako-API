@@ -25,7 +25,7 @@ class Status implements CastsAttributes
 
         switch ($key) {
             case 'active':
-                $name = $value ? 'Active' : 'Not Active';
+                $name = $value ? 'Active' : 'Inactive';
                 $description = 'This '.$descriptionName.' '.($value ? 'is' : 'is not').' active';
                 break;
             case 'is_free':

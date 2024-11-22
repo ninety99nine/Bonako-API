@@ -48,7 +48,7 @@ class AuthController extends BaseController
      */
     public function register(CreateUserRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->repository->register($request->all()), Response::HTTP_CREATED);
+        return $this->prepareOutput($this->repository->register($request->all()));
     }
 
     /**

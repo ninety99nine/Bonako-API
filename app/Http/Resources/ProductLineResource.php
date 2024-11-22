@@ -7,21 +7,24 @@ use App\Http\Resources\Helpers\ResourceLink;
 
 class ProductLineResource extends BaseResource
 {
+    public function toArray($request)
+    {
+        return $this->transformedStructure();
+    }
 
     public function setLinks()
     {
-        /*
-        $routeNamePrefix = 'product.';
-        $storeId = $this->resource->store_id;
+        $productLine = $this->resource;
         $productId = $this->resource->product_id;
 
-        if(!is_null($productId)) {
+        $this->resourceLinks = [
+            new ResourceLink('show.product.line', route('show.product.line', ['productLineId' => $productLine->id]))
+        ];
 
-            array_push($this->resourceLinks, ...[
-                new ResourceLink('show.product', route($routeNamePrefix.'show', ['store' => $storeId, 'product' => $productId]), 'Show product')
-            ]);
-
+        if($productId) {
+            array_push($this->resourceLinks,
+                new ResourceLink('show.product', route('show.product', ['productId' => $productId]))
+            );
         }
-            */
     }
 }

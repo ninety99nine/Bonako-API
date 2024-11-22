@@ -42,7 +42,6 @@ class CreateOrdersTable extends Migration
             $table->text('store_note')->nullable();
 
             /* Cancellation Information */
-            $table->enum('status_before_cancellation', Order::STATUSES())->nullable();
             $table->enum('cancellation_reason', Order::CANCELLATION_REASONS())->nullable();
             $table->string('other_cancellation_reason', Order::OTHER_CANCELLATION_REASON_MAX_CHARACTERS)->nullable();
             $table->timestamp('cancelled_at')->nullable();

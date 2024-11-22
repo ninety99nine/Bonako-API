@@ -127,7 +127,9 @@ class FriendGroupRepository extends BaseRepository
      */
     public function showFirstCreatedFriendGroup(): FriendGroup|array|null
     {
-        $firstCreatedFriendGroup = request()->current_user->friendGroups()->joinedGroupAsCreator()->oldest()->first();
+        $query = request()->current_user->friendGroups()->joinedGroupAsCreator()->oldest();
+        $firstCreatedFriendGroup = $this->setQuery($query)->applyEagerLoadingOnQuery()->getQuery()->first();
+
         return $this->showResourceExistence($firstCreatedFriendGroup);
     }
 
@@ -138,7 +140,9 @@ class FriendGroupRepository extends BaseRepository
      */
     public function showLastSelectedFriendGroup(): FriendGroup|array|null
     {
-        $lastSelectedFriendGroup = request()->current_user->friendGroups()->orderByPivot('last_selected_at', 'DESC')->first();
+        $query = request()->current_user->friendGroups()->orderByPivot('last_selected_at', 'DESC');
+        $lastSelectedFriendGroup = $this->setQuery($query)->applyEagerLoadingOnQuery()->getQuery()->first();
+
         return $this->showResourceExistence($lastSelectedFriendGroup);
     }
 

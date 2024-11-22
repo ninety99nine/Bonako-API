@@ -98,11 +98,10 @@ class OrderPaidUsingDPO extends OrderNotification implements ShouldQueue
 
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
-        $store = $this->store;
         $order = $this->order;
         $transaction = $this->transaction;
         $subject = 'Order payment success';
-        $body = $order->craftOrderPaidMessage($store, $transaction);
+        $body = $order->craftOrderPaidMessage($order, $transaction);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

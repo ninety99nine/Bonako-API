@@ -27,9 +27,9 @@ class PayPricingPlanRequest extends FormRequest
     {
         return [
             'return' => ['sometimes', 'boolean'],
-            'store_id' => ['bail', 'sometimes', 'required', 'uuid'],
+            'store_id' => ['bail', 'sometimes', 'uuid'],
             'payment_method_id' => ['bail', 'required_without:payment_method_type', 'uuid'],
-            'payment_method_type' => ['required', 'required_without:payment_method_id', Rule::in(PaymentMethod::PAYMENT_METHOD_TYPES())]
+            'payment_method_type' => ['bail', 'required_without:payment_method_id', Rule::in(PaymentMethod::PAYMENT_METHOD_TYPES())]
         ];
     }
 

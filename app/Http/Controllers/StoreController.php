@@ -10,9 +10,11 @@ use App\Http\Requests\Models\Store\CreateStoreRequest;
 use App\Http\Requests\Models\Store\UpdateStoreRequest;
 use App\Http\Requests\Models\Store\InviteFollowersRequest;
 use App\Http\Requests\Models\Store\InviteTeamMembersRequest;
-use App\Http\Requests\Models\Store\RemoveStoreTeamMembersRequest;
+use App\Http\Requests\Models\Store\ShowStoreInsightsRequest;
 use App\Http\Requests\Models\Store\SearchStoreByAliasRequest;
+use App\Http\Requests\Models\Store\RemoveStoreTeamMembersRequest;
 use App\Http\Requests\Models\Store\SearchStoreByUssdMobileNumberRequest;
+use App\Http\Requests\Models\Store\ShowLastVisitedStoreRequest;
 use App\Http\Requests\Models\Store\UpdateStoreTeamMemberPermissionsRequest;
 
 class StoreController extends BaseController
@@ -49,6 +51,18 @@ class StoreController extends BaseController
     public function createStore(CreateStoreRequest $request): JsonResponse
     {
         return $this->prepareOutput($this->repository->createStore($request->all()));
+    }
+
+    /**
+     * Show last visited store.
+     *
+     * @param ShowLastVisitedStoreRequest $request
+     * @param string $alias
+     * @return JsonResponse
+     */
+    public function showLastVisitedStore(ShowLastVisitedStoreRequest $request): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showLastVisitedStore($request->input('alias')));
     }
 
     /**
@@ -247,6 +261,18 @@ class StoreController extends BaseController
     }
 
     /**
+     * Show store insights.
+     *
+     * @param string $storeId
+     * @param ShowStoreInsightsRequest $request
+     * @return JsonResponse
+     */
+    public function showStoreInsights(ShowStoreInsightsRequest $request, string $storeId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showStoreInsights($storeId, $request->all()));
+    }
+
+    /**
      * Show store followers.
      *
      * @param string $storeId
@@ -401,7 +427,7 @@ class StoreController extends BaseController
      */
     public function updateStoreTeamMemberPermissions(UpdateStoreTeamMemberPermissionsRequest $request, string $storeId, string $teamMemberId): JsonResponse
     {
-        return $this->prepareOutput($this->repository->updateStoreTeamMemberPermissions($storeId, $teamMemberId, $request->input('mobile_numbers')));
+        return $this->prepareOutput($this->repository->updateStoreTeamMemberPermissions($storeId, $teamMemberId, $request->input('permissions')));
     }
 
     /**
@@ -427,24 +453,13 @@ class StoreController extends BaseController
     }
 
     /**
-     * Show store subscriptions.
+     * Inspect store shopping cart.
      *
      * @param string $storeId
      * @return JsonResponse
      */
-    public function showStoreSubscriptions(string $storeId): JsonResponse
+    public function inspectStoreShoppingCart(string $storeId): JsonResponse
     {
-        return $this->prepareOutput($this->repository->showStoreSubscriptions($storeId));
-    }
-
-    /**
-     * Show store transactions.
-     *
-     * @param string $storeId
-     * @return JsonResponse
-     */
-    public function showStoreTransactions(string $storeId): JsonResponse
-    {
-        return $this->prepareOutput($this->repository->showStoreTransactions($storeId));
+        return $this->prepareOutput($this->repository->inspectStoreShoppingCart($storeId));
     }
 }

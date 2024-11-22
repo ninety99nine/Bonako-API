@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Enums\AddressType;
+use App\Traits\AddressTrait;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Address extends BaseModel
 {
-    use HasFactory;
+    use HasFactory, AddressTrait;
 
     const ADDRESS_MAX_CHARACTERS = 255;
     const ADDRESS2_MAX_CHARACTERS = 255;
@@ -42,5 +43,18 @@ class Address extends BaseModel
     public function owner()
     {
         return $this->morphTo();
+    }
+
+    /****************************
+     *  ACCESSORS               *
+     ***************************/
+
+    protected $appends = [
+        'complete_address'
+    ];
+
+    protected function getCompleteAddressAttribute()
+    {
+        return $this->completeAddress();
     }
 }

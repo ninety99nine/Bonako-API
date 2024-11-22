@@ -90,10 +90,9 @@ class OrderStatusUpdated extends OrderNotification implements ShouldQueue
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
         $order = $this->order;
-        $store = $this->store;
         $subject = 'Order status updated';
         $updatedByUser = $this->updatedByUser;
-        $body = $order->craftOrderStatusUpdatedMessage($store, $updatedByUser);
+        $body = $order->craftOrderStatusUpdatedMessage($order, $updatedByUser);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

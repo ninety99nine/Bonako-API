@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use App\Casts\Money;
 use App\Casts\Currency;
 use App\Traits\AuthTrait;
 use App\Traits\StoreTrait;
 use App\Casts\JsonToArray;
 use App\Enums\CallToAction;
+use App\Enums\InsightPeriod;
 use App\Models\Base\BaseModel;
+use App\Enums\InsightCategory;
 use App\Casts\E164PhoneNumberCast;
 use App\Casts\DeliveryDestinations;
 use App\Traits\UserStoreAssociationTrait;
@@ -74,6 +75,16 @@ class Store extends BaseModel
         'Team Member Joined As Creator', 'Team Member Joined As Non Creator', 'Follower', 'Unfollower', 'Invited To Follow',
         'Friend Group Member', 'Customer', 'Assigned', 'Recent Visitor', 'Associated', 'Active Subscription'
     ];
+
+    public static function INSIGHT_PERIODS(): array
+    {
+        return array_map(fn($method) => $method->value, InsightPeriod::cases());
+    }
+
+    public static function INSIGHT_CATEGORIES(): array
+    {
+        return array_map(fn($method) => $method->value, InsightCategory::cases());
+    }
 
     public static function CALL_TO_ACTION_OPTIONS(): array
     {
@@ -265,6 +276,16 @@ class Store extends BaseModel
         return $this->hasMany(Product::class);
     }
 
+    public function hiddenProducts()
+    {
+        return $this->products()->hidden();
+    }
+
+    public function visibleProducts()
+    {
+        return $this->products()->Visible();
+    }
+
     public function reviews()
     {
         return $this->hasMany(Review::class)->latest();
@@ -295,15 +316,9 @@ class Store extends BaseModel
         return $this->belongsTo(User::class, 'created_by_user_id', $this->hasAuthUser() ? $this->getAuthUser()->id : 0);
     }
 
-    /**
-     *  Returns the current authenticated user and store association
-     *
-     *  @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function authUserStoreAssociation()
+    public function userStoreAssociation()
     {
-        return $this->hasOne(UserStoreAssociation::class, 'store_id')
-                    ->where('user_id', request()->auth_user->id);
+        return $this->hasOne(UserStoreAssociation::class, 'store_id')->where('user_id', $this->hasAuthUser() ? $this->getAuthUser()->id : 0);
     }
 
     /**
@@ -366,48 +381,11 @@ class Store extends BaseModel
     }
 
     /**
-     *  Returns the current authenticated user's non-expired
-     *  subscriptions to this store
+     *  Returns the non-expired subscription to this store
      */
-    public function authSubscriptions()
+    public function activeSubscription()
     {
-        return $this->subscriptions()->belongsToAuth();
-    }
-
-    /**
-     *  Returns the current authenticated user's non-expired
-     *  subscriptions to this store
-     */
-    public function authActiveSubscriptions()
-    {
-        return $this->subscriptions()->notExpired()->belongsToAuth();
-    }
-
-    /**
-     *  Returns the current authenticated user's expired
-     *  subscriptions to this store
-     */
-    public function authInactiveSubscriptions()
-    {
-        return $this->subscriptions()->expired()->belongsToAuth();
-    }
-
-    /**
-     *  Returns the current authenticated user's non-expired
-     *  subscription to this store
-     */
-    public function authActiveSubscription()
-    {
-        return $this->morphOne(Subscription::class, 'owner')->notExpired()->belongsToAuth()->latest();
-    }
-
-    /**
-     *  Returns the current authenticated user's expired
-     *  subscription to this store
-     */
-    public function authInactiveSubscription()
-    {
-        return $this->morphOne(Subscription::class, 'owner')->expired()->belongsToAuth()->latest();
+        return $this->morphOne(Subscription::class, 'owner')->latest()->notExpired();
     }
 
     /**
@@ -456,7 +434,7 @@ class Store extends BaseModel
      ***************************/
 
     protected $appends = [
-        'name_with_emoji', 'shopper_access', 'team_member_access',
+        'name_with_emoji'
     ];
 
     public function nameWithEmoji(): Attribute
@@ -465,213 +443,4 @@ class Store extends BaseModel
             get: fn() => empty($this->emoji) ? $this->name : $this->emoji.' '.$this->name
         );
     }
-
-    /**
-     *  Attribute to check if the user can access this store as a shopper
-     */
-    protected function shopperAccess(): Attribute
-    {
-        /**
-         *  @var App\Models\Store $store
-         */
-        $store = $this;
-        $status = false;
-        $expiresAt = null;
-        $description = null;
-
-        //  Check if the last subscription to this store by any team member exists
-        $hasLastSubscriptionByAnyTeamMember = !empty($store->last_subscription_end_at);
-
-        //  Check if the last subscription by any team member has not expired
-        $lastSubscriptionByAnyTeamMemberHasNotExpired = $hasLastSubscriptionByAnyTeamMember ? Carbon::parse($store->last_subscription_end_at)->isFuture() : false;
-
-        //  Check if the store is online and if the last subscription by any team member has not yet expired
-        if( $store->online && $hasLastSubscriptionByAnyTeamMember && $lastSubscriptionByAnyTeamMemberHasNotExpired ) {
-
-            //  Shopper can access this store
-            $status = true;
-            $expiresAt = $store->last_subscription_end_at;
-
-        }else{
-
-            //  If the store has a custom offline message
-            if( !empty($store->offline_message) ) {
-
-                //  The user cannot shop (show custom message)
-                $description = $store->offline_message;
-
-            }else{
-
-                //  The user cannot shop (show default message)
-                $description = 'We are currently closed';
-
-            }
-
-        }
-
-        return new Attribute(
-            get: fn() => [
-                'status' => $status,
-                'expires_at' => $expiresAt,
-                'description' => $description,
-            ]
-        );
-    }
-
-
-    /**
-     *  Get the user and store association pivot model if provided
-     *
-     *  return @var App\Models\Pivots\UserStoreAssociation $userStoreAssociation
-     */
-    public function getUserStoreAssociationAttribute()
-    {
-        $userStoreAssociation = null;
-
-        /**
-         *  Check if the user and store association pivot model is loaded so that
-         *  we can determine if the user can access this shop. If the relationship
-         *  "user_store_association" exists then this store was acquired directly
-         *  from a user and store relationship e.g
-         *
-         *  $user->stores()->first();
-         */
-        if( $this->relationLoaded('user_store_association') ) {
-
-            /**
-             *  @var App\Models\Pivots\UserStoreAssociation $userStoreAssociation
-             */
-            $userStoreAssociation = $this->getRelation('user_store_association');
-
-        /**
-         *  Check if the user and store association pivot model is loaded so that
-         *  we can determine if the user can access this store. If the relationship
-         *  "authUserStoreAssociation" exists then this store was acquired without
-         *  a user and store relationship but the UserStoreAssociation was then
-         *  eager loaded on the store e.g
-         *
-         *  Store::with('authUserStoreAssociation')->first();
-         */
-        }elseif( $this->relationLoaded('authUserStoreAssociation') ) {
-
-            /**
-             *  @var App\Models\Pivots\UserStoreAssociation $userStoreAssociation
-             */
-            $userStoreAssociation = $this->getRelation('authUserStoreAssociation');
-
-        }
-
-        return $userStoreAssociation;
-    }
-
-    /**
-     *  Get the friend group and store association pivot model if provided
-     *
-     *  return @var App\Models\Pivots\FriendGroupStoreAssociation $friendGroupStoreAssociation
-     */
-    public function getFriendGroupStoreAssociationAttribute()
-    {
-        $friendGroupStoreAssociation = null;
-
-        /**
-         *  Check if the friend group and store association pivot model is loaded.
-         *  If the relationship "friend_group_store_association" exists then this
-         *  store was acquired directly from a friend group and store relationship
-         *  e.g
-         *
-         *  $friendGroup->stores()->first();
-         */
-        if( $this->relationLoaded('friend_group_store_association') ) {
-
-            /**
-             *  @var App\Models\Pivots\FriendGroupStoreAssociation $friendGroupStoreAssociation
-             */
-            $friendGroupStoreAssociation = $this->getRelation('friend_group_store_association');
-
-        /**
-         *  Check if the friend group and store association pivot model is loaded.
-         *  If the relationship "friendGroupStoreAssociation" exists then this
-         *  store was acquired without a friend group and store relationship
-         *  but the FriendGroupStoreAssociation was then eager loaded on the
-         *  store e.g
-         *
-         *  FriendGroup::with('friendGroupStoreAssociation')->first();
-         */
-        }elseif( $this->relationLoaded('friendGroupStoreAssociation') ) {
-
-            /**
-             *  @var App\Models\Pivots\FriendGroupStoreAssociation $friendGroupStoreAssociation
-             */
-            $friendGroupStoreAssociation = $this->getRelation('friendGroupStoreAssociation');
-
-        }
-
-        return $friendGroupStoreAssociation;
-    }
-
-    /**
-     * Attribute to check if the user can access this store as a team member
-     */
-    protected function teamMemberAccess(): Attribute
-    {
-        $status = false;
-        $expiresAt = null;
-        $description = null;
-        $userStoreAssociation = $this->user_store_association;
-
-        if( !is_null($userStoreAssociation) ) {
-
-            //  If the current authenticated user is associated as a team member
-            $authIsTeamMemberWhoHasJoined = $userStoreAssociation->is_team_member_who_has_joined;
-
-            //  If we are a team member
-            if( $authIsTeamMemberWhoHasJoined ) {
-
-                //  Check if the current authenticated user's last subscription to this store exists
-                $hasLastSubscriptionByCurrentTeamMember = !empty($userStoreAssociation->last_subscription_end_at);
-
-                //  If the team member has subscribed before
-                if( $hasLastSubscriptionByCurrentTeamMember ) {
-
-                    //  Check if the last subscription by the current authenticated user has not expired
-                    $lastSubscriptionByCurrentTeamMemberHasNotExpired = $hasLastSubscriptionByCurrentTeamMember ? Carbon::parse($userStoreAssociation->last_subscription_end_at)->isFuture() : false;
-
-                    //  If the last subscription by the currrent team member has not yet expired
-                    if( $lastSubscriptionByCurrentTeamMemberHasNotExpired ) {
-
-                        //  Team member can access this store
-                        $status = true;
-                        $expiresAt = $userStoreAssociation->last_subscription_end_at;
-
-                    }else{
-
-                        $description = 'Subscribe to continue selling';
-
-                    }
-
-                }else{
-
-                    $description = 'Subscribe to start selling';
-
-                }
-
-            }
-
-            return new Attribute(
-                get: fn() => [
-                    'status' => $status,
-                    'expires_at' => $expiresAt,
-                    'description' => $description,
-                ]
-            );
-
-        }else{
-
-            return new Attribute(
-                get: fn() => null
-            );
-
-        }
-    }
-
 }

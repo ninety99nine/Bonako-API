@@ -5,17 +5,17 @@ namespace App\Http\Controllers;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
 use App\Repositories\OrderRepository;
-use App\Http\Requests\Models\UncancelRequest;
 use App\Http\Controllers\Base\BaseController;
-use App\Http\Requests\Models\Order\AddOrderFriendGroupRequest;
 use App\Http\Requests\Models\Order\ShowOrdersRequest;
 use App\Http\Requests\Models\Order\MarkAsPaidRequest;
 use App\Http\Requests\Models\Order\UpdateOrderRequest;
-use App\Http\Requests\Models\Order\CancelOrderRequest;
 use App\Http\Requests\Models\Order\CreateOrderRequest;
 use App\Http\Requests\Models\Order\DeleteOrdersRequest;
 use App\Http\Requests\Models\Order\UpdateStatusRequest;
 use App\Http\Requests\Models\Order\RequestPaymentRequest;
+use App\Http\Requests\Models\Order\AddOrderFriendGroupRequest;
+use App\Http\Requests\Models\Order\ShowOrderStatusCountsRequest;
+use App\Http\Requests\Models\Order\VerifyOrderCollectionRequest;
 
 class OrderController extends BaseController
 {
@@ -39,7 +39,9 @@ class OrderController extends BaseController
      */
     public function showOrders(ShowOrdersRequest $request): JsonResponse
     {
-        if($request->storeId) {
+        if($request->userId) {
+            $request->merge(['user_id' => $request->userId]);
+        }else if($request->storeId) {
             $request->merge(['store_id' => $request->storeId]);
         }else if($request->customerId) {
             $request->merge(['customer_id' => $request->customerId]);
@@ -68,6 +70,17 @@ class OrderController extends BaseController
     public function deleteOrders(DeleteOrdersRequest $request): JsonResponse
     {
         return $this->prepareOutput($this->repository->deleteOrders($request->all()));
+    }
+
+    /**
+     * Show order status counts.
+     *
+     * @param ShowOrderStatusCountsRequest $request
+     * @return JsonResponse
+     */
+    public function showOrderStatusCounts(ShowOrderStatusCountsRequest $request): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showOrderStatusCounts($request->all()));
     }
 
     /**
@@ -105,30 +118,6 @@ class OrderController extends BaseController
     }
 
     /**
-     * Cancel order.
-     *
-     * @param CancelOrderRequest $request
-     * @param string $orderId
-     * @return JsonResponse
-     */
-    public function cancelOrder(CancelOrderRequest $request, string $orderId): JsonResponse
-    {
-        return $this->prepareOutput($this->repository->cancelOrder($orderId, $request->all()));
-    }
-
-    /**
-     * Uncancel order.
-     *
-     * @param UncancelRequest $request
-     * @param string $orderId
-     * @return JsonResponse
-     */
-    public function uncancelOrder(UncancelRequest $request, string $orderId): JsonResponse
-    {
-        return $this->prepareOutput($this->repository->uncancelOrder($orderId));
-    }
-
-    /**
      * Show order cancellation reasons.
      *
      * @return JsonResponse
@@ -158,6 +147,18 @@ class OrderController extends BaseController
     public function revokeOrderCollectionCode(string $orderId): JsonResponse
     {
         return $this->prepareOutput($this->repository->revokeOrderCollectionCode($orderId));
+    }
+
+    /**
+     * Verify order collection.
+     *
+     * @param UpdateStatusRequest $request
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function verifyOrderCollection(VerifyOrderCollectionRequest $request, string $orderId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->verifyOrderCollection($orderId, $request->all()));
     }
 
     /**
@@ -217,6 +218,17 @@ class OrderController extends BaseController
     public function markOrderAsPaid(MarkAsPaidRequest $request, string $orderId): JsonResponse
     {
         return $this->prepareOutput($this->repository->markOrderAsPaid($orderId, $request->all()));
+    }
+
+    /**
+     * Mark order as unpaid.
+     *
+     * @param string $orderId
+     * @return JsonResponse
+     */
+    public function markOrderAsUnpaid(string $orderId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->markOrderAsUnpaid($orderId));
     }
 
     /**

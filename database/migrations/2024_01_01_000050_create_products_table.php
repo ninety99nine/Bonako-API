@@ -2,7 +2,8 @@
 
 use App\Models\Store;
 use App\Models\Product;
-use Illuminate\Support\Arr;
+use App\Enums\StockQuantityType;
+use App\Enums\AllowedQuantityPerOrder;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
@@ -70,12 +71,12 @@ class CreateProductsTable extends Migration
             $table->unsignedSmallInteger('unit_loss_percentage')->default(0);
 
             /*  Quantity Information  */
-            $table->enum('allowed_quantity_per_order', Product::ALLOWED_QUANTITY_PER_ORDER)->default(Arr::last(Product::ALLOWED_QUANTITY_PER_ORDER));
+            $table->enum('allowed_quantity_per_order', Product::ALLOWED_QUANTITY_PER_ORDER_OPTIONS())->default(AllowedQuantityPerOrder::UNLIMITED);
             $table->unsignedSmallInteger('maximum_allowed_quantity_per_order')->default(1);
 
             /*  Stock Information  */
             $table->boolean('has_stock')->default(true);
-            $table->enum('stock_quantity_type', Product::STOCK_QUANTITY_TYPE)->default(Arr::last(Product::STOCK_QUANTITY_TYPE));
+            $table->enum('stock_quantity_type', Product::STOCK_QUANTITY_TYPES())->default(StockQuantityType::UNLIMITED);
             $table->unsignedMediumInteger('stock_quantity')->default(100);
 
             /*  Arrangement Information  */

@@ -1,16 +1,14 @@
 <?php
 
-namespace App\Http\Requests\Models\Order;
+namespace App\Http\Requests\Models\Store;
 
-use App\Models\PaymentMethod;
-use App\Traits\Base\BaseTrait;
+use App\Enums\Association;
+use App\Models\Store;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class MarkAsPaidRequest extends FormRequest
+class ShowStoreInsightsRequest extends FormRequest
 {
-    use BaseTrait;
-
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -30,8 +28,12 @@ class MarkAsPaidRequest extends FormRequest
     {
         try {
 
-            if($this->has('payment_method_type')) {
-                $this->merge(['payment_method_type' => $this->separateWordsThenLowercase($this->get('payment_method_type'))]);
+            if($this->has('period')) {
+                $this->merge(['period' => strtolower($this->request->all()['period'])]);
+            }
+
+            if($this->has('category')) {
+                $this->merge(['category' => strtolower($this->request->all()['category'])]);
             }
 
         } catch (\Throwable $th) {
@@ -49,11 +51,8 @@ class MarkAsPaidRequest extends FormRequest
     public function rules()
     {
         return [
-            'payment_method_id' => ['bail', 'sometimes', 'required_without:payment_method_type', 'uuid'],
-            'percentage' => ['bail', 'required_without:amount', 'numeric', 'min:1', 'max:100'],
-            'amount' => ['bail', 'required_without:percentage', 'min:0', 'not_in:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'payment_method_type' => ['bail', 'sometimes', 'required_without:payment_method_id', Rule::in(PaymentMethod::PAYMENT_METHOD_TYPES())],
-            'transaction_proof_of_payment_photo' => ['bail', 'nullable', 'mimetypes:image/jpeg,image/png,image/jpg,image/gif,image/bmp', 'max:4096'],
+            'period' => ['bail', 'required', Rule::in(Store::INSIGHT_PERIODS())],
+            'category' => ['bail', 'sometimes', Rule::in(Store::INSIGHT_CATEGORIES())],
         ];
     }
 
@@ -64,9 +63,7 @@ class MarkAsPaidRequest extends FormRequest
      */
     public function messages()
     {
-        return [
-            'transaction_proof_of_payment_photo.max' => 'The :attribute must not be greater than 4 megabytes'
-        ];
+        return [];
     }
 
     /**

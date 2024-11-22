@@ -75,7 +75,6 @@ class Kernel extends HttpKernel
         'format.response.payload' => \App\Http\Middleware\FormatResponsePayload::class,
         'response.payload.limiter' => \App\Http\Middleware\ResponsePayloadLimiter::class,
         'last.seen' => \App\Http\Middleware\LastSeen::class,
-        'last.seen.at.store' => \App\Http\Middleware\LastSeenAtStore::class,
         'mark.order.as.seen.by.team.member' => \App\Http\Middleware\MarkOrderAsSeenByTeamMember::class,
         'set.auth.user.on.request' => \App\Http\Middleware\SetAuthUserOnRequest::class,
         'set.current.user.on.request' => \App\Http\Middleware\SetCurrentUserOnRequest::class,
@@ -102,7 +101,6 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\SetAuthUserOnRequest::class,               //  Then set the authenticated user on request (if any)
         \App\Http\Middleware\SetCurrentUserOnRequest::class,            //  Then set the current user on request (if any)
         \App\Http\Middleware\Authenticate::class,                       //  Then Authenticate the request
-        \App\Http\Middleware\LastSeenAtStore::class,                    //  Then update last seen at store
         \Illuminate\Routing\Middleware\ThrottleRequests::class,         //  Then check the rate limits against the authenticated user (if any)
 
         /**

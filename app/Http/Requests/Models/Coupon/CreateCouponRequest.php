@@ -116,7 +116,7 @@ class CreateCouponRequest extends FormRequest
             /*  Offer Discount Information  */
             'offer_discount' => array_merge(
                 ['bail', 'sometimes', 'boolean'],
-                $offerFreeDelivery ? [] : ['required', new IsTruthy]
+                $offerFreeDelivery ? [] : ['required']
             ),
             'discount_type' => ['bail', 'sometimes', 'required', Rule::in($discountTypes)],
             'discount_percentage_rate' => ['bail', 'sometimes', 'required', 'min:1', 'max:100', 'numeric'],
@@ -125,7 +125,7 @@ class CreateCouponRequest extends FormRequest
             /*  Offer Delivery Information  */
             'offer_free_delivery' => array_merge(
                 ['bail', 'sometimes', 'boolean'],
-                $offerDiscount ? [] : ['required', new IsTruthy]
+                $offerDiscount ? [] : ['required']
             ),
 
             /*  Code Activation Information  */

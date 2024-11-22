@@ -1,11 +1,15 @@
 <?php
 
-namespace App\Http\Requests\Models\Product;
+namespace App\Http\Requests\Models\Store;
 
+use App\Models\Store;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateProductVisibilityRequest extends FormRequest
+class ShowLastVisitedStoreRequest extends FormRequest
 {
+    use BaseTrait;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -23,12 +27,7 @@ class UpdateProductVisibilityRequest extends FormRequest
      */
     public function rules()
     {
-        return [
-            'store_id' => ['required', 'uuid'],
-            'visibility' => ['required', 'array'],
-            'visibility.*.visible' => ['bail', 'boolean'],
-            'visibility.*.id' => ['bail', 'uuid', 'distinct'],
-        ];
+        return [];
     }
 
     /**

@@ -15,6 +15,7 @@ Route::controller(TransactionController::class)
             Route::get('/', 'showTransaction')->name('show.transaction');
             Route::put('/', 'updateTransaction')->name('update.transaction');
             Route::delete('/', 'deleteTransaction')->name('delete.transaction');
+            Route::post('/renew', 'renewPaymentLink')->name('renew.transaction.payment.link');
 
             Route::get('/proof-of-payment', 'showTransactionProofOfPaymentPhoto')->name('show.transaction.proof.of.payment.photo');
             Route::post('/proof-of-payment', 'uploadTransactionProofOfPaymentPhoto')->name('upload.transaction.proof.of.payment.photo');

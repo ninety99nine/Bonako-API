@@ -121,9 +121,7 @@ class CouponRepository extends BaseRepository
      */
     public function showCoupon(string $couponId): Coupon|array|null
     {
-        $query = Coupon::with(['store'])->whereId($couponId);
-        $this->setQuery($query)->applyEagerLoadingOnQuery();
-        $coupon = $this->query->first();
+        $coupon = $this->setQuery(Coupon::with(['store'])->whereId($couponId))->applyEagerLoadingOnQuery()->getQuery()->first();
 
         if($coupon) {
             $store = $coupon->store;

@@ -17,9 +17,6 @@ class ProductLine extends BaseModel
 
     protected $table = 'product_lines';
 
-    const ALLOWED_QUANTITY_PER_ORDER = ['Limited', 'Unlimited'];
-    CONST STOCK_QUANTITY_TYPE = ['Limited', 'Unlimited'];
-
     protected $casts = [
         'is_free' => 'boolean',
         'on_sale' => 'boolean',

@@ -2,17 +2,17 @@
 
 namespace App\Http\Resources\Helpers;
 
+use Illuminate\Support\Str;
+
 class ResourceLink {
 
     public $name;
     public $href;
-    public $description;
 
-    public function __construct($name, $href, $description = '')
+    public function __construct($name, $href)
     {
         $this->name = $name;
         $this->href = $href;
-        $this->description = $description;
     }
 
     /**
@@ -22,7 +22,7 @@ class ResourceLink {
     public function getLink()
     {
         return [
-            $this->name => $this->href
+            Str::replace('.', '_', $this->name) => $this->href
         ];
     }
 }

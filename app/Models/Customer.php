@@ -6,6 +6,7 @@ use App\Casts\Money;
 use App\Casts\Currency;
 use App\Models\Base\BaseModel;
 use App\Casts\E164PhoneNumberCast;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Customer extends BaseModel
@@ -78,5 +79,20 @@ class Customer extends BaseModel
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /****************************
+     *  ACCESSORS               *
+     ***************************/
+
+    protected $appends = [
+        'name'
+    ];
+
+    protected function name(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => trim($this->getRawOriginal('first_name').' '.$this->getRawOriginal('last_name'))
+        );
     }
 }

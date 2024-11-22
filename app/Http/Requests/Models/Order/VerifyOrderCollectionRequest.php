@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Http\Requests\Models\Product;
+namespace App\Http\Requests\Models\Order;
 
+use App\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateProductVisibilityRequest extends FormRequest
+class VerifyOrderCollectionRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,10 +25,8 @@ class UpdateProductVisibilityRequest extends FormRequest
     public function rules()
     {
         return [
-            'store_id' => ['required', 'uuid'],
-            'visibility' => ['required', 'array'],
-            'visibility.*.visible' => ['bail', 'boolean'],
-            'visibility.*.id' => ['bail', 'uuid', 'distinct'],
+            'collection_code' => ['bail', 'required', 'digits:6'],
+            'collection_note' => ['bail', 'sometimes', 'string', 'min:'.Order::COLLECTION_NOTE_MIN_CHARACTERS, 'max:'.Order::COLLECTION_NOTE_MAX_CHARACTERS],
         ];
     }
 

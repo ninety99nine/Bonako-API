@@ -109,6 +109,11 @@ class CartRepository extends BaseRepository
      */
     public function createProductLines(Cart $cart, $data): CartRepository
     {
+        foreach($data as $key => $productLine) {
+            $data[$key]['created_at'] = now();
+            $data[$key]['updated_at'] = now();
+        }
+
         $cart->productLines()->insert($data);
         return $this;
     }
@@ -122,8 +127,12 @@ class CartRepository extends BaseRepository
      */
     public function createCouponLines(Cart $cart, $data)
     {
-        $cart->couponLines()->insert($data);
+        foreach($data as $key => $couponLine) {
+            $data[$key]['created_at'] = now();
+            $data[$key]['updated_at'] = now();
+        }
 
+        $cart->couponLines()->insert($data);
         return $this;
     }
 
@@ -208,6 +217,10 @@ class CartRepository extends BaseRepository
 
                     }else{
 
+                        foreach($data as $key => $productLine) {
+                            $data[$key]['updated_at'] = now();
+                        }
+
                         //  Lets update it using the information from the existing specified product line
                         $existingProductLine->update($data);
 
@@ -225,6 +238,11 @@ class CartRepository extends BaseRepository
 
                 //  Get the specified product lines database entries information (array of multiple entries)
                 $data = $this->getShoppingCartService()->prepareSpecifiedProductLinesForDB($cart->id, $productIds);
+
+                foreach($data as $key => $productLine) {
+                    $data[$key]['created_at'] = now();
+                    $data[$key]['updated_at'] = now();
+                }
 
                 //  Lets create them using the information from the existing specified product lines
                 $this->createProductLines($cart, $data);
@@ -322,6 +340,10 @@ class CartRepository extends BaseRepository
 
                     }else{
 
+                        foreach($data as $key => $couponLine) {
+                            $data[$key]['updated_at'] = now();
+                        }
+
                         //  Lets update it using the information from the existing specified coupon line
                         $existingCouponLine->update($data);
 
@@ -339,6 +361,11 @@ class CartRepository extends BaseRepository
 
                 //  Get the specified coupon lines database entries information (array of multiple entries)
                 $data = $this->getShoppingCartService()->prepareSpecifiedCouponLinesForDB($cart->id, $couponIds);
+
+                foreach($data as $key => $couponLine) {
+                    $data[$key]['created_at'] = now();
+                    $data[$key]['updated_at'] = now();
+                }
 
                 //  Lets create them using the information from the existing specified coupon lines
                 $this->createCouponLines($cart, $data);

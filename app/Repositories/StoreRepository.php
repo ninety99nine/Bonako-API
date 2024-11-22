@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Store;
 use App\Enums\CacheName;
@@ -9,17 +10,19 @@ use App\Models\MediaFile;
 use App\Traits\AuthTrait;
 use App\Enums\Association;
 use Illuminate\Support\Str;
+use App\Enums\InsightPeriod;
 use App\Enums\FollowerStatus;
 use App\Helpers\CacheManager;
 use App\Enums\TeamMemberRole;
 use App\Enums\RequestFileName;
 use App\Traits\Base\BaseTrait;
 use App\Enums\TeamMemberStatus;
+use App\Helpers\PlatformManager;
 use App\Enums\InvitationResponse;
 use Illuminate\Support\Facades\DB;
+use App\Http\Resources\CartResource;
 use App\Http\Resources\UserResources;
 use App\Http\Resources\StoreResources;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Notifications\Stores\StoreCreated;
 use App\Http\Resources\MediaFileResources;
@@ -102,6 +105,24 @@ class StoreRepository extends BaseRepository
     }
 
     /**
+     * Show last visited store.
+     *
+     * @return Store|array|null
+     */
+    public function showLastVisitedStore(): Store|array|null
+    {
+        if($this->hasAuthUser()) {
+            $query = $this->getAuthUser()->storesAsRecentVisitor()->orderByPivot('last_seen_at', 'DESC');
+            $this->setQuery($query)->applyEagerLoadingOnQuery();
+            $store = $this->query->first();
+        }else{
+            $store = null;
+        }
+
+        return $this->updateLastSeenAtStore($store)->showResourceExistence($store);
+    }
+
+    /**
      * Search store by alias.
      *
      * @param string $alias
@@ -112,7 +133,8 @@ class StoreRepository extends BaseRepository
         $query = Store::searchAlias($alias);
         $this->setQuery($query)->applyEagerLoadingOnQuery();
         $store = $this->query->first();
-        return $this->showResourceExistence($store);
+
+        return $this->updateLastSeenAtStore($store)->showResourceExistence($store);
     }
 
     /**
@@ -127,7 +149,8 @@ class StoreRepository extends BaseRepository
         $query = Store::searchUssdMobileNumber($ussdMobileNumber);
         $this->setQuery($query)->applyEagerLoadingOnQuery();
         $store = $this->query->first();
-        return $this->showResourceExistence($store);
+
+        return $this->updateLastSeenAtStore($store)->showResourceExistence($store);
     }
 
     /**
@@ -317,7 +340,7 @@ class StoreRepository extends BaseRepository
             $store = $this->query->first();
         }
 
-        return $this->showResourceExistence($store);
+        return $this->updateLastSeenAtStore($store)->showResourceExistence($store);
     }
 
     /**
@@ -338,7 +361,7 @@ class StoreRepository extends BaseRepository
             if($isAuthourized) {
 
                 $store->update($data);
-                return $this->showUpdatedResource($store);
+                return $this->updateLastSeenAtStore($store)->showUpdatedResource($store);
 
             }else{
                 return ['updated' => false, 'message' => 'You do not have permission to update this store'];
@@ -619,6 +642,299 @@ class StoreRepository extends BaseRepository
     }
 
     /**
+     * Show store insights.
+     *
+     * @param string $storeId
+     * @param array $data
+     * @return array
+     */
+    public function showStoreInsights(string $storeId, array $data = []): array
+    {
+       $store = Store::find($storeId);
+
+        if($store) {
+
+            $userStoreAssociation = $this->getUserStoreAssociation($store);
+            $isAuthourized = $this->isAuthourized() || ($userStoreAssociation && $this->checkIfAssociatedAsStoreCreatorOrAdmin($store, $userStoreAssociation));
+
+            if($isAuthourized) {
+
+                $insights = [];
+                $period = $data['period'] ?? null;
+                $category = $data['category'] ?? null;
+                $isUssd = (new PlatformManager)->isUssd();
+
+                $add = function(array $insight) use (&$insights) {
+                    array_push($insights, [
+                        'name' => $insight[0],
+                        'metric' => $insight[1]
+                    ]);
+                };
+
+                [$dateRange1, $dateRange2] = match ($period) {
+                    InsightPeriod::TODAY->value => [Carbon::today(), Carbon::now()],
+                    InsightPeriod::YESTERDAY->value => [Carbon::yesterday()->startOfDay(), Carbon::yesterday()->endOfDay()],
+                    InsightPeriod::THIS_WEEK->value => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
+                    InsightPeriod::THIS_MONTH->value => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
+                    InsightPeriod::THIS_YEAR->value => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()]
+                };
+
+                [$periodName, $periodType] = match ($period) {
+                    InsightPeriod::TODAY->value => ['hour', '%H:00'],
+                    InsightPeriod::YESTERDAY->value => ['hour', '%H:00'],
+                    InsightPeriod::THIS_WEEK->value => ['day', '%a'],
+                    InsightPeriod::THIS_MONTH->value => ['day', '%D'],
+                    InsightPeriod::THIS_YEAR->value => ['month', '%b']
+                };
+
+                $ordersQuery = DB::table('orders')->where('store_id', $store->id);
+                if ($dateRange1 && $dateRange2) $ordersQuery->whereBetween('created_at', [$dateRange1, $dateRange2]);
+
+                if (in_array($category, ['sales', 'all'])) {
+
+                    $salesByPeriod = $ordersQuery
+                        ->selectRaw("DATE_FORMAT(created_at, '$periodType') as period, COUNT(*) as total_orders, SUM(grand_total) as total_grand_total")
+                        ->groupByRaw("DATE_FORMAT(created_at, '$periodType')")
+                        ->orderByRaw("COUNT(*) DESC")
+                        ->get();
+
+                    $totalOrders = $salesByPeriod->sum('total_orders');
+                    $totalSales = $salesByPeriod->sum('total_grand_total');
+                    $avgSalesPerOrder = $totalSales / max($totalOrders, 1);
+
+                    $totalSalesByPeriod = $salesByPeriod->pluck('total_grand_total', 'period')->sortDesc();
+
+                    if ($totalSalesByPeriod->isEmpty()) {
+                        $highestSalesDay = $lowestSalesDay = 'N/A';
+                    } else {
+                        $highestSalesHour = $totalSalesByPeriod->keys()->first();
+                        $highestSalesAmount = $totalSalesByPeriod->get($highestSalesHour, 0);
+
+                        $lowestSalesHour = $totalSalesByPeriod->keys()->last();
+                        $lowestSalesAmount = $totalSalesByPeriod->get($lowestSalesHour, 0);
+
+                        $highestSalesDay = $highestSalesHour ? "{$highestSalesHour} ({$this->convertToMoneyFormat($highestSalesAmount, $store->currency)->amountWithCurrency})" : 'N/A';
+
+                        $lowestSalesDays = $totalSalesByPeriod->filter(function ($amount) use ($lowestSalesAmount) {
+                            return $amount === $lowestSalesAmount;
+                        })->keys();
+
+                        if ($lowestSalesDays->count() === 1) {
+                            $lowestSalesDay = "{$lowestSalesDays->first()} ({$this->convertToMoneyFormat($lowestSalesAmount, $store->currency)->amountWithCurrency})";
+                        } else {
+                            $lowestSalesDay = 'N/A';
+                        }
+
+                        if ($highestSalesAmount === $lowestSalesAmount) {
+                            $lowestSalesDay = 'N/A';
+                        }
+                    }
+
+                    $totalSales = $this->convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency;
+
+                    $add([$isUssd ? 'Sales' : 'Total sales', $totalSales.' ('. $totalOrders . ($totalOrders == 1 ? ' order' : ' orders') . ')']);
+                    $add([$isUssd ? 'Avg sale per order' : 'Average sale per order', $this->convertToMoneyFormat($avgSalesPerOrder, $store->currency)->amountWithCurrency]);
+                    $add([$isUssd ? "Best $periodName" : "Highest sales $periodName", $highestSalesDay]);
+                    $add([$isUssd ? "Worst $periodName" : "Lowest sales $periodName", $lowestSalesDay]);
+
+                }
+
+                if (in_array($category, ['orders', 'all'])) {
+
+                    $ordersByPeriod = $ordersQuery
+                        ->selectRaw("DATE_FORMAT(created_at, '$periodType') as period, COUNT(*) as total_orders, SUM(grand_total) as total_grand_total")
+                        ->groupByRaw("DATE_FORMAT(created_at, '$periodType')")
+                        ->orderByRaw("COUNT(*) DESC")
+                        ->get();
+
+                    $totalOrders = $ordersByPeriod->sum('total_orders');
+                    $totalSales = $ordersByPeriod->sum('total_grand_total');
+
+                    $totalOrdersByPeriod = $ordersByPeriod->pluck('total_orders', 'period')->sortDesc();
+
+                    if ($ordersByPeriod->isEmpty()) {
+                        $mostOrderDay = $leastOrderDay = 'N/A';
+                    } else {
+                        $mostOrderPeriod = $totalOrdersByPeriod->keys()->first();
+                        $mostOrderCount = $totalOrdersByPeriod->values()->first();
+
+                        $leastOrderPeriod = $totalOrdersByPeriod->keys()->last();
+                        $leastOrderCount = $totalOrdersByPeriod->values()->last();
+
+                        $mostOrderDay = "{$mostOrderPeriod} ({$mostOrderCount} " . ($mostOrderCount == 1 ? 'order' : 'orders') . ")";
+
+                        $leastOrderPeriods = $ordersByPeriod->filter(function ($order) use ($leastOrderCount) {
+                            return $order->total_orders === $leastOrderCount;
+                        })->pluck('period');
+
+                        if ($leastOrderPeriods->count() === 1) {
+                            $leastOrderDay = "{$leastOrderPeriods->first()} ({$leastOrderCount} " . ($leastOrderCount == 1 ? 'order' : 'orders') . ")";
+                        } else {
+                            $leastOrderDay = 'N/A';
+                        }
+                    }
+
+                    $add([$isUssd ? 'Orders' : 'Total orders', "{$totalOrders} ({$this->convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency})"]);
+                    $add(['Most orders', $mostOrderDay]);
+                    $add(['Least orders', $leastOrderDay]);
+
+                }
+
+                // Handle other categories similarly
+                if (in_array($category, ['products', 'all'])) {
+
+                    $productsBySales = DB::table('product_lines')
+                        ->selectRaw("
+                            product_id,
+                            products.name as product_name,
+                            SUM(quantity) as total_quantity,
+                            SUM(grand_total) as total_revenue,
+                            SUM(CASE WHEN is_cancelled = 1 THEN quantity ELSE 0 END) as cancelled_quantity,
+                            SUM(CASE WHEN is_cancelled = 1 THEN grand_total ELSE 0 END) as cancelled_revenue,
+                            SUM(product_lines.unit_sale_discount) as total_discount
+                        ")
+                        ->join('products', 'product_lines.product_id', '=', 'products.id')
+                        ->where('product_lines.store_id', $store->id)
+                        ->whereBetween('product_lines.created_at', [$dateRange1, $dateRange2])
+                        ->groupBy('product_id')
+                        ->orderBy('total_revenue', 'desc')
+                        ->orderBy('total_quantity', 'desc')
+                        ->get();
+
+                    // Top-selling product
+                    $topSellingProduct = $productsBySales->first();
+                    $topSelling = $topSellingProduct
+                        ? "{$topSellingProduct->product_name} ({$topSellingProduct->total_quantity} units, " .
+                          $this->convertToMoneyFormat($topSellingProduct->total_revenue, $store->currency)->amountWithCurrency . ")"
+                        : 'N/A';
+
+                    // Least-selling product
+                    $leastSellingProduct = $productsBySales->last();
+                    if ($leastSellingProduct) {
+                        if ($topSellingProduct->product_id != $leastSellingProduct->product_id) {
+                            $matchingLeastSellingProducts = $productsBySales->filter(function ($productBySale) use ($leastSellingProduct) {
+                                return $productBySale->total_revenue === $leastSellingProduct->total_revenue &&
+                                       $productBySale->total_quantity === $leastSellingProduct->total_quantity;
+                            });
+
+                            if ($matchingLeastSellingProducts->count() === 1) {
+                                $leastSelling = "{$leastSellingProduct->product_name} ({$leastSellingProduct->total_quantity} units, " .
+                                    $this->convertToMoneyFormat($leastSellingProduct->total_revenue, $store->currency)->amountWithCurrency . ")";
+                            } else {
+                                $leastSelling = 'N/A';
+                            }
+                        } else {
+                            $leastSelling = 'N/A';
+                        }
+                    } else {
+                        $leastSelling = 'N/A';
+                    }
+
+                    // Total and canceled quantities, revenue, and discount
+                    $totalQuantity = $productsBySales->sum('total_quantity');
+                    $totalProductRevenue = $productsBySales->sum('total_revenue');
+                    $totalCancelledQuantity = $productsBySales->sum('cancelled_quantity');
+                    $totalCancelledRevenue = $productsBySales->sum('cancelled_revenue');
+                    $totalDiscount = $productsBySales->sum('total_discount');
+
+                    // Average revenue per product
+                    $avgRevenuePerProduct = $totalQuantity > 0 ? $totalProductRevenue / $totalQuantity : 0;
+
+                    $avgRevenuePerProductFormatted = $this->convertToMoneyFormat($avgRevenuePerProduct, $store->currency)->amountWithCurrency;
+                    $totalProductRevenueFormatted = $this->convertToMoneyFormat($totalProductRevenue, $store->currency)->amountWithCurrency;
+                    $totalCancelledRevenueFormatted = $this->convertToMoneyFormat($totalCancelledRevenue, $store->currency)->amountWithCurrency;
+                    $totalDiscountFormatted = $this->convertToMoneyFormat($totalDiscount, $store->currency)->amountWithCurrency;
+
+                    // Add insights to output
+                    $add(['Top-selling', $topSelling]);
+                    $add(['Least-selling', $leastSelling]);
+                    $add(['Products sold', $totalQuantity . ' (' . $totalProductRevenueFormatted . ')']);
+                    $add(['Products cancelled', $totalCancelledQuantity . ' (' . $totalCancelledRevenueFormatted . ')']);
+                    $add(['Offered discounts', $totalDiscountFormatted]);
+                    $add([$isUssd ? 'Avg revenue per product' : 'Average revenue per product', $avgRevenuePerProductFormatted]);
+                }
+
+                if (in_array($category, ['customers', 'all'])) {
+
+                    $customersData = DB::table('customers')
+                        ->selectRaw("
+                            customers.id as customer_id,
+                            COUNT(orders.id) as total_orders,
+                            SUM(orders.grand_total) as total_spend
+                        ")
+                        ->leftJoin('orders', 'customers.id', '=', 'orders.customer_id')
+                        ->where('orders.store_id', $store->id)
+                        ->whereBetween('orders.created_at', [$dateRange1, $dateRange2])
+                        ->groupBy('customer_id')
+                        ->get();
+
+                    // Total customers
+                    $totalCustomers = $customersData->count();
+
+                    // New and return customers
+                    $newCustomers = $customersData->filter(fn($record) => $record->total_orders == 1)->count();
+                    $returnCustomers = $customersData->filter(fn($record) => $record->total_orders > 1)->count();
+
+                    // Retention Rate
+                    $retentionRate = ($returnCustomers / $totalCustomers) * 100;
+
+                    // Revenue per Customer
+                    $totalRevenue = $customersData->sum('total_spend');
+                    $revenuePerCustomer = $this->convertToMoneyFormat($totalRevenue / $totalCustomers, $store->currency)->amountWithCurrency;
+
+                    // Determine previous date range based on the period
+                    [$previousDateRange1, $previousDateRange2] = match ($period) {
+                        InsightPeriod::TODAY->value => [$dateRange1->subDay(), $dateRange2->subDay()],
+                        InsightPeriod::YESTERDAY->value => [$dateRange1->subDays(2), $dateRange2->subDay(2)],
+                        InsightPeriod::THIS_WEEK->value => [$dateRange1->subWeek(), $dateRange2->subWeek()],
+                        InsightPeriod::THIS_MONTH->value => [$dateRange1->subMonth(), $dateRange2->subMonth()],
+                        InsightPeriod::THIS_YEAR->value => [$dateRange1->subYear(), $dateRange2->subYear()],
+                    };
+
+                    // Get the number of customers in the previous period
+                    $previousPeriodCustomers = DB::table('customers')
+                        ->leftJoin('orders', 'customers.id', '=', 'orders.customer_id')
+                        ->where('orders.store_id', $store->id)
+                        ->whereBetween('orders.created_at', [$previousDateRange1, $previousDateRange2])
+                        ->count();
+
+                    // Calculate Customer Growth Rate
+                    $customerGrowthRate = 0;
+
+                    if ($previousPeriodCustomers == 0 && $totalCustomers > 0) {
+                        $customerGrowthRate = 100;
+                    } elseif ($previousPeriodCustomers > 0) {
+                        $customerGrowthRate = (($totalCustomers - $previousPeriodCustomers) / $previousPeriodCustomers) * 100;
+                    }
+
+                    // Add insights
+                    $add(['Total customers', $totalCustomers]);
+                    $add(['New customers', $newCustomers]);
+                    $add(['Return customers', $returnCustomers]);
+                    $add(['Retention Rate', $retentionRate . '%']);
+                    $add(['Revenue per Customer', $revenuePerCustomer]);
+                    $add(['Customer Growth Rate', round($customerGrowthRate, 1) . '% (' . ($customerGrowthRate > 0 ? 'increased' : ($customerGrowthRate == 0 ? 'no change' : 'decreased')) . ')']);
+                }
+
+                if (in_array($category, ['operations', 'all'])) {
+
+
+                }
+
+                return [
+                    'insights' => $insights
+                ];
+
+            }else{
+                return ['message' => 'You do not have permission to show store insights'];
+            }
+
+        }else{
+            return ['message' => 'This store does not exist'];
+        }
+    }
+
+    /**
      * Show store followers.
      *
      * @param string $storeId
@@ -859,7 +1175,11 @@ class StoreRepository extends BaseRepository
 
             if($storeUserAssociation && $storeUserAssociation->is_team_member_who_has_joined) {
 
-                return $storeUserAssociation->team_member_permissions;
+                return [
+                    'has_full_permissions' => $storeUserAssociation->has_full_permissions,
+                    'permissions' => $storeUserAssociation->team_member_permissions,
+                    'status' => $storeUserAssociation->team_member_status
+                ];
 
             }else{
                 return ['message' => 'You are not a team member on this store'];
@@ -1039,13 +1359,11 @@ class StoreRepository extends BaseRepository
 
                 $storeUserAssociation = $this->getUserStoreAssociation($store, $teamMemberId);
 
-                if($storeUserAssociation && $storeUserAssociation->is_team_member_who_has_joined) {
-
-                    return $storeUserAssociation->team_member_permissions;
-
-                }else{
-                    return ['message' => 'This user is not a team member on this store'];
-                }
+                return [
+                    'has_full_permissions' => $storeUserAssociation->has_full_permissions,
+                    'permissions' => $storeUserAssociation->team_member_permissions,
+                    'status' => $storeUserAssociation->team_member_status
+                ];
 
             }else{
                 return ['message' => 'This team member does not exist'];
@@ -1082,10 +1400,11 @@ class StoreRepository extends BaseRepository
 
                     $storeUserAssociation = $this->getUserStoreAssociation($store, $teamMemberId);
 
-                    if($storeUserAssociation && $storeUserAssociation->is_team_member_who_has_joined) {
+                    if($storeUserAssociation && ($storeUserAssociation->is_team_member_who_has_joined || $storeUserAssociation->is_team_member_who_is_invited)) {
 
                         if($storeUserAssociation->is_team_member_as_creator) return ['updated' => false, 'message' => 'You cannot change permissions of the store creator'];
 
+                        $teamMemberPermissions = $this->normalizePermissions($teamMemberPermissions);
                         $teamMemberRole = $this->determineRoleBasedOnPermissions($teamMemberPermissions);
 
                         DB::table('user_store_association')->where([
@@ -1220,7 +1539,7 @@ class StoreRepository extends BaseRepository
      */
     public function updateStoreQuota(Store|string $storeId, array $data): Store|array
     {
-       $store = $storeId instanceof Store ? Store::find($storeId) : $storeId;
+       $store = $storeId instanceof Store ? $storeId : Store::find($storeId);
 
         if($store) {
 
@@ -1235,17 +1554,18 @@ class StoreRepository extends BaseRepository
     }
 
     /**
-     * Show store transactions.
+     * Inspect store shopping cart.
      *
      * @param string $storeId
-     * @return TransactionRepository|array
+     * @return CartResource|array
      */
-    public function showStoreTransactions(string $storeId): TransactionRepository|array
+    public function inspectStoreShoppingCart(string $storeId): CartResource|array
     {
        $store = Store::find($storeId);
 
         if($store) {
-            return $this->getTransactionRepository()->setQuery($store->transactions())->showTransactions();
+            $cart = $this->getShoppingCartService()->startInspection($store);
+            return new CartResource($cart);
         }else{
             return ['message' => 'This store does not exist'];
         }
@@ -1486,7 +1806,7 @@ class StoreRepository extends BaseRepository
      */
     public function normalizePermissions(array $teamMemberPermissions): array
     {
-        return collect($teamMemberPermissions)->contains('*') ? ["*"] : $teamMemberPermissions;
+        return collect($teamMemberPermissions)->contains('*') ? ["*"] : $this->extractPermissionGrants($teamMemberPermissions);
     }
 
     /**
@@ -1958,7 +2278,7 @@ class StoreRepository extends BaseRepository
      * @param array<string> $teamMemberPermissions
      * @return array
      */
-    public function extractPermissions($teamMemberPermissions = [])
+    public function extractPermissions($teamMemberPermissions = []): array
     {
         return collect($teamMemberPermissions)->contains('*')
             ? collect(Store::PERMISSIONS)->filter(fn($permission) => $permission['grant'] !== '*')->values()->toArray()
@@ -1967,5 +2287,54 @@ class StoreRepository extends BaseRepository
                     fn($storePermission) => $storePermission['grant'] == $permission
                 )->first();
             })->filter()->toArray();
+    }
+
+    /**
+     * Extract permission grants.
+     *
+     * @param array<string> $teamMemberPermissions
+     * @return array
+     */
+    public function extractPermissionGrants($teamMemberPermissions = []): array
+    {
+        return collect($this->extractPermissions($teamMemberPermissions))->map(fn($permission) => $permission['grant'])->toArray();
+    }
+
+    /**
+     * Update last seen at store.
+     *
+     * @param Store|null $store
+     * @return self
+     */
+    public function updateLastSeenAtStore(Store|null $store): self
+    {
+        if($store && $this->hasAuthUser()) {
+
+            $user = $this->getAuthUser();
+
+            $data = [
+                'user_id' => $user->id,
+                'last_seen_at' => now(),
+                'store_id' => $store->id
+            ];
+
+            $platformManager = new PlatformManager;
+
+            if( $platformManager->isUssd() ) {
+                $data['last_seen_on_ussd_at'] = now();
+            }else if( $platformManager->isWeb() ) {
+                $data['last_seen_on_web_app_at'] = now();
+            }else if( $platformManager->isMobile() ) {
+                $data['last_seen_on_mobile_app_at'] = now();
+            }
+
+            UserStoreAssociation::updateOrCreate(
+                ['store_id' => $store->id, 'user_id' => $user->id],
+                $data
+            );
+
+        }
+
+        return $this;
     }
 }

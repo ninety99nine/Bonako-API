@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests\Models\Order;
 
-use App\Enums\OrderStatus;
 use App\Models\Order;
-use Illuminate\Support\Str;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -31,6 +29,7 @@ class UpdateStatusRequest extends FormRequest
     public function getValidatorInstance()
     {
         try {
+
             /**
              *  Convert the "status" to the correct format if it has been set on the request inputs
              *
@@ -39,6 +38,17 @@ class UpdateStatusRequest extends FormRequest
             if($this->has('status')) {
                 $this->merge([
                     'status' => $this->separateWordsThenLowercase($this->get('status')),
+                ]);
+            }
+
+            /**
+             *  Convert the "cancellation_reason" to the correct format if it has been set on the request inputs
+             *
+             *  Example: convert "no stock" into "No Stock"
+             */
+            if($this->has('cancellation_reason')) {
+                $this->merge([
+                    'cancellation_reason' => $this->separateWordsThenLowercase($this->get('cancellation_reason'))
                 ]);
             }
 
@@ -56,22 +66,16 @@ class UpdateStatusRequest extends FormRequest
      */
     public function rules()
     {
-        //  Get the available order statuses
-        $statuses = collect(Order::STATUSES())->map(fn($status) => strtolower($status));
-
-        //  Get the order status to update this order
         $status = $this->separateWordsThenLowercase(request()->input('status'));
-
-        /**
-         *  If the order is being marked as completed, then we need to take
-         *  extra precautions, so in that case we need to request the
-         *  collection code.
-         */
-        $requiresConfirmation = $status == strtolower(OrderStatus::COMPLETED->value);
+        $statuses = collect(Order::STATUSES())->map(fn($status) => strtolower($status));
+        $cancellationReasons = collect(Order::CANCELLATION_REASONS())->map(fn($cancellationReason) => $this->separateWordsThenLowercase($cancellationReason));
 
         return [
             'status' => ['required', 'string', Rule::in($statuses)],
-            'collection_code' => ['bail', 'sometimes', 'digits:6']
+            'collection_code' => ['bail', 'sometimes', 'digits:6'],
+            'cancellation_reason' => ['sometimes', 'bail', 'nullable', Rule::in($cancellationReasons)],
+            'collection_note' => ['bail', 'sometimes', 'string', 'min:'.Order::COLLECTION_NOTE_MIN_CHARACTERS, 'max:'.Order::COLLECTION_NOTE_MAX_CHARACTERS],
+            'other_cancellation_reason' => ['sometimes', 'bail', 'nullable', 'string', 'min:'.Order::OTHER_CANCELLATION_REASON_MIN_CHARACTERS, 'max:'.Order::OTHER_CANCELLATION_REASON_MAX_CHARACTERS],
         ];
     }
 
@@ -83,8 +87,9 @@ class UpdateStatusRequest extends FormRequest
     public function messages()
     {
         return [
-            'status.string' => 'Answer "'.collect(Order::STATUSES())->join('", "', '" or "').' to update order status',
             'status.in' => 'Answer "'.collect(Order::STATUSES())->join('", "', '" or "').' to update order status',
+            'status.string' => 'Answer "'.collect(Order::STATUSES())->join('", "', '" or "').' to update order status',
+            'cancellation_reason.in' => 'Answer "'.collect(Order::CANCELLATION_REASONS())->join('", "', '" or "').'" for the cancellation reason',
         ];
     }
 

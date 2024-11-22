@@ -27,14 +27,39 @@ class HomeResource extends BaseResource
             new ResourceLink('show.users', route('show.users')),
             new ResourceLink('show.stores', route('show.stores')),
             new ResourceLink('create.store', route('create.store')),
-            new ResourceLink('show.orders', route('show.orders')),
-            new ResourceLink('show.coupons', route('show.coupons')),
+            new ResourceLink('search.store.by.alias', route('search.store.by.alias')),
+            new ResourceLink('search.store.by.ussd.mobile.number', route('search.store.by.ussd.mobile.number')),
+            new ResourceLink('show.last.visited.store', route('show.last.visited.store')),
+
             new ResourceLink('show.friends', route('show.friends')),
             new ResourceLink('show.reviews', route('show.reviews')),
+
+            new ResourceLink('show.orders', route('show.orders')),
+            new ResourceLink('create.order', route('create.order')),
+            new ResourceLink('delete.orders', route('delete.orders')),
+            new ResourceLink('show.order.status.counts', route('show.order.status.counts')),
+
             new ResourceLink('show.products', route('show.products')),
+            new ResourceLink('create.product', route('create.product')),
+            new ResourceLink('delete.products', route('delete.products')),
+            new ResourceLink('update.product.visibility', route('update.product.visibility')),
+            new ResourceLink('update.product.arrangement', route('update.product.arrangement')),
+
+            new ResourceLink('show.coupons', route('show.coupons')),
+            new ResourceLink('create.coupon', route('create.coupon')),
+            new ResourceLink('delete.coupons', route('delete.coupons')),
+
             new ResourceLink('show.customers', route('show.customers')),
+            new ResourceLink('create.customer', route('create.customer')),
+            new ResourceLink('delete.customers', route('delete.customers')),
+
             new ResourceLink('show.addresses', route('show.addresses')),
             new ResourceLink('show.occasions', route('show.occasions')),
+
+            new ResourceLink('create.review', route('create.review')),
+
+
+
 
             new ResourceLink('show.ai.lessons', route('show.ai.lessons')),
 

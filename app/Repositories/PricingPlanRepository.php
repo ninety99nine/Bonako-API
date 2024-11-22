@@ -23,6 +23,7 @@ use App\Enums\TransactionVerificationType;
 use App\Http\Resources\TransactionResource;
 use App\Http\Resources\PricingPlanResources;
 use App\Http\Resources\PaymentMethodResources;
+use Illuminate\Validation\ValidationException;
 use App\Services\PhoneNumber\PhoneNumberService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use App\Services\Billing\Airtime\OrangeAirtimeService;
@@ -174,7 +175,6 @@ class PricingPlanRepository extends BaseRepository
      */
     public function payPricingPlan(string $pricingPlanId, array $data): array
     {
-        try{
 
             $store = $aiAssistant = null;
             $pricingPlan = PricingPlan::find($pricingPlanId);
@@ -185,7 +185,7 @@ class PricingPlanRepository extends BaseRepository
                 $this->offersEmailCredits($pricingPlan) ||
                 $this->offersSmsCredits($pricingPlan)
             ) {
-
+                if(!isset($data['store_id'])) throw ValidationException::withMessages(['store_id' => 'The store id field is required']);
                 $store = Store::find($data['store_id']);
 
                 if($store) {
@@ -236,7 +236,13 @@ class PricingPlanRepository extends BaseRepository
 
                     $companyToken = $paymentMethod->metadata['company_token'];
                     $dpoPaymentLinkPayload = $this->prepareDpoPaymentLinkPayload($transaction);
-                    $metadata = DirectPayOnlineService::createPaymentLink($companyToken, $dpoPaymentLinkPayload);
+                    $response = DirectPayOnlineService::createPaymentLink($companyToken, $dpoPaymentLinkPayload);
+
+                    if($response['created']) {
+                        $metadata = $response['data'];
+                    }else{
+                        return ['requested' => false, 'message' => $response['message']];
+                    }
 
                     $transaction->update(['metadata' => $metadata]);
 
@@ -267,9 +273,6 @@ class PricingPlanRepository extends BaseRepository
                 return ['successful' => false, 'message' => 'The specified payment method cannot be used for this payment'];
             }
 
-        }catch(Exception $e) {
-            return ['successful' => false, 'message' => $e->getMessage()];
-        }
     }
 
     /**

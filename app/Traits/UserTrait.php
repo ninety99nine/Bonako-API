@@ -37,37 +37,6 @@ trait UserTrait
     }
 
     /**
-     *  Update the last time the user was seen using services
-     *  while at a particular store
-     *  @return void
-     */
-    public function updateLastSeenAtStore(string $storeId) {
-
-        $data = [
-            'store_id' => $storeId,
-            'user_id' => $this->id,
-            'last_seen_at' => now()
-        ];
-
-        $platformManager = new PlatformManager;
-
-        if( $platformManager->isUssd() ) {
-            $data['last_seen_on_ussd_at'] = now();
-        }else if( $platformManager->isWeb() ) {
-            $data['last_seen_on_web_app_at'] = now();
-        }else if( $platformManager->isMobile() ) {
-            $data['last_seen_on_mobile_app_at'] = now();
-        }else{
-            throw new XPlatformHeaderRequiredException;
-        }
-
-        UserStoreAssociation::updateOrCreate(
-            ['store_id' => $storeId, 'user_id' => $this->id],
-            $data
-        );
-    }
-
-    /**
      *  Check if the current authenticated user has the given permissions on the store
      *  by passing the request as a parameter to be checked
      *

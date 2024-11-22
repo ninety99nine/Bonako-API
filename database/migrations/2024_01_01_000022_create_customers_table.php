@@ -19,7 +19,7 @@ class CreateCustomersTable extends Migration
             $table->string('last_name', Customer::LAST_NAME_MAX_CHARACTERS)->nullable();
             $table->string('email')->nullable();
             $table->string('mobile_number', 20)->nullable();
-            $table->timestamp('birthday')->nullable();
+            $table->date('birthday')->nullable();
             $table->text('notes', Customer::NOTES_MAX_CHARACTERS)->nullable();
             $table->char('currency', 3)->default(Store::CURRENCY);
             $table->foreignUuid('store_id')->cascadeOnDelete();

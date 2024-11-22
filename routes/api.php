@@ -26,7 +26,7 @@ Route::prefix('v1')->group(function() {
 Route::prefix('v1')->middleware(['format.request.payload', 'format.response.payload', 'response.payload.limiter'])->group(function() {
 
     Route::middleware([
-        'auth:sanctum', 'set.auth.user.on.request', 'set.current.user.on.request', 'last.seen', 'last.seen.at.store',
+        'auth:sanctum', 'set.auth.user.on.request', 'set.current.user.on.request', 'last.seen',
         'mark.order.as.seen.by.team.member'
     ])->group(function() {
 

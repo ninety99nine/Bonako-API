@@ -26,8 +26,8 @@ class ProductFactory extends Factory
             : $this->faker->numberBetween(50, 1000);
         $unitSalePrice = $this->faker->numberBetween(5000, $unitRegularPrice);
         $unitCostPrice = $this->faker->numberBetween(5000, $unitSalePrice);
-        $stockQuantityType = $this->faker->randomElement(Product::STOCK_QUANTITY_TYPE);
-        $allowedQuantityPerOrder = $this->faker->randomElement(Product::ALLOWED_QUANTITY_PER_ORDER);
+        $stockQuantityType = $this->faker->randomElement(Product::STOCK_QUANTITY_TYPES());
+        $allowedQuantityPerOrder = $this->faker->randomElement(Product::ALLOWED_QUANTITY_PER_ORDER_OPTIONS());
 
         return [
             'visible' => true,

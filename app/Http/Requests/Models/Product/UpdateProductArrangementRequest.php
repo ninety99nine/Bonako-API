@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Models\Product;
 
+use App\Models\Product;
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateProductArrangementRequest extends FormRequest
@@ -24,9 +26,10 @@ class UpdateProductArrangementRequest extends FormRequest
     public function rules()
     {
         return [
+            'product_ids.*' => ['uuid'],
             'store_id' => ['required', 'uuid'],
-            'product_ids' => ['required', 'array'],
-            'product_ids.*' => ['required', 'uuid']
+            'product_ids' => ['required_without:sort_by', 'array'],
+            'sort_by' => ['required_without:product_ids', Rule::in(Product::SORT_BY_OPTIONS())]
         ];
     }
 

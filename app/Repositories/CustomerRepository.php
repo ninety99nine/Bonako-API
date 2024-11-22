@@ -123,9 +123,7 @@ class CustomerRepository extends BaseRepository
      */
     public function showCustomer(string $customerId): Customer|array|null
     {
-        $query = Customer::with(['store'])->whereId($customerId);
-        $this->setQuery($query)->applyEagerLoadingOnQuery();
-        $customer = $this->query->first();
+        $customer = $this->setQuery(Customer::with(['store'])->whereId($customerId))->applyEagerLoadingOnQuery()->getQuery()->first();
 
         if($customer) {
             $store = $customer->store;

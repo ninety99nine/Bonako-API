@@ -3,19 +3,10 @@
 namespace App\Http\Resources;
 
 use App\Http\Resources\BaseResource;
-use App\Repositories\StoreRepository;
-use App\Repositories\SmsAlertRepository;
 use App\Http\Resources\Helpers\ResourceLink;
-use App\Repositories\SmsAlertActivityRepository;
 
 class SmsAlertActivityAssociationResource extends BaseResource
 {
-    protected $resourceRelationships = [
-        'stores' => StoreRepository::class,
-        'smsAlert' => SmsAlertRepository::class,
-        'smsAlertActivity' => SmsAlertActivityRepository::class,
-    ];
-
     public function setLinks()
     {
         //  Auth user route name prefix

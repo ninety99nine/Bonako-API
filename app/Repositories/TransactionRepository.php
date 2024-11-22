@@ -145,29 +145,36 @@ class TransactionRepository extends BaseRepository
      */
     public function deleteTransaction(string $transactionId): array
     {
-        if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete transaction'];
-        $transaction = Transaction::with(['paymentMethod', 'owner'])->find($transactionId);
+        $transaction = Transaction::with(['store', 'owner'])->find($transactionId);
 
         if($transaction) {
 
-            if($transaction->isPaid() && $transaction->isSubjectToAutomaticVerification()) return ['deleted' => false, 'message' => 'Automated transaction cannot be deleted after verified payment'];
+            $store = $transaction->store;
+            $isAuthourized = $this->isAuthourized() || ($store && $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store));
 
-            /** @var PaymentMethod|null $paymentMethod */
-            $paymentMethod = $transaction->paymentMethod;
-            if($paymentMethod && $paymentMethod->isDPO()) $this->cancelTransactionPaymentLink($transaction);
+            if($isAuthourized) {
 
-            $deleted = $transaction->delete();
+                /** @var PaymentMethod|null $paymentMethod */
+                $paymentMethod = $transaction->paymentMethod;
+                if($paymentMethod && $paymentMethod->isDPO() && !$transaction->isPaid()) $this->cancelTransactionPaymentLink($transaction);
 
-            if ($deleted) {
+                $deleted = $transaction->delete();
 
-                if($transaction->owner_type == (new Order())->getResourceName()) {
-                    $this->getOrderRepository()->updateOrderAmountBalance($transaction->owner);
+                if($deleted) {
+
+                    if($transaction->owner_type == (new Order())->getResourceName()) {
+                        $this->getOrderRepository()->updateOrderAmountBalance($transaction->owner);
+                    }
+
+                    return ['deleted' => true, 'message' => 'Transaction deleted'];
+                }else{
+                    return ['deleted' => false, 'message' => 'Transaction delete unsuccessful'];
                 }
 
-                return ['deleted' => true, 'message' => 'Transaction deleted'];
             }else{
-                return ['deleted' => false, 'message' => 'Transaction delete unsuccessful'];
+                return ['deleted' => false, 'message' => 'You do not have permission to delete transaction'];
             }
+
         }else{
             return ['deleted' => false, 'message' => 'This transaction does not exist'];
         }
@@ -190,35 +197,36 @@ class TransactionRepository extends BaseRepository
 
             if($isAuthourized) {
 
-                if($transaction) {
+                if($transaction->isSubjectToManualVerification()) return ['renewed' => false, 'message' => 'Transaction has been manually verified and cannot be renewed'];
+                if($transaction->isPaid()) return ['renewed' => false, 'message' => 'Transaction has been paid and cannot be renewed'];
 
-                    if($transaction->isSubjectToManualVerification()) return ['renewed' => false, 'message' => 'Transaction has been manually verified and cannot be renewed'];
-                    if($transaction->isPaid()) return ['renewed' => false, 'message' => 'Transaction has been paid and cannot be renewed'];
+                /** @var PaymentMethod|null $paymentMethod */
+                $paymentMethod = $transaction->paymentMethod;
+                if(!$paymentMethod) ['renewed' => false, 'message' => 'The transaction payment method does not exist'];
 
-                    /** @var PaymentMethod|null $paymentMethod */
-                    $paymentMethod = $transaction->paymentMethod;
-                    if(!$paymentMethod) ['renewed' => false, 'message' => 'The transaction payment method does not exist'];
+                if($paymentMethod->isDPO()) {
 
-                    if($paymentMethod->isDPO()) {
+                    if(Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->isFuture()) return ['renewed' => false, 'message' => 'Transaction has not yet expired therefore cannot be renewed'];
 
-                        if(Carbon::parse($transaction->metadata['dpo_payment_url_expires_at'])->isFuture()) return ['renewed' => false, 'message' => 'Transaction has not yet expired therefore cannot be renewed'];
+                    $this->cancelTransactionPaymentLink($transaction);
+                    $response = $this->createTransactionPaymentLink($transaction);
 
-                        $this->cancelTransactionPaymentLink($transaction);
-                        $metadata = $this->createTransactionPaymentLink($transaction);
-                        $transaction->update(['metadata' => $metadata]);
-
-                        return [
-                            'successful' => true,
-                            'message' => 'DPO payment link created',
-                            'transaction' => new TransactionResource($this->getTransactionRepository()->applyEagerLoadingOnModel($transaction))
-                        ];
-
+                    if($response['created']) {
+                        $metadata = $response['data'];
                     }else{
-                        return ['renewed' => false, 'message' => 'The "'.$paymentMethod->name.'" payment method cannot be used to renew transaction'];
+                        return ['requested' => false, 'message' => $response['message']];
                     }
 
+                    $transaction->update(['metadata' => $metadata]);
+
+                    return [
+                        'successful' => true,
+                        'message' => 'DPO payment link created',
+                        'transaction' => new TransactionResource($this->getTransactionRepository()->applyEagerLoadingOnModel($transaction))
+                    ];
+
                 }else{
-                    return ['renewed' => 'This transaction does not exist'];
+                    return ['renewed' => false, 'message' => 'The "'.$paymentMethod->name.'" payment method cannot be used to renew transaction'];
                 }
 
             }else{
@@ -399,7 +407,7 @@ class TransactionRepository extends BaseRepository
         $companyToken = $paymentMethod->metadata['company_token'];
 
         if($transaction->owner_type == (new Order())->getResourceName()) {
-            $dpoPaymentLinkPayload = $this->getOrderRepository()->prepareDpoPaymentLinkPayload($transaction->owner, $paymentMethod, $transaction);
+            $dpoPaymentLinkPayload = $this->getOrderRepository()->prepareDpoPaymentLinkPayload($transaction);
         }else if($transaction->owner_type == (new PricingPlan())->getResourceName()) {
             $dpoPaymentLinkPayload = $this->getPricingPlanRepository()->prepareDpoPaymentLinkPayload($transaction);
         }
@@ -416,8 +424,11 @@ class TransactionRepository extends BaseRepository
     private function cancelTransactionPaymentLink(Transaction $transaction): void
     {
         $paymentMethod = $transaction->paymentMethod;
-        $companyToken = $paymentMethod->metadata['company_token'];
-        $transactionToken = $transaction->metadata['dpo_transaction_token'];
-        DirectPayOnlineService::cancelPaymentLink($companyToken, $transactionToken);
+
+        if($transaction->metadata) {
+            $companyToken = $paymentMethod->metadata['company_token'];
+            $transactionToken = $transaction->metadata['dpo_transaction_token'];
+            DirectPayOnlineService::cancelPaymentLink($companyToken, $transactionToken);
+        }
     }
 }

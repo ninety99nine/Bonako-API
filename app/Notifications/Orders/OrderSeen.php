@@ -89,10 +89,9 @@ class OrderSeen extends OrderNotification implements ShouldQueue
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
         $order = $this->order;
-        $store = $this->store;
         $subject = 'Order seen';
         $seenByUser = $this->seenByUser;
-        $body = $order->craftOrderSeenMessage($store, $seenByUser);
+        $body = $order->craftOrderSeenMessage($order, $seenByUser);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

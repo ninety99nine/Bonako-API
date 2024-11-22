@@ -17,8 +17,6 @@ class UserResource extends BaseResource
         'transactions_as_payer_count', 'paid_transactions_as_payer_count'
     ];
 
-    protected $resourceRelationships = [];
-
     private function viewingPrivately() {
         return $this->isSuperAdmin || request()->routeIs([
             'api.home', 'auth.*', 'user.profile.update'
@@ -135,36 +133,33 @@ class UserResource extends BaseResource
     public function setLinks()
     {
         $user = $this->resource;
-        $authUser = $this->getAuthUser();
-        $authMatchesUser = $authUser && $authUser->id === $user->id;
-        $prefix = $authMatchesUser ? 'auth.user' : 'user';
 
         $this->resourceLinks = [
-            new ResourceLink('show.user', route("show.$prefix", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('update.user', route("update.$prefix", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('delete.user', route("delete.$prefix", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.user', route("show.user", ['userId' => $user->id])),
+            new ResourceLink('update.user', route("update.user", ['userId' => $user->id])),
+            new ResourceLink('delete.user', route("delete.user", ['userId' => $user->id])),
 
-            new ResourceLink('generate.mobile.verification.code', route("generate.$prefix.mobile.verification.code", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('verify.mobile.verification.code', route("verify.$prefix.mobile.verification.code", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('generate.mobile.verification.code', route("generate.user.mobile.verification.code", ['userId' => $user->id])),
+            new ResourceLink('verify.mobile.verification.code', route("verify.user.mobile.verification.code", ['userId' => $user->id])),
 
-            new ResourceLink('show.tokens', route("show.$prefix.tokens", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('logout.user', route("logout.$prefix", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.tokens', route("show.user.tokens", ['userId' => $user->id])),
+            new ResourceLink('logout.user', route("logout.user", ['userId' => $user->id])),
 
-            new ResourceLink('show.profile.photo', route("show.$prefix.profile.photo", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('upload.profile.photo', route("upload.$prefix.profile.photo", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('delete.profile.photo', route("delete.$prefix.profile.photo", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.profile.photo', route("show.user.profile.photo", ['userId' => $user->id])),
+            new ResourceLink('upload.profile.photo', route("upload.user.profile.photo", ['userId' => $user->id])),
+            new ResourceLink('delete.profile.photo', route("delete.user.profile.photo", ['userId' => $user->id])),
 
-            new ResourceLink('show.ai.assistant', route("show.$prefix.ai.assistant", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('show.resource.totals', route("show.$prefix.resource.totals", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.ai.assistant', route("show.user.ai.assistant", ['userId' => $user->id])),
+            new ResourceLink('show.resource.totals', route("show.user.resource.totals", ['userId' => $user->id])),
 
-            new ResourceLink('show.orders', route("show.$prefix.orders", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('show.stores', route("show.$prefix.stores", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('show.reviews', route("show.$prefix.reviews", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('show.friends', route("show.$prefix.friends", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('show.addresses', route("show.$prefix.addresses", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('show.ai.messages', route("show.$prefix.ai.messages", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('show.notifications', route("show.$prefix.notifications", $authMatchesUser ? [] : ['user' => $user->id])),
-            new ResourceLink('show.friend.groups', route("show.$prefix.friend.groups", $authMatchesUser ? [] : ['user' => $user->id])),
+            new ResourceLink('show.orders', route("show.user.orders", ['userId' => $user->id])),
+            new ResourceLink('show.stores', route("show.user.stores", ['userId' => $user->id])),
+            new ResourceLink('show.reviews', route("show.user.reviews", ['userId' => $user->id])),
+            new ResourceLink('show.friends', route("show.user.friends", ['userId' => $user->id])),
+            new ResourceLink('show.addresses', route("show.user.addresses", ['userId' => $user->id])),
+            new ResourceLink('show.ai.messages', route("show.user.ai.messages", ['userId' => $user->id])),
+            new ResourceLink('show.notifications', route("show.user.notifications", ['userId' => $user->id])),
+            new ResourceLink('show.friend.groups', route("show.user.friend.groups", ['userId' => $user->id])),
         ];
 
         if( $storeId = request()->storeId ) {

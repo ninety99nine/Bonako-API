@@ -3,16 +3,10 @@
 namespace App\Http\Resources;
 
 use App\Http\Resources\BaseResource;
-use App\Repositories\VariableRepository;
 use App\Http\Resources\Helpers\ResourceLink;
 
 class ProductResource extends BaseResource
 {
-    //  protected $customExcludeFields = ['user_id', 'parent_product_id'];
-    protected $resourceRelationships = [
-        'variables' => VariableRepository::class
-    ];
-
     /**
      *  When iterating over a collection, the constructor will receive the
      *  resource as the first parameter and then the index number as the
@@ -42,6 +36,11 @@ class ProductResource extends BaseResource
             new ResourceLink('create.product.photo', route('create.product.photo', ['productId' => $product->id])),
             new ResourceLink('show.product.variations', route('show.product.variations', ['productId' => $product->id])),
             new ResourceLink('create.product.variations', route('create.product.variations', ['productId' => $product->id])),
+
         ];
+
+        if($product->parent_product_id) {
+            array_push($this->resourceLinks, new ResourceLink('show.parent.product', route('show.product', ['productId' => $product->parent_product_id])));
+        }
     }
 }

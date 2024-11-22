@@ -78,6 +78,17 @@ class TransactionController extends BaseController
     }
 
     /**
+     * Renew transaction payment link.
+     *
+     * @param string $transactionId
+     * @return JsonResponse
+     */
+    public function renewPaymentLink(string $transactionId): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->renewPaymentLink($transactionId));
+    }
+
+    /**
      * Show transaction proof of payment photo.
      *
      * @param string $transactionId

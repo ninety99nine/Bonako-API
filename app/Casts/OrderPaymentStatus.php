@@ -64,7 +64,7 @@ class OrderPaymentStatus implements CastsAttributes
         }
 
         return [
-            'name' => $name,
+            'name' => ucfirst($name),
             'description' => $description,
         ];
     }

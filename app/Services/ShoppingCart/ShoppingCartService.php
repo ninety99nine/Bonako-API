@@ -272,7 +272,6 @@ class ShoppingCartService
 
             /*  Changes  */
             'is_abandoned',
-            'products_arrangement',
 
             /*  Instant Cart  */
             'instant_cart_id',

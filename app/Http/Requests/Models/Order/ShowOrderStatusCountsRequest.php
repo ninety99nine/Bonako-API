@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\Models\Product;
+namespace App\Http\Requests\Models\Order;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateProductVisibilityRequest extends FormRequest
+class showOrderStatusCountsRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,9 +25,6 @@ class UpdateProductVisibilityRequest extends FormRequest
     {
         return [
             'store_id' => ['required', 'uuid'],
-            'visibility' => ['required', 'array'],
-            'visibility.*.visible' => ['bail', 'boolean'],
-            'visibility.*.id' => ['bail', 'uuid', 'distinct'],
         ];
     }
 

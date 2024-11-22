@@ -8,10 +8,6 @@ use App\Http\Resources\Helpers\ResourceLink;
 
 class VariableResource extends BaseResource
 {
-    protected $resourceRelationships = [
-        'product' => ProductRepository::class
-    ];
-
     /**
      *  When iterating over a collection, the constructor will receive the
      *  resource as the first parameter and then the index number as the

@@ -102,12 +102,11 @@ class OrderMarkedAsPaid extends OrderNotification implements ShouldQueue
 
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
-        $store = $this->store;
         $order = $this->order;
         $transaction = $this->transaction;
         $subject = 'Order payment confirmation';
         $manuallyVerifiedByUser = $this->manuallyVerifiedByUser;
-        $body = $order->craftOrderMarkedAsPaidMessage($store, $transaction, $manuallyVerifiedByUser);
+        $body = $order->craftOrderMarkedAsPaidMessage($order, $transaction, $manuallyVerifiedByUser);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

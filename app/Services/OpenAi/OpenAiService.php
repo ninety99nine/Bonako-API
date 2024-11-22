@@ -23,6 +23,7 @@ class OpenAiService
      * @param string|null $aiMessageCategoryId
      * @param AiMessage|null $aiMessage
      * @return AiMessage
+     * @throws \OpenAI\Exceptions\ErrorException
      */
     public function prompt(string $userContent, array $messages = [], string $aiAssistantId, string|null $aiMessageCategoryId = null, AiMessage|null $aiMessage = null): AiMessage
     {

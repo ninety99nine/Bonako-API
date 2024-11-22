@@ -114,10 +114,9 @@ class OrderUpdated extends OrderNotification
     public function toOneSignal(object $notifiable): OneSignalMessage
     {
         $order = $this->order;
-        $store = $this->store;
         $subject = 'Order updated';
         $updatedByUser = $this->updatedByUser;
-        $body = $order->craftOrderUpdatedMessage($store, $updatedByUser);
+        $body = $order->craftOrderUpdatedMessage($order, $updatedByUser);
 
         return OneSignalMessage::create()
             ->setSubject($subject)

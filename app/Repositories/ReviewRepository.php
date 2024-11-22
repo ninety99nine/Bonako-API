@@ -165,9 +165,7 @@ class ReviewRepository extends BaseRepository
      */
     public function showReview(string $reviewId): Review|array|null
     {
-        $query = Review::with(['store'])->whereId($reviewId);
-        $this->setQuery($query)->applyEagerLoadingOnQuery();
-        $review = $this->query->first();
+        $review = $this->setQuery(Review::with(['store'])->whereId($reviewId))->applyEagerLoadingOnQuery()->getQuery()->first();
 
         if($review) {
             $store = $review->store;

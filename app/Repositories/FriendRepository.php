@@ -102,7 +102,9 @@ class FriendRepository extends UserRepository
      */
     public function showLastSelectedFriend(): Friend|array|null
     {
-        $lastSelectedFriend = request()->current_user->friends()->orderBy('last_selected_at', 'DESC')->first();
+        $query = request()->current_user->friends()->orderBy('last_selected_at', 'DESC');
+        $lastSelectedFriend = $this->setQuery($query)->applyEagerLoadingOnQuery()->getQuery()->first();
+
         return $this->showResourceExistence($lastSelectedFriend);
     }
 

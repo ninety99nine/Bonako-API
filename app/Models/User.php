@@ -221,7 +221,7 @@ class User extends BaseAuthenticatable /* Authenticatable */
     protected function name(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->getRawOriginal('first_name').' '.$this->getRawOriginal('last_name')
+            get: fn () => trim($this->getRawOriginal('first_name').' '.$this->getRawOriginal('last_name'))
         );
     }
 

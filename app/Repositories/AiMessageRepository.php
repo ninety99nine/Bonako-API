@@ -93,7 +93,17 @@ class AiMessageRepository extends BaseRepository
             'can_subscribe' => $usageEligibility->can_subscribe
         ];
 
-        $aiMessage = $this->promptAssistant($data, $aiAssistant);
+        try {
+
+            $aiMessage = $this->promptAssistant($data, $aiAssistant);
+
+        } catch (\OpenAI\Exceptions\ErrorException $th) {
+
+            if($th->getErrorType() == 'insufficient_quota') {
+                return ['created' => false, 'message' => 'We’re currently unable to provide a response due to quota limitations on our service. We are working to resolve this soon'];
+            }
+
+        }
 
         if((new PlatformManager)->isSms()) {
             SendSms::dispatch(
@@ -187,7 +197,17 @@ class AiMessageRepository extends BaseRepository
                 'can_subscribe' => $usageEligibility->can_subscribe
             ];
 
-            $aiMessage = $this->promptAssistant($data, $aiAssistant, $aiMessage);
+            try {
+
+                $aiMessage = $this->promptAssistant($data, $aiAssistant, $aiMessage);
+
+            } catch (\OpenAI\Exceptions\ErrorException $th) {
+
+                if($th->getErrorType() == 'insufficient_quota') {
+                    return ['updated' => false, 'message' => 'We’re currently unable to provide a response due to quota limitations on our service. We are working to resolve this soon'];
+                }
+
+            }
 
             if((new PlatformManager)->isSms()) {
                 SendSms::dispatch(
@@ -371,6 +391,7 @@ class AiMessageRepository extends BaseRepository
      * @param AiAssistant $aiAssistant
      * @param AiMessage|null $aiMessage
      * @return AiMessage
+     * @throws \OpenAI\Exceptions\ErrorException
      */
     private function promptAssistant(array $data, AiAssistant $aiAssistant, AiMessage|null $aiMessage = null): AiMessage
     {

@@ -8,6 +8,7 @@ use App\Models\Base\BasePivot;
 use Illuminate\Database\Eloquent\Model;
 use App\Http\Resources\Helpers\ResourceLink;
 use App\Models\Base\BaseModel;
+use App\Models\Pivots\UserStoreAssociation;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -260,39 +261,43 @@ class BaseResource extends JsonResource
             $data = $this->resource;
 
             /**
-             *
              *  We need to iterate over the values of the $data array and make sure that
-             *  each and every that is an instance of BaseResource is first transformed
-             *  before we proceed any further since the PayloadLimiter will convert
-             *  any object into an array, which would not allow these resource
-             *  objects to be transformed, but will be simply converted to
-             *  array format.
+             *  each and every instance of BaseResource is first transformed before we
+             *  proceed any further since the PayloadLimiter will convert any object
+             *  into an array, which would not allow these resource objects to be
+             *  transformed, but will be simply converted to array format.
              *
              *  We can iterate over each element and confirm if each element is an instance of
              *  BaseResource and therefore run transformedStructure() to covert that value
              *  from its resource object format to its transformed array format before
-             *  we proceed any further. This functionality is required for instance
-             *  in the HomeController.php showApiHome() method. We return the following,
+             *  we proceed any further. This functionality is required for instance in
+             *  the HomeController.php showApiHome() method. We return the following:
              *
              *  return (new HomeResource([
              *      'user' => new UserResource($authUser)
              *      ...
              *  ]));
              *
-             *  We need to transformt the result of UserResource($authUser) before
-             *  the PayloadLimiter() method below converts:
+             *  We need to transform the result of UserResource($authUser) before
+             *  the PayloadLimiter() method below:
+             *
+             *  Convert:
              *
              *  [
              *      'user' => new UserResource($authUser)
              *      ...
              *  ]
              *
-             *  into an array. We should have something like this:
+             *  Into an array. We should have something like this:
              *
              *  [
              *      'user' => [
-             *          'first_name': 'John',
-             *          'last_name': 'Doe'
+             *          'first_name' => 'John',
+             *          'last_name' => 'Doe',
+             *          _links => [
+             *              'show.user' =>
+             *          ]
+             *          ...
              *      ]
              *      ...
              *  ]
@@ -314,7 +319,7 @@ class BaseResource extends JsonResource
         //  If the request intends to specify specific fields to show
         if( request()->filled('_include_fields') == true ) {
 
-            $data = (new PayloadLimiter($data, request()->input('_include_fields'), false))->getLimitedPayload();
+            $data = (new PayloadLimiter($data, request()->input('_include_fields')))->getLimitedPayload();
 
         }
 
@@ -413,7 +418,7 @@ class BaseResource extends JsonResource
         //  If the request intends to specify specific attributes to show
         if( request()->filled('_include_attributes') == true ) {
 
-            $attributes = (new PayloadLimiter($attributes, request()->input('_include_attributes'), false))->getLimitedPayload();
+            $attributes = (new PayloadLimiter($attributes, request()->input('_include_attributes')))->getLimitedPayload();
 
         }
 
@@ -493,11 +498,7 @@ class BaseResource extends JsonResource
      */
     public function getRelationships()
     {
-        /**
-         *  Lets get the available relationship names on this resource e.g
-         *  user, store, orders, carts, products, reviews, e.t.c
-         */
-        $this->resourceRelationships = collect($this->resource->getRelations())->keys()->all();
+        $resourceRelationships = $this->resource->getRelations();
 
         /**
          *  Capture the model relationships that are permitted for sharing.
@@ -505,7 +506,9 @@ class BaseResource extends JsonResource
          *  we must check if that relationship is permitted for sharing.
          */
         if($this->customExcludeRelationships !== null) {
-            $this->resourceRelationships = collect($this->resourceRelationships)->except($this->customExcludeRelationships);
+            $resourceRelationships = collect($resourceRelationships)->filter(function ($relationship, $relationshipName) {
+                return !in_array($relationshipName, $this->customExcludeRelationships);
+            });
         }
 
         /**
@@ -517,28 +520,12 @@ class BaseResource extends JsonResource
          *  Each relationship must be transformed according to its
          *  corresponding model repository class
          */
-        $relationships = collect($this->resource->getRelations())->filter(function($value, $key) {
-
-            return collect($this->resourceRelationships)->values()->contains($key);
-
-        })->mapWithKeys(function($relationship, $relationshipName) {
+        $relationships = collect($resourceRelationships)->mapWithKeys(function($relationship, $relationshipName) {
 
             $transformedRelationship = null;
 
             //  If the nested relationship is a single BasePivot
-            if($relationship instanceof BasePivot) {
-
-                /**
-                 *  Note, you may transform Pivot models just as normal models provided
-                 *  you create the associated model classes e.g
-                 *
-                 *  $resourceClass = $this->getResourceClass($relationship);
-                 *  $transformedRelationship = new $resourceClass($relationship);
-                 */
-                $transformedRelationship = $relationship;
-
-            //  If the nested relationship is a single BaseModel
-            }else if($relationship instanceof BaseModel) {
+            if($relationship instanceof BaseModel || $relationship instanceof BasePivot) {
 
                 $resourceClass = $this->getResourceClass($relationship);
                 $transformedRelationship = new $resourceClass($relationship);
