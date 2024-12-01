@@ -24,7 +24,7 @@ class CreateOrdersTable extends Migration
             $table->string('summary')->nullable();
 
             /* Financial Information */
-            $table->char('currency', 3)->default(Store::CURRENCY);
+            $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
             $table->decimal('grand_total', 10, 2)->default(0);
             $table->decimal('paid_total', 10, 2)->default(0);
             $table->unsignedTinyInteger('paid_percentage')->default(0);

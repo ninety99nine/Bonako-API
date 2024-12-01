@@ -105,7 +105,7 @@ class SubscriptionRepository extends BaseRepository
         if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete subscriptions'];
         $subscriptions = $this->setQuery(Subscription::query())->getSubscriptionsByIds($subscriptionIds);
 
-        if($totalSubscriptions  = $subscriptions->count()) {
+        if($totalSubscriptions = $subscriptions->count()) {
 
             foreach($subscriptions as $subscription) {
                 $subscription->delete();

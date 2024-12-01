@@ -27,11 +27,11 @@ class ShowOrderRequest extends FormRequest
     public function rules()
     {
         return [
-            'with_cart' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_store' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_customer' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_transactions' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_transactions' => ['bail', 'sometimes', 'required', 'boolean'],
+            'with_cart' => ['bail', 'sometimes', 'boolean'],
+            'with_store' => ['bail', 'sometimes', 'boolean'],
+            'with_customer' => ['bail', 'sometimes', 'boolean'],
+            'with_transactions' => ['bail', 'sometimes', 'boolean'],
+            'with_count_transactions' => ['bail', 'sometimes', 'boolean'],
         ];
     }
 

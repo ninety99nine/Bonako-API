@@ -66,7 +66,7 @@ class MobileVerificationRepository extends BaseRepository
 
         $mobileVerifications = $this->setQuery(MobileVerification::query())->getMobileVerificationsByIds($mobileVerificationIds);
 
-        if($totalMobileVerifications  = $mobileVerifications->count()) {
+        if($totalMobileVerifications = $mobileVerifications->count()) {
 
             foreach($mobileVerifications as $mobileVerification) {
                 $mobileVerification->delete();

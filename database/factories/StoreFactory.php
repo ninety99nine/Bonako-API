@@ -140,7 +140,7 @@ class StoreFactory extends Factory
 
         return [
             'name' => $name,
-            'currency' => Store::CURRENCY,
+            'currency' => config('app.DEFAULT_CURRENCY'),
             'description' => $description,
             'online' => $this->faker->boolean(90),
             'verified' => $this->faker->boolean(20),
@@ -153,7 +153,6 @@ class StoreFactory extends Factory
             'pickup_note' => $this->faker->randomElement($pickupNotes),
             'delivery_flat_fee' => $this->faker->randomFloat(2, 0, 100),
             'delivery_note' => $this->faker->randomElement($deliveryNotes),
-            'last_subscription_end_at' => $this->faker->dateTimeBetween('-30 days', now()),
             'call_to_action' => $this->faker->randomElement(Store::CALL_TO_ACTION_OPTIONS()),
             'number_of_employees' => $this->faker->randomElement([$this->faker->numberBetween(1, 100), null])
         ];

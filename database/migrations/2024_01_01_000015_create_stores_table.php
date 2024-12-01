@@ -2,6 +2,8 @@
 
 use App\Models\Store;
 use App\Enums\CallToAction;
+use App\Enums\DistanceUnit;
+use App\Enums\TaxMethod;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
@@ -20,13 +22,23 @@ class CreateStoresTable extends Migration
             $table->string('emoji')->nullable();
             $table->string('name', Store::NAME_MAX_CHARACTERS);
             $table->string('alias', Store::ALIAS_MAX_CHARACTERS)->unique()->nullable();
+            $table->string('email')->nullable();
             $table->string('ussd_mobile_number', 20)->nullable();
             $table->string('contact_mobile_number', 20)->nullable();
             $table->string('whatsapp_mobile_number', 20)->nullable();
             $table->enum('call_to_action', Store::CALL_TO_ACTION_OPTIONS())->default(CallToAction::BUY);
-            $table->timestamp('last_subscription_end_at')->nullable();
             $table->string('description', Store::DESCRIPTION_MAX_CHARACTERS)->nullable();
-            $table->char('currency', 3)->default(Store::CURRENCY);
+            $table->json('social_links')->nullable();
+            $table->char('country', 2)->default(config('app.DEFAULT_COUNTRY'));
+            $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
+            $table->char('language', 2)->default(config('app.DEFAULT_LANGUAGE'));
+            $table->enum('distance_unit', Store::DISTANCE_UNIT_OPTIONS())->default(DistanceUnit::KM);
+            $table->enum('tax_method', Store::TAX_METHOD_OPTIONS())->default(TaxMethod::INCLUSIVE);
+            $table->decimal('tax_percentage_rate', 5, 2)->default(0);
+            $table->string('tax_id', Store::TAX_ID_MAX_CHARACTERS)->nullable();
+            $table->boolean('show_opening_hours')->default(false);
+            $table->boolean('allow_checkout_on_closed_hours')->default(true);
+            $table->json('opening_hours')->nullable();
             $table->boolean('verified')->default(false);
             $table->boolean('online')->default(true);
             $table->string('offline_message', Store::OFFLINE_MESSAGE_MAX_CHARACTERS)->default(Store::DEFAULT_OFFLINE_MESSAGE);
@@ -64,7 +76,6 @@ class CreateStoresTable extends Migration
             $table->index('ussd_mobile_number');
             $table->index('contact_mobile_number');
             $table->index('whatsapp_mobile_number');
-            $table->index('last_subscription_end_at');
 
         });
     }

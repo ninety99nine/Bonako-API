@@ -28,7 +28,7 @@ class CreateCouponsTable extends Migration
             /*  Offer Discount Information */
             $table->boolean('offer_discount')->default(false);
             $table->enum('discount_type', Coupon::DISCOUNT_TYPES)->default(Arr::last(Coupon::DISCOUNT_TYPES));
-            $table->unsignedTinyInteger('discount_percentage_rate')->default(0);
+            $table->decimal('discount_percentage_rate', 5, 2)->default(0);
             $table->decimal('discount_fixed_rate', 10, 2)->default(0);
 
             /*  Offer Free Delivery Information */
@@ -40,7 +40,7 @@ class CreateCouponsTable extends Migration
 
             $table->boolean('activate_using_minimum_grand_total')->default(false);
             $table->decimal('minimum_grand_total', 10, 2)->default(0);
-            $table->char('currency', 3)->default(Store::CURRENCY);
+            $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
 
             $table->boolean('activate_using_minimum_total_products')->default(false);
             $table->unsignedSmallInteger('minimum_total_products')->default(1);

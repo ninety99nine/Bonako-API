@@ -51,19 +51,14 @@ class Subscription extends BaseModel
             });
     }
 
+    public function scopeActive($query)
+    {
+        return $query->where('start_at', '>=', Carbon::now())->where('end_at', '<', Carbon::now());
+    }
+
     public function scopeExpired($query)
     {
-        return $query->where('end_at', '<=', Carbon::now());
-    }
-
-    public function scopeNotExpired($query)
-    {
         return $query->where('end_at', '>', Carbon::now());
-    }
-
-    public function scopeBelongsToAuth($query)
-    {
-        return $query->where('user_id', request()->auth_user->id);
     }
 
     /****************************

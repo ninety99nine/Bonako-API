@@ -30,7 +30,6 @@ class CreateUserStoreAssociationTable extends Migration
             $table->enum('team_member_role', UserStoreAssociation::TEAM_MEMBER_ROLES())->nullable();
             $table->json('team_member_permissions')->nullable();
             $table->foreignUuid('invited_to_join_team_by_user_id')->nullable();
-            $table->timestamp('last_subscription_end_at')->nullable();
 
             /*  Follower Information  */
             $table->enum('follower_status', UserStoreAssociation::FOLLOWER_STATUSES())->nullable();

@@ -71,7 +71,7 @@ class ShowUserReviewsRequest extends FormRequest
 
         return [
             'user_review_association' => ['required', 'string', Rule::in($userReviewAssociations)],
-            'with_store' => ['bail', 'sometimes', 'required', 'boolean'],
+            'with_store' => ['bail', 'sometimes', 'boolean'],
             'filter' => ['sometimes', 'string', Rule::in($filters)],
         ];
     }

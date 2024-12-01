@@ -28,9 +28,9 @@ class UpdateAiAssistantRequest extends FormRequest
     {
         return [
             'return' => ['sometimes', 'boolean'],
-            'remaining_free_tokens' => ['bail', 'sometimes', 'required', 'integer', 'min:0', 'max:10000'],
-            'remaining_paid_tokens' => ['bail', 'sometimes', 'required', 'integer', 'min:0', 'max:10000'],
-            'remaining_paid_top_up_tokens' => ['bail', 'sometimes', 'required', 'integer', 'min:0', 'max:10000'],
+            'remaining_free_tokens' => ['bail', 'sometimes', 'integer', 'min:0', 'max:10000'],
+            'remaining_paid_tokens' => ['bail', 'sometimes', 'integer', 'min:0', 'max:10000'],
+            'remaining_paid_top_up_tokens' => ['bail', 'sometimes', 'integer', 'min:0', 'max:10000'],
         ];
     }
 

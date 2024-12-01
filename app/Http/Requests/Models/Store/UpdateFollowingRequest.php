@@ -60,7 +60,7 @@ class UpdateFollowingRequest extends FormRequest
         $statuses = collect($this->statuses)->map(fn($filter) => strtolower($filter));
 
         return [
-            'status' => ['bail', 'sometimes', 'required', Rule::in($statuses)],
+            'status' => ['bail', 'sometimes', Rule::in($statuses)],
         ];
     }
 

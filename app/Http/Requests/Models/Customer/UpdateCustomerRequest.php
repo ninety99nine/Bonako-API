@@ -47,7 +47,7 @@ class UpdateCustomerRequest extends FormRequest
         $storeId = request()->storeId ?? request()->input('store_id');
 
         return [
-            'first_name' => ['bail', 'sometimes', 'required', 'string', 'min:'.Customer::FIRST_NAME_MIN_CHARACTERS, 'max:'.Customer::FIRST_NAME_MAX_CHARACTERS],
+            'first_name' => ['bail', 'sometimes', 'string', 'min:'.Customer::FIRST_NAME_MIN_CHARACTERS, 'max:'.Customer::FIRST_NAME_MAX_CHARACTERS],
             'last_name' => ['bail', 'nullable', 'string', 'min:'.Customer::LAST_NAME_MIN_CHARACTERS, 'max:'.Customer::LAST_NAME_MAX_CHARACTERS],
             'notes' => ['bail', 'nullable', 'string', 'min:'.Customer::NOTES_MIN_CHARACTERS, 'max:'.Customer::NOTES_MAX_CHARACTERS],
             'mobile_number' => [

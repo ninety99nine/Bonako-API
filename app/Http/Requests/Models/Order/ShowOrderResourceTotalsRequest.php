@@ -24,8 +24,8 @@ class ShowOrderStatusCountsRequest extends FormRequest
     public function rules()
     {
         return [
-            'store_id' => ['bail', 'sometimes', 'nullable', 'required', 'uuid'],
-            'placed_by_user_id' => ['bail', 'sometimes', 'nullable', 'required', 'uuid'],
+            'store_id' => ['bail', 'sometimes', 'nullable', 'uuid'],
+            'placed_by_user_id' => ['bail', 'sometimes', 'nullable', 'uuid'],
         ];
     }
 

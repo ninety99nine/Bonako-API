@@ -31,11 +31,11 @@ class UpdateAiMessageCategoryRequest extends FormRequest
         return [
             'return' => ['sometimes', 'boolean'],
             'name' => [
-                'bail', 'sometimes', 'required', 'string', 'min:'.AiMessageCategory::NAME_MIN_CHARACTERS, 'max:'.AiMessageCategory::NAME_MAX_CHARACTERS,
+                'bail', 'sometimes', 'string', 'min:'.AiMessageCategory::NAME_MIN_CHARACTERS, 'max:'.AiMessageCategory::NAME_MAX_CHARACTERS,
                 Rule::unique('occasions')->ignore(request()->aiMessageCategoryId)
             ],
-            'description' => ['bail', 'sometimes', 'required', 'string', 'min:'.AiMessageCategory::DESCRIPTION_MIN_CHARACTERS, 'max:'.AiMessageCategory::DESCRIPTION_MAX_CHARACTERS],
-            'system_prompt' => ['bail', 'sometimes', 'required', 'string', 'min:'.AiMessageCategory::SYSTEM_PROMPT_MIN_CHARACTERS, 'max:'.AiMessageCategory::SYSTEM_PROMPT_MAX_CHARACTERS],
+            'description' => ['bail', 'sometimes', 'string', 'min:'.AiMessageCategory::DESCRIPTION_MIN_CHARACTERS, 'max:'.AiMessageCategory::DESCRIPTION_MAX_CHARACTERS],
+            'system_prompt' => ['bail', 'sometimes', 'string', 'min:'.AiMessageCategory::SYSTEM_PROMPT_MIN_CHARACTERS, 'max:'.AiMessageCategory::SYSTEM_PROMPT_MAX_CHARACTERS],
         ];
     }
 

@@ -44,11 +44,11 @@ class UpdateUserRequest extends FormRequest
         ) : false;
 
         return [
-            'first_name' => ['bail', 'sometimes', 'required', 'string', 'min:'.User::FIRST_NAME_MIN_CHARACTERS, 'max:'.User::FIRST_NAME_MAX_CHARACTERS],
-            'last_name' => ['bail', 'sometimes', 'required', 'string', 'min:'.User::LAST_NAME_MIN_CHARACTERS, 'max:'.User::LAST_NAME_MAX_CHARACTERS],
+            'first_name' => ['bail', 'sometimes', 'string', 'min:'.User::FIRST_NAME_MIN_CHARACTERS, 'max:'.User::FIRST_NAME_MAX_CHARACTERS],
+            'last_name' => ['bail', 'sometimes', 'string', 'min:'.User::LAST_NAME_MIN_CHARACTERS, 'max:'.User::LAST_NAME_MAX_CHARACTERS],
             'about_me' => ['bail', 'nullable', 'string', 'min:'.User::ABOUT_ME_MIN_CHARACTERS, 'max:'.User::ABOUT_ME_MAX_CHARACTERS],
             'mobile_number' => [
-                'bail', 'sometimes', 'required', 'phone', $uniqueMobileNumber
+                'bail', 'sometimes', 'phone', $uniqueMobileNumber
             ],
 
             /**
@@ -58,7 +58,7 @@ class UpdateUserRequest extends FormRequest
              *  to set a new password.
              */
             'password' => array_merge(
-                ['bail', 'sometimes', 'required', 'string', 'min:'.User::PASSWORD_MIN_CHARACTERS],
+                ['bail', 'sometimes', 'string', 'min:'.User::PASSWORD_MIN_CHARACTERS],
                 $authUserIsSuperAdmin ? [] : ['confirmed']
             ),
 

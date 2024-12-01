@@ -9,6 +9,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\PaymentMethodController;
 
 Route::controller(StoreController::class)
     ->scopeBindings()
@@ -22,6 +23,8 @@ Route::controller(StoreController::class)
     Route::post('/search-by-ussd-mobile-number', 'searchStoreByUssdMobileNumber')->name('search.store.by.ussd.mobile.number');
 
     Route::get('/last-visited-store', 'showLastVisitedStore')->name('show.last.visited.store');
+    Route::get('/deposit-options', 'showStoreDepositOptions')->name('show.store.deposit.options');
+    Route::get('/installment-options', 'showStoreInstallmentOptions')->name('show.store.installment.options');
 
     //  Follow Store Invitations
     Route::get('/check-invitations-to-follow-stores', 'checkInvitationsToFollowStores')->name('check.invitations.to.follow.stores');
@@ -134,15 +137,10 @@ Route::controller(StoreController::class)
             Route::get('/', 'showTransactions')->name('show.store.transactions');
         });
 
-
-
-
-
-
-
-
-
-
+        //  Payment Methods
+        Route::controller(PaymentMethodController::class)->prefix('payment-methods')->group(function () {
+            Route::get('/', 'showPaymentMethods')->name('show.store.payment.methods');
+        });
 
 
 
@@ -157,6 +155,24 @@ Route::controller(StoreController::class)
         Route::get('/available-payment-methods', 'showAvailablePaymentMethods')->name('.available.payment.methods.show');
         Route::get('/available-deposit-percentages', 'showAvailableDepositPercentages')->name('.available.deposit.percentages.show');
         Route::get('/available-installment-percentages', 'showAvailableInstallmentPercentages')->name('.available.installment.percentages.show');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         //  Sharable Content
         Route::prefix('sharable-content')

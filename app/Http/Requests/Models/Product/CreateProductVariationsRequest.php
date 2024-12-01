@@ -32,7 +32,7 @@ class CreateProductVariationsRequest extends FormRequest
             'variant_attributes.*.name' => ['bail', 'required', 'string', 'min:'.Variable::NAME_MIN_CHARACTERS, 'max:'.Variable::NAME_MAX_CHARACTERS, 'distinct'],
 
             //  Array "name" key
-            'variant_attributes.*.instruction' => ['bail', 'sometimes', 'required', 'string', 'min:'.Variable::INSTRUCTION_MIN_CHARACTERS, 'max:'.Variable::INSTRUCTION_MAX_CHARACTERS],
+            'variant_attributes.*.instruction' => ['bail', 'sometimes', 'string', 'min:'.Variable::INSTRUCTION_MIN_CHARACTERS, 'max:'.Variable::INSTRUCTION_MAX_CHARACTERS],
 
             //  Array "values" key
             'variant_attributes.*.values' => ['required', 'array', 'min:1'],

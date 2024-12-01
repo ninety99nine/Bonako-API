@@ -30,7 +30,7 @@ class CreateMobileVerificationRequest extends FormRequest
         return [
             'return' => ['sometimes', 'boolean'],
             'mobile_number' => ['bail', 'required', 'phone'],
-            'code' => ['bail', 'sometimes', 'required', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS]
+            'code' => ['bail', 'sometimes', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS]
         ];
     }
 

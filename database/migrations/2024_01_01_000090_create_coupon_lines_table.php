@@ -39,7 +39,7 @@ class CreateCouponLinesTable extends Migration
 
             $table->boolean('activate_using_minimum_grand_total')->default(false);
             $table->decimal('minimum_grand_total', 10, 2)->default(0);
-            $table->char('currency', 3)->default(Store::CURRENCY);
+            $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
 
             $table->boolean('activate_using_minimum_total_products')->default(false);
             $table->unsignedSmallInteger('minimum_total_products')->default(1);

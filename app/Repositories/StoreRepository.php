@@ -123,6 +123,60 @@ class StoreRepository extends BaseRepository
     }
 
     /**
+     * Show store deposit options.
+     *
+     * @return array
+     */
+    public function showStoreDepositOptions(): array
+    {
+       return [
+            [
+                'label' => '10% deposit',
+                'value' => 10,
+            ],
+            [
+                'label' => '25% deposit',
+                'value' => 25,
+            ],
+            [
+                'label' => '50% deposit',
+                'value' => 50,
+            ],
+            [
+                'label' => '75% deposit',
+                'value' => 75,
+            ]
+       ];
+    }
+
+    /**
+     * Show store installment options.
+     *
+     * @return array
+     */
+    public function showStoreInstallmentOptions(): array
+    {
+        return [
+            [
+                'label' => '10% per installment',
+                'value' => 10,
+            ],
+            [
+                'label' => '25% per installment',
+                'value' => 25,
+            ],
+            [
+                'label' => '30% per installment',
+                'value' => 30,
+            ],
+            [
+                'label' => '50% per installment',
+                'value' => 50,
+            ],
+        ];
+    }
+
+    /**
      * Search store by alias.
      *
      * @param string $alias
@@ -573,7 +627,7 @@ class StoreRepository extends BaseRepository
      */
     public function showStoreQuickStartGuide(string $storeId): array
     {
-       $store = Store::find($storeId);
+       $store = Store::with('activeSubscription')->find($storeId);
 
         if($store) {
 
@@ -584,8 +638,8 @@ class StoreRepository extends BaseRepository
 
                 $totalOrders = $store->orders()->exists();
                 $lastSeenOnUssdAt = $userStoreAssociation->last_seen_on_ussd_at;
-                $lastSubscriptionEndAt = $userStoreAssociation->last_subscription_end_at;
                 $totalProducts = $store->products()->isNotVariation()->visible()->count();
+                $lastSubscriptionEndAt = $userStoreAssociation->activeSubscription?->end_at;
 
                 $milestones = [
                     [
@@ -661,13 +715,21 @@ class StoreRepository extends BaseRepository
 
                 $insights = [];
                 $period = $data['period'] ?? null;
-                $category = $data['category'] ?? null;
+                $categories = $data['categories'] ?? [];
                 $isUssd = (new PlatformManager)->isUssd();
 
-                $add = function(array $insight) use (&$insights) {
+                $add = function($title, $description, array $categoryInsights) use (&$insights) {
                     array_push($insights, [
-                        'name' => $insight[0],
-                        'metric' => $insight[1]
+                        'title' => $title,
+                        'description' => $description,
+                        'category_insights' => collect($categoryInsights)->map(function($categoryInsight) {
+                            return [
+                                'name' => $categoryInsight[0],
+                                'type' => $categoryInsight[2],
+                                'metric' => $categoryInsight[1],
+                                'description' => $categoryInsight[3],
+                            ];
+                        })->values()
                     ]);
                 };
 
@@ -690,7 +752,7 @@ class StoreRepository extends BaseRepository
                 $ordersQuery = DB::table('orders')->where('store_id', $store->id);
                 if ($dateRange1 && $dateRange2) $ordersQuery->whereBetween('created_at', [$dateRange1, $dateRange2]);
 
-                if (in_array($category, ['sales', 'all'])) {
+                if (empty($categories) || in_array('sales', $categories)) {
 
                     $salesByPeriod = $ordersQuery
                         ->selectRaw("DATE_FORMAT(created_at, '$periodType') as period, COUNT(*) as total_orders, SUM(grand_total) as total_grand_total")
@@ -732,14 +794,20 @@ class StoreRepository extends BaseRepository
 
                     $totalSales = $this->convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency;
 
-                    $add([$isUssd ? 'Sales' : 'Total sales', $totalSales.' ('. $totalOrders . ($totalOrders == 1 ? ' order' : ' orders') . ')']);
-                    $add([$isUssd ? 'Avg sale per order' : 'Average sale per order', $this->convertToMoneyFormat($avgSalesPerOrder, $store->currency)->amountWithCurrency]);
-                    $add([$isUssd ? "Best $periodName" : "Highest sales $periodName", $highestSalesDay]);
-                    $add([$isUssd ? "Worst $periodName" : "Lowest sales $periodName", $lowestSalesDay]);
+                    $add(
+                        'Sale Insights',
+                        'Store performance based on sales',
+                        [
+                            [($isUssd ? 'Sales' : 'Total sales'), $totalSales.' ('. $totalOrders . ($totalOrders == 1 ? ' order' : ' orders') . ')', 'total_sales', 'The total sales revenue generated from orders placed in the store'],
+                            [($isUssd ? 'Avg sale per order' : 'Average sale per order'), $this->convertToMoneyFormat($avgSalesPerOrder, $store->currency)->amountWithCurrency, 'average_sale_per_order', 'The average sales revenue earned per order based on the total sales divided by the number of orders'],
+                            [($isUssd ? "Best $periodName" : "Highest sales $periodName"), $highestSalesDay, 'highest_sale_period', "The $periodName with the highest recorded sales amount"],
+                            [($isUssd ? "Worst $periodName" : "Lowest sales $periodName"), $lowestSalesDay, 'lowest_sale_period', "The $periodName with the lowest recorded sales amount"]
+                        ]
+                    );
 
                 }
 
-                if (in_array($category, ['orders', 'all'])) {
+                if (empty($categories) || in_array('orders', $categories)) {
 
                     $ordersByPeriod = $ordersQuery
                         ->selectRaw("DATE_FORMAT(created_at, '$periodType') as period, COUNT(*) as total_orders, SUM(grand_total) as total_grand_total")
@@ -774,14 +842,19 @@ class StoreRepository extends BaseRepository
                         }
                     }
 
-                    $add([$isUssd ? 'Orders' : 'Total orders', "{$totalOrders} ({$this->convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency})"]);
-                    $add(['Most orders', $mostOrderDay]);
-                    $add(['Least orders', $leastOrderDay]);
+                    $add(
+                        'Order Insights',
+                        'Store performance based on orders',
+                        [
+                            [($isUssd ? 'Orders' : 'Total orders'), "{$totalOrders} ({$this->convertToMoneyFormat($totalSales, $store->currency)->amountWithCurrency})", 'total_orders', 'The total number of orders placed, along with the total sales revenue generated from those orders'],
+                            ['Most orders', $mostOrderDay, 'most_orders', "The $periodName with the highest number of orders placed"],
+                            ['Least orders', $leastOrderDay, 'least_orders', "The $periodName with the lowest number of orders placed"],
+                        ]
+                    );
 
                 }
 
-                // Handle other categories similarly
-                if (in_array($category, ['products', 'all'])) {
+                if (empty($categories) || in_array('products', $categories)) {
 
                     $productsBySales = DB::table('product_lines')
                         ->selectRaw("
@@ -845,16 +918,21 @@ class StoreRepository extends BaseRepository
                     $totalCancelledRevenueFormatted = $this->convertToMoneyFormat($totalCancelledRevenue, $store->currency)->amountWithCurrency;
                     $totalDiscountFormatted = $this->convertToMoneyFormat($totalDiscount, $store->currency)->amountWithCurrency;
 
-                    // Add insights to output
-                    $add(['Top-selling', $topSelling]);
-                    $add(['Least-selling', $leastSelling]);
-                    $add(['Products sold', $totalQuantity . ' (' . $totalProductRevenueFormatted . ')']);
-                    $add(['Products cancelled', $totalCancelledQuantity . ' (' . $totalCancelledRevenueFormatted . ')']);
-                    $add(['Offered discounts', $totalDiscountFormatted]);
-                    $add([$isUssd ? 'Avg revenue per product' : 'Average revenue per product', $avgRevenuePerProductFormatted]);
+                    $add(
+                        'Product Insights',
+                        'Store performance based on products',
+                        [
+                            ['Top-selling', $topSelling, 'top_selling', 'The product that has generated the highest quantity of sales'],
+                            ['Least-selling', $leastSelling, 'least_selling', 'The product that has generated the lowest quantity of sales'],
+                            ['Products sold', $totalQuantity . ' (' . $totalProductRevenueFormatted . ')', 'products_sold', 'The total quantity of products sold, along with the total revenue generated from their sales'],
+                            ['Products cancelled', $totalCancelledQuantity . ' (' . $totalCancelledRevenueFormatted . ')', 'products_cancelled', 'The total number of products cancelled on placed orders, along with the total revenue associated with those cancellations'],
+                            ['Offered discounts', $totalDiscountFormatted, 'offered_discounts', 'The total value of discounts provided across all products and orders'],
+                            [$isUssd ? 'Avg revenue per product' : 'Average revenue per product', $avgRevenuePerProductFormatted, 'average_revenue_per_product', 'The average amount of revenue earned per product sold']
+                        ]
+                    );
                 }
 
-                if (in_array($category, ['customers', 'all'])) {
+                if (empty($categories) || in_array('customers', $categories)) {
 
                     $customersData = DB::table('customers')
                         ->selectRaw("
@@ -876,11 +954,12 @@ class StoreRepository extends BaseRepository
                     $returnCustomers = $customersData->filter(fn($record) => $record->total_orders > 1)->count();
 
                     // Retention Rate
-                    $retentionRate = ($returnCustomers / $totalCustomers) * 100;
+                    $retentionRate = $totalCustomers ? ($returnCustomers / $totalCustomers) * 100 : 0;
 
                     // Revenue per Customer
                     $totalRevenue = $customersData->sum('total_spend');
-                    $revenuePerCustomer = $this->convertToMoneyFormat($totalRevenue / $totalCustomers, $store->currency)->amountWithCurrency;
+                    $revenuePerCustomer = $totalCustomers ? $totalRevenue / $totalCustomers : 0;
+                    $revenuePerCustomer = $this->convertToMoneyFormat($revenuePerCustomer, $store->currency)->amountWithCurrency;
 
                     // Determine previous date range based on the period
                     [$previousDateRange1, $previousDateRange2] = match ($period) {
@@ -907,16 +986,22 @@ class StoreRepository extends BaseRepository
                         $customerGrowthRate = (($totalCustomers - $previousPeriodCustomers) / $previousPeriodCustomers) * 100;
                     }
 
-                    // Add insights
-                    $add(['Total customers', $totalCustomers]);
-                    $add(['New customers', $newCustomers]);
-                    $add(['Return customers', $returnCustomers]);
-                    $add(['Retention Rate', $retentionRate . '%']);
-                    $add(['Revenue per Customer', $revenuePerCustomer]);
-                    $add(['Customer Growth Rate', round($customerGrowthRate, 1) . '% (' . ($customerGrowthRate > 0 ? 'increased' : ($customerGrowthRate == 0 ? 'no change' : 'decreased')) . ')']);
+                    $add(
+                        'Customer Insights',
+                        'Store performance based on customers',
+                        [
+                            ['Total customers', $totalCustomers, 'total_customers', 'The total number of unique customers on this store'],
+                            ['New customers', $newCustomers, 'new_customers', 'The number of customers who have only placed one order'],
+                            ['Return customers', $returnCustomers, 'return_customers', 'The number of customers who have placed more than one order'],
+                            ['Retention Rate', $retentionRate . '%', 'retention_rate', 'The percentage of customers who made repeat purchases, indicating customer loyalty'],
+                            ['Revenue per Customer', $revenuePerCustomer, 'revenue_per_customer', 'The average revenue generated from each customer, calculated as total sales divided by the total number of customers'],
+                            ['Customer Growth Rate', round($customerGrowthRate, 1) . '% (' . ($customerGrowthRate > 0 ? 'increased' : ($customerGrowthRate == 0 ? 'no change' : 'decreased')) . ')', 'customer_growth_rate', 'The rate at which the customer base has grown or decreased, expressed as a percentage']
+                        ]
+                    );
+
                 }
 
-                if (in_array($category, ['operations', 'all'])) {
+                if (empty($categories) || in_array('operations', $categories)) {
 
 
                 }

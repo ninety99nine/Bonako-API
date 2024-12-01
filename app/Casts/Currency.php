@@ -2,6 +2,7 @@
 
 namespace App\Casts;
 
+use App\Services\Currency\CurrencyService;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 
@@ -20,7 +21,11 @@ class Currency implements CastsAttributes
      */
     public function get($model, $key, $value, $attributes)
     {
-        return $this->convertToCurrencyFormat($value);
+        if($currency = (new CurrencyService)->findCurrencyByCode($value)) {
+            return collect($currency)->only(['code', 'symbol'])->toArray();
+        }
+
+        return $value;
     }
 
     /**
@@ -34,21 +39,12 @@ class Currency implements CastsAttributes
      */
     public function set($model, $key, $value, $attributes)
     {
-        if( is_array($value) ){
+        if( is_array($value) ) {
 
             //  If we have the array code value
             if( isset($value['code']) && !empty($value['code']) ) {
 
                 return $value['code'];
-
-            //  If we have the array symbol value
-            }elseif( isset($value['symbol']) && !empty($value['symbol']) ) {
-
-                if( isset( array_flip($this->supportedCurrencySymbols)[ $value['symbol'] ] ) ) {
-
-                    return array_flip($this->supportedCurrencySymbols)[ $value['symbol'] ];
-
-                }
 
             }
 

@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Enums\PaymentMethodType;
 use App\Models\Store;
 use App\Traits\AuthTrait;
 use App\Models\PaymentMethod;
@@ -26,11 +27,20 @@ class PaymentMethodRepository extends BaseRepository
         if($this->getQuery() == null) {
 
             $storeId = isset($data['store_id']) ? $data['store_id'] : null;
+            $nonAssociatedStoreId = isset($data['non_associated_store_id']) ? $data['non_associated_store_id'] : null;
 
             if($storeId) {
                 $store = Store::find($storeId);
                 if($store) {
                     $this->setQuery($store->paymentMethods()->latest());
+                }else{
+                    return ['message' => 'This store does not exist'];
+                }
+            }else if($nonAssociatedStoreId) {
+                $store = Store::find($nonAssociatedStoreId);
+                if($store) {
+                    $existingPaymentMethodTypes = $store->paymentMethods()->pluck('type')->reject(PaymentMethodType::MANUAL_PAYMENT->value);
+                    $this->setQuery(PaymentMethod::whereNull('store_id')->whereNotIn('type', $existingPaymentMethodTypes)->latest());
                 }else{
                     return ['message' => 'This store does not exist'];
                 }
@@ -51,7 +61,23 @@ class PaymentMethodRepository extends BaseRepository
      */
     public function createPaymentMethod(array $data): PaymentMethod|array
     {
-        if(!$this->isAuthourized()) return ['created' => false, 'message' => 'You do not have permission to create payment methods'];
+        if(isset($data['store_id'])) {
+
+            $storeId = $data['store_id'];
+            $store = Store::find($storeId);
+
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['created' => false, 'message' => 'You do not have permission to create store payment method'];
+            }else{
+                return ['created' => false, 'message' => 'This store does not exist'];
+            }
+
+        }else{
+
+            if(!$this->isAuthourized()) return ['created' => false, 'message' => 'You do not have permission to create payment methods'];
+
+        }
 
         $paymentMethod = PaymentMethod::create($data);
         return $this->showCreatedResource($paymentMethod);
@@ -69,7 +95,7 @@ class PaymentMethodRepository extends BaseRepository
 
         $paymentMethods = $this->setQuery(PaymentMethod::query())->getPaymentMethodsByIds($paymentMethodIds);
 
-        if($totalPaymentMethods  = $paymentMethods->count()) {
+        if($totalPaymentMethods = $paymentMethods->count()) {
 
             foreach($paymentMethods as $paymentMethod) {
                 $paymentMethod->delete();
@@ -111,15 +137,20 @@ class PaymentMethodRepository extends BaseRepository
      */
     public function updatePaymentMethod(PaymentMethod|string $paymentMethodId, array $data): PaymentMethod|array
     {
-        if(!$this->isAuthourized()) return ['updated' => false, 'message' => 'You do not have permission to update payment method'];
-
-        $paymentMethod = $paymentMethodId instanceof PaymentMethod ? $paymentMethodId : PaymentMethod::find($paymentMethodId);
+        $paymentMethod = PaymentMethod::with(['store'])->find($paymentMethodId);
 
         if($paymentMethod) {
+            $store = $paymentMethod->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update payment method'];
+                if(!$this->checkIfHasRelationOnRequest('store')) $paymentMethod->unsetRelation('store');
+            }else{
+                if(!$this->isAuthourized()) return ['updated' => false, 'message' => 'You do not have permission to update payment method'];
+            }
 
             $paymentMethod->update($data);
             return $this->showUpdatedResource($paymentMethod);
-
         }else{
             return ['updated' => false, 'message' => 'This payment method does not exist'];
         }
@@ -133,11 +164,17 @@ class PaymentMethodRepository extends BaseRepository
      */
     public function deletePaymentMethod(PaymentMethod|string $paymentMethodId): array
     {
-        if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete payment method'];
-
-        $paymentMethod = $paymentMethodId instanceof PaymentMethod ? $paymentMethodId : PaymentMethod::find($paymentMethodId);
+        $paymentMethod = PaymentMethod::with(['store'])->find($paymentMethodId);
 
         if($paymentMethod) {
+            $store = $paymentMethod->store;
+            if($store) {
+                $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                if(!$isAuthourized) return ['deleted' => false, 'message' => 'You do not have permission to delete payment method'];
+            }else{
+                if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete payment method'];
+            }
+
             $deleted = $paymentMethod->delete();
 
             if ($deleted) {

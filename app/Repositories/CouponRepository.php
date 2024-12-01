@@ -153,6 +153,7 @@ class CouponRepository extends BaseRepository
             if($store) {
                 $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
                 if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update coupon'];
+                if(!$this->checkIfHasRelationOnRequest('store')) $coupon->unsetRelation('store');
             }else{
                 return ['updated' => false, 'message' => 'This store does not exist'];
             }

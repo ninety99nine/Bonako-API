@@ -108,19 +108,19 @@ class CreateCouponRequest extends FormRequest
             'name' => [
                 'bail', 'required', 'string', 'min:'.Coupon::NAME_MIN_CHARACTERS, 'max:'.Coupon::NAME_MAX_CHARACTERS,
                 //  Make sure that this coupon name does not already exist for the same store
-                Rule::unique('coupons')->where('store_id', request()->storeId)
+                Rule::unique('coupons')->where('store_id', request()->input('store_id'))
             ],
-            'active' => ['bail', 'sometimes', 'required', 'boolean'],
-            'description' => ['bail', 'sometimes', 'required', 'string', 'min:'.Coupon::DESCRIPTION_MIN_CHARACTERS, 'max:'.Coupon::DESCRIPTION_MAX_CHARACTERS],
+            'active' => ['bail', 'sometimes', 'boolean'],
+            'description' => ['bail', 'sometimes', 'string', 'min:'.Coupon::DESCRIPTION_MIN_CHARACTERS, 'max:'.Coupon::DESCRIPTION_MAX_CHARACTERS],
 
             /*  Offer Discount Information  */
             'offer_discount' => array_merge(
                 ['bail', 'sometimes', 'boolean'],
                 $offerFreeDelivery ? [] : ['required']
             ),
-            'discount_type' => ['bail', 'sometimes', 'required', Rule::in($discountTypes)],
-            'discount_percentage_rate' => ['bail', 'sometimes', 'required', 'min:1', 'max:100', 'numeric'],
-            'discount_fixed_rate' => ['bail', 'sometimes', 'required', 'min:1', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'discount_type' => ['bail', 'sometimes', Rule::in($discountTypes)],
+            'discount_percentage_rate' => ['bail', 'sometimes', 'min:1', 'max:100', 'numeric'],
+            'discount_fixed_rate' => ['bail', 'sometimes', 'min:1', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
 
             /*  Offer Delivery Information  */
             'offer_free_delivery' => array_merge(
@@ -129,56 +129,56 @@ class CreateCouponRequest extends FormRequest
             ),
 
             /*  Code Activation Information  */
-            'activate_using_code' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_code' => ['bail', 'sometimes', 'boolean'],
             'code' => ['bail', 'sometimes', Rule::requiredIf($activateUsingCode), 'string', 'min:'.Coupon::CODE_MIN_CHARACTERS, 'max:'.Coupon::CODE_MAX_CHARACTERS],
 
             /*  Grand Total Activation Information  */
-            'activate_using_minimum_grand_total' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_minimum_grand_total' => ['bail', 'sometimes', 'boolean'],
             'minimum_grand_total' => ['bail', 'sometimes', Rule::requiredIf($activateUsingMinimumGrandTotal), 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
 
             /*  Minimum Total Products Activation Information  */
-            'activate_using_minimum_total_products' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_minimum_total_products' => ['bail', 'sometimes', 'boolean'],
             'minimum_total_products' => ['bail', 'sometimes', Rule::requiredIf($activateUsingMinimumTotalProducts), 'min:0', 'numeric'],
 
             /*  Minimum Total Products Activation Information  */
-            'activate_using_minimum_total_product_quantities' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_minimum_total_product_quantities' => ['bail', 'sometimes', 'boolean'],
             'minimum_total_product_quantities' => ['bail', 'sometimes', Rule::requiredIf($activateUsingMinimumTotalProductQuantities), 'min:0', 'numeric'],
 
             /*  Start Datetime Activation Information  */
-            'activate_using_start_datetime' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_start_datetime' => ['bail', 'sometimes', 'boolean'],
             'start_datetime' => ['bail', 'sometimes', Rule::requiredIf($activateUsingStartDatetime), 'date'],
 
             /*  End Datetime Activation Information  */
-            'activate_using_end_datetime' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_end_datetime' => ['bail', 'sometimes', 'boolean'],
             'end_datetime' => ['bail', 'sometimes', Rule::requiredIf($activateUsingEndDatetime), 'date'],
 
             /*  Hours Of Day Activation Information  */
-            'activate_using_hours_of_day' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_hours_of_day' => ['bail', 'sometimes', 'boolean'],
             'hours_of_day' => ['bail', 'sometimes', Rule::requiredIf($activateUsingHoursOfDay), 'array'],
             'hours_of_day.*' => ['bail', 'required', 'string', Rule::in((new Coupon)->getHoursOfDayOptions())],
 
             /*  Days Of The Week Activation Information  */
-            'activate_using_days_of_the_week' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_days_of_the_week' => ['bail', 'sometimes', 'boolean'],
             'days_of_the_week' => ['bail', 'sometimes', Rule::requiredIf($activateUsingDaysOfTheWeek), 'array'],
             'days_of_the_week.*' => ['bail', 'required', 'string', Rule::in((new Coupon)->getDaysOfTheWeekOptions())],
 
             /*  Days Of The Month Activation Information  */
-            'activate_using_days_of_the_month' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_days_of_the_month' => ['bail', 'sometimes', 'boolean'],
             'days_of_the_month' => ['bail', 'sometimes', Rule::requiredIf($activateUsingDaysOfTheMonth), 'array'],
             'days_of_the_month.*' => ['bail', 'required', 'string', Rule::in((new Coupon)->getDaysOfTheMonthOptions())],
 
             /*  Months Of The Year Activation Information  */
-            'activate_using_months_of_the_year' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_months_of_the_year' => ['bail', 'sometimes', 'boolean'],
             'months_of_the_year' => ['bail', 'sometimes', Rule::requiredIf($activateUsingMonthsOfTheYear), 'array'],
             'months_of_the_year.*' => ['bail', 'required', 'string', Rule::in((new Coupon)->getMonthsOfTheYearOptions())],
 
             /*  Usage Activation Information  */
-            'activate_using_usage_limit' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_using_usage_limit' => ['bail', 'sometimes', 'boolean'],
             'remaining_quantity' => ['bail', 'sometimes', Rule::requiredIf($activateUsingUsageLimit), 'min:1', 'max:'.Coupon::REMAINING_QUANTITY_MAX, 'numeric'],
 
             /*  Customer Activation Information  */
-            'activate_for_existing_customer' => ['bail', 'sometimes', 'required', 'boolean'],
-            'activate_for_new_customer' => ['bail', 'sometimes', 'required', 'boolean'],
+            'activate_for_existing_customer' => ['bail', 'sometimes', 'boolean'],
+            'activate_for_new_customer' => ['bail', 'sometimes', 'boolean'],
         ];
     }
 

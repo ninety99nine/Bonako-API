@@ -71,8 +71,8 @@ class ShowStoreOrdersRequest extends FormRequest
 
         return [
             'user_order_association' => ['required', 'string', Rule::in($userOrderAssociations)],
-            'with_customer' => ['bail', 'sometimes', 'required', 'boolean'],
-            'start_at_order_id' => ['sometimes', 'required', 'uuid'],
+            'with_customer' => ['bail', 'sometimes', 'boolean'],
+            'start_at_order_id' => ['sometimes', 'uuid'],
             'filter' => ['sometimes', 'string', Rule::in($filters)],
         ];
     }

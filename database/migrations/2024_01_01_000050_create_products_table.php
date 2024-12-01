@@ -51,7 +51,7 @@ class CreateProductsTable extends Migration
 
             /*  Pricing Information  */
             $table->boolean('is_free')->default(false);
-            $table->char('currency', 3)->default(Store::CURRENCY);
+            $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
             $table->decimal('unit_regular_price', 10, 2)->default(0);
 
             $table->boolean('on_sale')->default(false);

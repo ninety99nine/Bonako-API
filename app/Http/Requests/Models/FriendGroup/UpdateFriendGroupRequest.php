@@ -29,7 +29,7 @@ class UpdateFriendGroupRequest extends FormRequest
 
         return [
             'name' => [
-                'bail', 'sometimes', 'required', 'string', 'min:'.FriendGroup::NAME_MIN_CHARACTERS, 'max:'.FriendGroup::NAME_MAX_CHARACTERS,
+                'bail', 'sometimes', 'string', 'min:'.FriendGroup::NAME_MIN_CHARACTERS, 'max:'.FriendGroup::NAME_MAX_CHARACTERS,
                 /**
                  *  Make sure that this friend group name does not
                  *  already exist for the same user
@@ -48,9 +48,9 @@ class UpdateFriendGroupRequest extends FormRequest
             ],
             'mobile_numbers' => ['array'],
             'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
-            'shared' => ['bail', 'sometimes', 'required', 'boolean'],
+            'shared' => ['bail', 'sometimes', 'boolean'],
             'mobile_numbers.*' => ['bail', 'sometimes', 'distinct', 'phone'],
-            'can_add_friends' => ['bail', 'sometimes', 'required', 'boolean'],
+            'can_add_friends' => ['bail', 'sometimes', 'boolean'],
             'description' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.FriendGroup::DESCRIPTION_MIN_CHARACTERS, 'max:'.FriendGroup::DESCRIPTION_MAX_CHARACTERS],
         ];
     }

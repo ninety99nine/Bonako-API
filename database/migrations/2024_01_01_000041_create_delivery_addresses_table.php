@@ -22,7 +22,7 @@ class CreateDeliveryAddressesTable extends Migration
             $table->string('city', DeliveryAddress::CITY_MAX_CHARACTERS)->nullable();
             $table->string('state', DeliveryAddress::STATE_MAX_CHARACTERS)->nullable();
             $table->string('zip', DeliveryAddress::ZIP_MAX_CHARACTERS)->nullable();
-            $table->char('country_code', 2)->nullable();
+            $table->char('country', 2)->nullable();
             $table->string('place_id')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();

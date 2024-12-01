@@ -52,7 +52,7 @@ class AiMessageCategoryRepository extends BaseRepository
 
         $aiMessageCategories = $this->setQuery(AiMessageCategory::query())->getAiMessageCategoriesByIds($aiMessageCategoryIds);
 
-        if($totalAiMessageCategories  = $aiMessageCategories->count()) {
+        if($totalAiMessageCategories = $aiMessageCategories->count()) {
 
             foreach($aiMessageCategories as $aiMessageCategory) {
                 $aiMessageCategory->delete();

@@ -37,7 +37,7 @@ class ProductFactory extends Factory
             'parent_product_id' => null,
             'variant_attributes' => null,
             'description' => $description,
-            'currency' => Store::CURRENCY,
+            'currency' => config('app.DEFAULT_CURRENCY'),
             'visibility_expires_at' => null,
             'unit_cost_price' =>  $unitCostPrice,
             'is_free' => $this->faker->boolean(5),

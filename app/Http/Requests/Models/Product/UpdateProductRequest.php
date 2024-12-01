@@ -75,15 +75,15 @@ class UpdateProductRequest extends FormRequest
 
             /*  General Information  */
             'name' => [
-                'bail', 'sometimes', 'required', 'string', 'min:'.Product::NAME_MIN_CHARACTERS, 'max:'.Product::NAME_MAX_CHARACTERS,
+                'bail', 'sometimes', 'string', 'min:'.Product::NAME_MIN_CHARACTERS, 'max:'.Product::NAME_MAX_CHARACTERS,
                 /**
                  *  Make sure that this product name does not already exist on the same store
                  *  (Except for the same product)
                  */
-                Rule::unique('products')->where('store_id', request()->storeId)->ignore(request()->productId)
+                Rule::unique('products')->where('store_id', request()->input('store_id'))->ignore(request()->productId)
             ],
-            'visible' => ['bail', 'sometimes', 'required', 'boolean'],
-            'show_description' => ['bail', 'sometimes', 'required', 'boolean'],
+            'visible' => ['bail', 'sometimes', 'boolean'],
+            'show_description' => ['bail', 'sometimes', 'boolean'],
             'description' => ['bail', 'sometimes', Rule::requiredIf($wantsToShowDescription), 'nullable', 'min:'.Product::DESCRIPTION_MIN_CHARACTERS, 'max:'.Product::DESCRIPTION_MAX_CHARACTERS],
 
             /*  Tracking Information  */
@@ -95,7 +95,7 @@ class UpdateProductRequest extends FormRequest
              *  variant_attributes: Exclude from the request data returned
              *      - Only modifiable on creation of variations
              */
-            'allow_variations' => ['bail', 'sometimes', 'required', 'boolean'],
+            'allow_variations' => ['bail', 'sometimes', 'boolean'],
             'variant_attributes' => ['exclude'],
             'total_variations' => ['exclude'],
             'total_visible_variations' => ['exclude'],
@@ -105,21 +105,21 @@ class UpdateProductRequest extends FormRequest
              *  currency: Exclude from the request data returned
              *      - The currency is derived from the store itself
             */
-            'is_free' => ['bail', 'sometimes', 'required', 'boolean'],
+            'is_free' => ['bail', 'sometimes', 'boolean'],
             'currency' => ['exclude'],
             'unit_regular_price' => collect($moneyRules)->add('sometimes')->toArray(),
             'unit_sale_price' => collect($moneyRules)->add('sometimes')->toArray(),
             'unit_cost_price' => collect($moneyRules)->add('sometimes')->toArray(),
 
             /*  Quantity Information  */
-            'allowed_quantity_per_order' => ['bail', 'sometimes', 'required', 'string', Rule::in($allowedQuantityPerOrder)],
+            'allowed_quantity_per_order' => ['bail', 'sometimes', 'string', Rule::in($allowedQuantityPerOrder)],
             'maximum_allowed_quantity_per_order' => [
                 'bail', 'sometimes', 'integer', 'min:'.Product::MAXIMUM_ALLOWED_QUANTITY_PER_ORDER_MIN, 'max:'.Product::MAXIMUM_ALLOWED_QUANTITY_PER_ORDER_MAX,
                 Rule::requiredIf(fn() => request()->input('allowed_quantity_per_order') === 'limited')
             ],
 
             /*  Stock Information  */
-            'stock_quantity_type' => ['bail', 'sometimes', 'required', 'string', Rule::in($stockQuantityType)],
+            'stock_quantity_type' => ['bail', 'sometimes', 'string', Rule::in($stockQuantityType)],
             'stock_quantity' => [
                 'bail', 'sometimes', 'integer', 'min:'.Product::STOCK_QUANTITY_MIN, 'max:'.Product::STOCK_QUANTITY_MAX,
                 Rule::requiredIf(fn() => strtolower(request()->input('stock_quantity_type')) === 'limited')

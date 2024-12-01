@@ -21,7 +21,7 @@ class CreateCustomersTable extends Migration
             $table->string('mobile_number', 20)->nullable();
             $table->date('birthday')->nullable();
             $table->text('notes', Customer::NOTES_MAX_CHARACTERS)->nullable();
-            $table->char('currency', 3)->default(Store::CURRENCY);
+            $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
             $table->foreignUuid('store_id')->cascadeOnDelete();
 
             $table->timestamp('last_order_at')->nullable();

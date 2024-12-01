@@ -1641,12 +1641,12 @@ class OrderRepository extends BaseRepository
                     'type' => $data['type'] ?? null,
                     'city' => $data['city'] ?? null,
                     'state' => $data['state'] ?? null,
+                    'country' => $data['country'] ?? null,
                     'address_line' => $data['address_line'],
                     'latitude' => $data['latitude'] ?? null,
                     'place_id' => $data['place_id'] ?? null,
                     'longitude' => $data['longitude'] ?? null,
                     'description' => $data['description'] ?? null,
-                    'country_code' => $data['country_code'] ?? null,
                     'address_line2' => $data['address_line2'] ?? null
                 ];
             }
@@ -1823,7 +1823,7 @@ class OrderRepository extends BaseRepository
             if($deliveryAddress->zip) $customerZip = $deliveryAddress->zip;
             if($deliveryAddress->city) $customerCity = $deliveryAddress->city;
             $customerAddress = $deliveryAddress->completeAddressWithoutCityAndCountry();
-            if($deliveryAddress->country_code) $customerCountry = $deliveryAddress->country_code;
+            if($deliveryAddress->country) $customerCountry = $deliveryAddress->country;
         }
 
         return [
@@ -1844,7 +1844,7 @@ class OrderRepository extends BaseRepository
             'customerFirstName' => $order->customer_first_name,
             'companyAccRef' => 'Order #'.$order->number.' payment',
             'emailTransaction' => $transaction->paymentMethod->email_payment_request,
-            'customerCountry' => $customerCountry ?? $transaction->paymentMethod->default_country_code,
+            'customerCountry' => $customerCountry ?? $transaction->paymentMethod->metadata['default_country'] ?? null,
 
             'redirectURL' => 'https://www.videocopilot.net' /* route('verify.order.payment', [
                 'orderId' => $order->id,

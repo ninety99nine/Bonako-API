@@ -16,11 +16,12 @@ class OrangeAirtimeService
      *  Bill user on their airtime
      *
      *  @param string $msisdn - The MSISDN (mobile number) of the subscriber to be billed e.g +26772000001
+     *  @param string $mobileNetworkProductId - Uniquely identify the product being purchased
      *  @param Transaction $transaction - The Transaction Model
      *
      *  @return Transaction
      */
-    public static function billUsingAirtime(string $msisdn, Transaction $transaction): Transaction
+    public static function billUsingAirtime(string $msisdn, string $mobileNetworkProductId, Transaction $transaction): Transaction
     {
         try {
 
@@ -317,7 +318,7 @@ class OrangeAirtimeService
                              *      ]
                              *  ]
                              */
-                            $response = self::requestAirtimeBillingDeductFee($transaction, $msisdn, $amount, $description, $accessToken);
+                            $response = self::requestAirtimeBillingDeductFee($transaction, $msisdn, $amount, $mobileNetworkProductId, $description, $accessToken);
 
                             if($status = $response['status']) {
 
@@ -820,12 +821,13 @@ class OrangeAirtimeService
      *  @param Transaction $transaction - The Transaction Model
      *  @param string $msisdn - The MSISDN (mobile number) of the subscriber to be billed e.g 26772000001
      *  @param float $amount - The amount to be billed e.g 10.00
+     *  @param string $mobileNetworkProductId - Uniquely identify the product being purchased
      *  @param string $description - The description of the transaction
      *  @param string $accessToken - The access token
      *
      *  @return array
      */
-    public static function requestAirtimeBillingDeductFee($transaction, $msisdn, $amount, $description, $accessToken): array
+    public static function requestAirtimeBillingDeductFee($transaction, $msisdn, $amount, $mobileNetworkProductId, $description, $accessToken): array
     {
         try {
 
@@ -851,9 +853,8 @@ class OrangeAirtimeService
                                 ],
                             ],
                             'chargingMetaData' => [
-                                'productId' => (isset($product_id) && !empty($product_id)) ? $product_id : null,
-                                'serviceId' => (isset($service_id) && !empty($service_id)) ? $service_id : null,
-                                'purchaseCategoryCode' => (isset($purchase_category_code) && !empty($purchase_category_code)) ? $purchase_category_code : null,
+                                'productId' => $mobileNetworkProductId,
+                                'purchaseCategoryCode' => config('app.ORANGE_AIRTIME_BILLING_ON_BEHALF_OF')
                             ],
                         ],
                         'transactionOperationStatus' => 'Charged',

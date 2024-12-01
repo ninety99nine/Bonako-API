@@ -23,7 +23,7 @@ class Address extends BaseModel
     }
 
     protected $fillable = [
-        'type', 'address_line', 'address_line2', 'city', 'state', 'zip', 'country_code', 'place_id',
+        'type', 'address_line', 'address_line2', 'city', 'state', 'zip', 'country', 'place_id',
         'latitude', 'longitude', 'description', 'owner_id', 'owner_type'
     ];
 

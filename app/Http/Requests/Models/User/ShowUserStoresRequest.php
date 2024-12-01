@@ -58,18 +58,18 @@ class ShowUserStoresRequest extends FormRequest
         $filters = collect(Store::USER_STORE_FILTERS)->map(fn($filter) => $this->separateWordsThenLowercase($filter));
 
         return [
-            'filter' => ['bail', 'sometimes', 'required', 'string', Rule::in($filters)],
-            'with_count_active_subscriptions' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_auth_active_subscription' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_team_members' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_visible_products' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_followers' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_products' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_coupons' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_reviews' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_count_orders' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_orders' => ['bail', 'sometimes', 'required', 'boolean'],
-            'with_rating' => ['bail', 'sometimes', 'required', 'boolean'],
+            'filter' => ['bail', 'sometimes', 'string', Rule::in($filters)],
+            'with_count_active_subscriptions' => ['bail', 'sometimes', 'boolean'],
+            'with_auth_active_subscription' => ['bail', 'sometimes', 'boolean'],
+            'with_count_team_members' => ['bail', 'sometimes', 'boolean'],
+            'with_visible_products' => ['bail', 'sometimes', 'boolean'],
+            'with_count_followers' => ['bail', 'sometimes', 'boolean'],
+            'with_count_products' => ['bail', 'sometimes', 'boolean'],
+            'with_count_coupons' => ['bail', 'sometimes', 'boolean'],
+            'with_count_reviews' => ['bail', 'sometimes', 'boolean'],
+            'with_count_orders' => ['bail', 'sometimes', 'boolean'],
+            'with_orders' => ['bail', 'sometimes', 'boolean'],
+            'with_rating' => ['bail', 'sometimes', 'boolean'],
         ];
     }
 

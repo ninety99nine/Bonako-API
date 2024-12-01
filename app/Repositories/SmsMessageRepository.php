@@ -80,7 +80,7 @@ class SmsMessageRepository extends BaseRepository
 
         $smsMessages = $this->setQuery(SmsMessage::query())->getSmsMessagesByIds($smsMessageIds);
 
-        if($totalSmsMessages  = $smsMessages->count()) {
+        if($totalSmsMessages = $smsMessages->count()) {
 
             foreach($smsMessages as $smsMessage) {
                 $smsMessage->delete();

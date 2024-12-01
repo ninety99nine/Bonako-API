@@ -54,7 +54,7 @@ class AiLessonRepository extends BaseRepository
         if(!$this->isAuthourized()) return ['deleted' => false, 'lesson' => 'You do not have permission to delete AI lessons'];
         $aiLessons = $this->setQuery(AiLesson::query())->getAiLessonsByIds($aiLessonIds);
 
-        if($totalAiLessons  = $aiLessons->count()) {
+        if($totalAiLessons = $aiLessons->count()) {
 
             foreach($aiLessons as $aiLesson) {
                 $aiLesson->delete();

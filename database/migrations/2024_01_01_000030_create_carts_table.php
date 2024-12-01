@@ -19,7 +19,7 @@ class CreateCartsTable extends Migration
             $table->uuid('id')->primary();
 
             /*  Pricing  */
-            $table->char('currency', 3)->default(Store::CURRENCY);
+            $table->char('currency', 3)->default(config('app.DEFAULT_CURRENCY'));
             $table->decimal('sub_total', 10, 2)->default(0);
             $table->decimal('coupon_discount_total', 10, 2)->default(0);
             $table->decimal('sale_discount_total', 10, 2)->default(0);

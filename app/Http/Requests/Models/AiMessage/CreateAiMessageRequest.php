@@ -29,7 +29,7 @@ class CreateAiMessageRequest extends FormRequest
     {
         return [
             'return' => ['sometimes', 'boolean'],
-            'category_id' => ['bail', 'sometimes', 'required', 'uuid', 'exists:ai_message_categories,id'],
+            'category_id' => ['bail', 'sometimes', 'uuid', 'exists:ai_message_categories,id'],
             'user_content' => ['bail', 'required', 'string', 'min:'.AiMessage::USER_CONTENT_MIN_CHARACTERS, 'max:'.AiMessage::USER_CONTENT_MAX_CHARACTERS],
         ];
     }

@@ -35,6 +35,10 @@ class PaymentMethodController extends BaseController
      */
     public function showPaymentMethods(ShowPaymentMethodsRequest $request): JsonResponse
     {
+        if($request->storeId) {
+            $request->merge(['store_id' => $request->storeId]);
+        }
+
         return $this->prepareOutput($this->repository->showPaymentMethods($request->all()));
     }
 

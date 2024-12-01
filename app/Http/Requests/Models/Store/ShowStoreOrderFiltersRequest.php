@@ -59,7 +59,7 @@ class ShowStoreOrderFiltersRequest extends FormRequest
 
         return [
             'user_order_association' => ['required', 'string', Rule::in($userOrderAssociations)],
-            'start_at_order_id' => ['sometimes', 'required', 'uuid']
+            'start_at_order_id' => ['sometimes', 'uuid']
         ];
     }
 

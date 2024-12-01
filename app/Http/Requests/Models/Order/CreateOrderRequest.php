@@ -102,26 +102,26 @@ class CreateOrderRequest extends FormRequest
             // Rules specific to the ConvertCartRequest
             [
                 'store_id' => ['required', 'uuid'],
-                'friends_can_collect' => ['bail', 'sometimes', 'required', 'boolean'],
+                'friends_can_collect' => ['bail', 'sometimes', 'boolean'],
 
-                'friend_group_id' => ['bail', 'sometimes', 'required', 'uuid'],
+                'friend_group_id' => ['bail', 'sometimes', 'uuid'],
 
-                'address_id' => ['bail', 'sometimes', 'required', 'uuid'],
-                'occasion_id' => ['bail', 'sometimes', 'nullable', 'required', 'uuid'],
+                'address_id' => ['bail', 'sometimes', 'uuid'],
+                'occasion_id' => ['bail', 'sometimes', 'nullable', 'uuid'],
 
-                'collection_type' => ['bail', 'sometimes', 'required', 'string', Rule::in($collectionTypes)],
+                'collection_type' => ['bail', 'sometimes', 'string', Rule::in($collectionTypes)],
 
-                'customer_note' => ['bail', 'sometimes', 'required', 'string', 'min:'.Order::CUSTOMER_NOTE_MIN_CHARACTERS, 'max:'.Order::CUSTOMER_NOTE_MAX_CHARACTERS],
-                'store_note' => ['bail', 'sometimes', 'required', 'string', 'min:'.Order::STORE_NOTE_MIN_CHARACTERS, 'max:'.Order::STORE_NOTE_MAX_CHARACTERS],
+                'customer_note' => ['bail', 'sometimes', 'string', 'min:'.Order::CUSTOMER_NOTE_MIN_CHARACTERS, 'max:'.Order::CUSTOMER_NOTE_MAX_CHARACTERS],
+                'store_note' => ['bail', 'sometimes', 'string', 'min:'.Order::STORE_NOTE_MIN_CHARACTERS, 'max:'.Order::STORE_NOTE_MAX_CHARACTERS],
 
-                'delivery_destination_name' => ['bail', 'sometimes', 'required', 'string' /*, Rule::in($deliveryDestinationNames)*/],
-                'pickup_destination_name' => ['bail', 'sometimes', 'required', 'string' /*, Rule::in($pickupDestinationNames)*/],
+                'delivery_destination_name' => ['bail', 'sometimes', 'string' /*, Rule::in($deliveryDestinationNames)*/],
+                'pickup_destination_name' => ['bail', 'sometimes', 'string' /*, Rule::in($pickupDestinationNames)*/],
 
                 'customer' => ['required', 'array'],
                 'customer.first_name' => ['bail', 'required', 'string', 'min:'.Customer::FIRST_NAME_MIN_CHARACTERS, 'max:'.Customer::FIRST_NAME_MAX_CHARACTERS],
-                'customer.last_name' => ['bail', 'sometimes', 'required', 'nullable', 'string', 'min:'.Customer::LAST_NAME_MIN_CHARACTERS, 'max:'.Customer::LAST_NAME_MAX_CHARACTERS],
-                'customer.mobile_number' => ['bail', 'sometimes', 'required', 'nullable', 'phone'],
-                'customer.email' => ['bail', 'sometimes', 'required', 'nullable', 'string', 'email'],
+                'customer.last_name' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.Customer::LAST_NAME_MIN_CHARACTERS, 'max:'.Customer::LAST_NAME_MAX_CHARACTERS],
+                'customer.mobile_number' => ['bail', 'sometimes', 'nullable', 'phone'],
+                'customer.email' => ['bail', 'sometimes', 'nullable', 'string', 'email'],
             ],
 
             // Merge with rules from the InspectCartRequest

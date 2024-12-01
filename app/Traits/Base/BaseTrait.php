@@ -2,16 +2,14 @@
 
 namespace App\Traits\Base;
 
+use App\Services\Currency\CurrencyService;
 use stdClass;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Support\Str;
 
 trait BaseTrait
 {
-    public $supportedCurrencySymbols = [
-        'BWP' => 'P'
-    ];
-
     public function convertToPercentageFormat($value)
     {
         return [
@@ -20,47 +18,36 @@ trait BaseTrait
         ];
     }
 
-    public function convertToCurrencyFormat($currencyCode = 'BWP')
+    public function convertToMoneyFormat($value = 0, $code = null)
     {
-        $symbol = '';
-        $currencyCode = $currencyCode ? (is_object($currencyCode) ? $currencyCode->code : $currencyCode) : $this->currency;
+        try {
 
-        //  If we have the currency code
-        if( $currencyCode ) {
+            $currency = (new CurrencyService)->findCurrencyByCode($code);
 
-            //  If the currency has a matching symbol
-            if( isset( $this->supportedCurrencySymbols[ $currencyCode ] ) ) {
-
-                //  Set the symbol
-                $symbol = $this->supportedCurrencySymbols[ $currencyCode ];
-
+            if($currency) {
+                $symbol = empty($currency['symbol']) ? $currency['code'] : $currency['symbol'];
+            }else{
+                $symbol = '';
             }
 
+            //  Convert value to money format
+            $money = number_format($value, 2, '.', ',');
+
+            //  Convert value to float
+            $amount = (float) $value;
+
+            $obj = new stdClass();
+            $obj->amount = $amount;
+            $obj->amountWithoutCurrency = $money;
+            $obj->amountWithCurrency = $symbol . $money;
+
+            return $obj;
+
+        } catch (\Exception $e) {
+
+            throw new Exception('Failed to convert money to money format');
+
         }
-
-        $obj = new stdClass();
-        $obj->symbol = $symbol;
-        $obj->code = $currencyCode;
-
-        return $obj;
-    }
-
-    public function convertToMoneyFormat($value = 0, $currencyCode = null)
-    {
-        $symbol = $this->convertToCurrencyFormat($currencyCode)->symbol;
-
-        //  Convert value to money format
-        $money = number_format($value, 2, '.', ',');
-
-        //  Convert value to float
-        $amount = (float) $value;
-
-        $obj = new stdClass();
-        $obj->amount = $amount;
-        $obj->amountWithoutCurrency = $money;
-        $obj->amountWithCurrency = $symbol . $money;
-
-        return $obj;
     }
 
     public function convertNumberToShortenedPrefix($number)

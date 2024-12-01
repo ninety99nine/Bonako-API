@@ -74,7 +74,7 @@ class InviteFriendGroupMembersRequest extends FormRequest
         return [
             'mobile_numbers' => ['required', 'array'],
             'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
-            'role' => ['bail', 'sometimes', 'required', 'string', Rule::in($this->getRoles())],
+            'role' => ['bail', 'sometimes', 'string', Rule::in($this->getRoles())],
         ];
     }
 

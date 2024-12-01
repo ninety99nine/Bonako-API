@@ -74,7 +74,7 @@ class StoreQuotaRepository extends BaseRepository
 
         $storeQuotas = $this->setQuery(StoreQuota::query())->getStoreQuotasByIds($storeQuotaIds);
 
-        if($totalStoreQuotas  = $storeQuotas->count()) {
+        if($totalStoreQuotas = $storeQuotas->count()) {
 
             foreach($storeQuotas as $storeQuota) {
                 $storeQuota->delete();

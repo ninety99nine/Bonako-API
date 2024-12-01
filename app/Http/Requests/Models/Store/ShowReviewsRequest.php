@@ -59,8 +59,8 @@ class ShowReviewsRequest extends FormRequest
         $filters = collect(Review::STORE_REVIEW_FILTERS)->map(fn($filter) => strtolower($filter));
 
         return [
-            'user_id' => ['sometimes', 'required', 'uuid'],
-            'with_user' => ['bail', 'sometimes', 'required', 'boolean'],
+            'user_id' => ['sometimes', 'uuid'],
+            'with_user' => ['bail', 'sometimes', 'boolean'],
             'filter' => ['sometimes', 'string', Rule::in($filters)],
         ];
     }

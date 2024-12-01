@@ -69,7 +69,7 @@ class PricingPlanRepository extends BaseRepository
         if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete pricing plans'];
         $pricingPlans = $this->setQuery(PricingPlan::query())->getPricingPlansByIds($pricingPlanIds);
 
-        if($totalPricingPlans  = $pricingPlans->count()) {
+        if($totalPricingPlans = $pricingPlans->count()) {
 
             foreach($pricingPlans as $pricingPlan) {
                 $pricingPlan->delete();
@@ -254,8 +254,9 @@ class PricingPlanRepository extends BaseRepository
 
                 }else if($paymentMethod->isOrangeAirtime()) {
 
+                    $mobileNetworkProductId = $pricingPlan->type;
                     $msisdn = $this->getAuthUser()->mobile_number->formatE164();
-                    $transaction = OrangeAirtimeService::billUsingAirtime($msisdn, $transaction);
+                    $transaction = OrangeAirtimeService::billUsingAirtime($msisdn, $mobileNetworkProductId, $transaction);
 
                     if($transaction->payment_status == TransactionPaymentStatus::FAILED->value) {
                         return [

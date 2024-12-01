@@ -59,7 +59,7 @@ class AiAssistantRepository extends BaseRepository
         if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete AI assistants'];
         $aiAssistants = $this->setQuery(AiAssistant::query())->getAiAssistantsByIds($aiAssistantIds);
 
-        if($totalAiAssistants  = $aiAssistants->count()) {
+        if($totalAiAssistants = $aiAssistants->count()) {
 
             foreach($aiAssistants as $aiAssistant) {
                 $aiAssistant->delete();

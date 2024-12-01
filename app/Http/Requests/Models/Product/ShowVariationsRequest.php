@@ -25,7 +25,7 @@ class ShowVariationsRequest extends FormRequest
     public function rules()
     {
         return [
-            'variant_attribute_choices.*' => ['sometimes', 'required', 'string'],
+            'variant_attribute_choices.*' => ['sometimes', 'string'],
         ];
     }
 

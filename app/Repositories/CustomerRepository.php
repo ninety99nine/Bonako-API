@@ -155,6 +155,7 @@ class CustomerRepository extends BaseRepository
             if($store) {
                 $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
                 if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update customer'];
+                if(!$this->checkIfHasRelationOnRequest('store')) $customer->unsetRelation('store');
             }else{
                 return ['updated' => false, 'message' => 'This store does not exist'];
             }
@@ -188,9 +189,9 @@ class CustomerRepository extends BaseRepository
             $deleted = $customer->delete();
 
             if ($deleted) {
-                return ['removed' => true, 'message' => 'Customer removed'];
+                return ['deleted' => true, 'message' => 'Customer removed'];
             }else{
-                return ['removed' => false, 'message' => 'Customer removal unsuccessful'];
+                return ['deleted' => false, 'message' => 'Customer removal unsuccessful'];
             }
         }else{
             return ['deleted' => false, 'message' => 'This customer does not exist'];

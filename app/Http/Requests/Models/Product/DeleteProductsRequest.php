@@ -26,7 +26,7 @@ class DeleteProductsRequest extends FormRequest
         return [
             'product_ids' => ['required', 'array'],
             'product_ids.*' => ['required', 'uuid'],
-            'store_id' => ['sometimes', 'required', 'uuid']
+            'store_id' => ['sometimes', 'uuid']
         ];
     }
 

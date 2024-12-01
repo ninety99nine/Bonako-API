@@ -24,7 +24,7 @@ class ShowCouponsRequest extends FormRequest
     public function rules()
     {
         return [
-            'store_id' => ['sometimes', 'required', 'uuid']
+            'store_id' => ['sometimes', 'uuid']
         ];
     }
 

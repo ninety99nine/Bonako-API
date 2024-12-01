@@ -52,7 +52,7 @@ class OccasionRepository extends BaseRepository
 
         $occasions = $this->setQuery(Occasion::query())->getOccasionsByIds($occasionIds);
 
-        if($totalOccasions  = $occasions->count()) {
+        if($totalOccasions = $occasions->count()) {
 
             foreach($occasions as $occasion) {
                 $occasion->delete();

@@ -91,7 +91,7 @@ class MediaFileRepository extends BaseRepository
 
         $mediaFiles = $this->setQuery($this->getQuery() ?? MediaFile::query())->getMediaFilesByIds($mediaFileIds);
 
-        if($totalMediaFiles  = $mediaFiles->count()) {
+        if($totalMediaFiles = $mediaFiles->count()) {
 
             foreach($mediaFiles as $mediaFile) {
                 $mediaFile->delete();

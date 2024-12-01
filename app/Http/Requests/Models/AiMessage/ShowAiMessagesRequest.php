@@ -29,7 +29,7 @@ class ShowAiMessagesRequest extends FormRequest
     public function rules()
     {
         return [
-            'ai_assistant_id' => ['bail', 'sometimes', 'required', 'uuid'],
+            'ai_assistant_id' => ['bail', 'sometimes', 'uuid'],
             'association' => ['bail', 'sometimes', 'nullable', Rule::in(
                 Association::SUPER_ADMIN->value
             )],

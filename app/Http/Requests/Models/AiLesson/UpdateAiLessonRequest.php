@@ -29,8 +29,8 @@ class UpdateAiLessonRequest extends FormRequest
     {
         return [
             'return' => ['sometimes', 'boolean'],
-            'name' => ['bail', 'sometimes', 'required', 'string', 'min:'.AiLesson::NAME_MIN_CHARACTERS, 'max:'.AiLesson::NAME_MAX_CHARACTERS],
-            'topics' => ['sometimes', 'required', 'array'],
+            'name' => ['bail', 'sometimes', 'string', 'min:'.AiLesson::NAME_MIN_CHARACTERS, 'max:'.AiLesson::NAME_MAX_CHARACTERS],
+            'topics' => ['sometimes', 'array'],
             'topics.*.title' => ['required', 'string'],
             'topics.*.prompt' => ['required', 'string'],
         ];

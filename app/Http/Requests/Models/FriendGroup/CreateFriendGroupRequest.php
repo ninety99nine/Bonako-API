@@ -95,9 +95,9 @@ class CreateFriendGroupRequest extends FormRequest
             'mobile_numbers' => ['array'],
             'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
             'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
-            'shared' => ['bail', 'sometimes', 'required', 'boolean'],
-            'can_add_friends' => ['bail', 'sometimes', 'required', 'boolean'],
-            'role' => ['bail', 'sometimes', 'required', 'string', Rule::in($this->getRoles())],
+            'shared' => ['bail', 'sometimes', 'boolean'],
+            'can_add_friends' => ['bail', 'sometimes', 'boolean'],
+            'role' => ['bail', 'sometimes', 'string', Rule::in($this->getRoles())],
             'description' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.FriendGroup::DESCRIPTION_MIN_CHARACTERS, 'max:'.FriendGroup::DESCRIPTION_MAX_CHARACTERS],
         ];
     }

@@ -3,4 +3,11 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 
-Route::get('/', [HomeController::class, 'showApiHome'])->withoutMiddleware('auth:sanctum')->name('api.home');
+Route::controller(HomeController::class)
+    ->withoutMiddleware('auth:sanctum')
+    ->group(function () {
+        Route::get('/', 'showApiHome')->name('api.home');
+        Route::get('/languages', 'showLanguages')->name('show.languages');
+        Route::get('/countries', 'showCountries')->name('show.countries');
+        Route::get('/currencies', 'showCurrencies')->name('show.currencies');
+});

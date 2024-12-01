@@ -351,6 +351,7 @@ class ProductRepository extends BaseRepository
             if($store) {
                 $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
                 if(!$isAuthourized) return ['updated' => false, 'message' => 'You do not have permission to update product'];
+                if(!$this->checkIfHasRelationOnRequest('store')) $product->unsetRelation('store');
             }else{
                 return ['updated' => false, 'message' => 'This store does not exist'];
             }

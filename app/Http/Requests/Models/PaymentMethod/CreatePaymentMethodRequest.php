@@ -32,17 +32,27 @@ class CreatePaymentMethodRequest extends FormRequest
     {
         return [
             'return' => ['sometimes', 'boolean'],
-            'active' => ['sometimes', 'required', 'boolean'],
-            'name' => ['bail', 'required', 'string', 'unique:payment_methods', 'min:'.PaymentMethod::NAME_MIN_CHARACTERS, 'max:'.PaymentMethod::NAME_MAX_CHARACTERS],
-            'type' => ['bail', 'required', 'string', 'unique:payment_methods', 'min:'.PaymentMethod::TYPE_MIN_CHARACTERS, 'max:'.PaymentMethod::TYPE_MAX_CHARACTERS],
-            'description' => ['bail', 'nullable', 'required', 'string', 'min:'.PaymentMethod::DESCRIPTION_MIN_CHARACTERS, 'max:'.PaymentMethod::DESCRIPTION_MAX_CHARACTERS],
+            'active' => ['sometimes', 'boolean'],
+            'name' => [
+                'bail', 'required', 'string', 'min:'.PaymentMethod::NAME_MIN_CHARACTERS, 'max:'.PaymentMethod::NAME_MAX_CHARACTERS,
+                request()->filled('store_id')
+                    ? Rule::unique('payment_methods')->where('store_id', request()->input('store_id'))
+                    : Rule::unique('payment_methods')
+            ],
+            'type' => [
+                'bail', 'required', 'string', 'min:'.PaymentMethod::TYPE_MIN_CHARACTERS, 'max:'.PaymentMethod::TYPE_MAX_CHARACTERS,
+                request()->filled('store_id')
+                    ? Rule::unique('payment_methods')->where('store_id', request()->input('store_id'))
+                    : Rule::unique('payment_methods')
+            ],
+            'description' => ['bail', 'nullable', 'string', 'min:'.PaymentMethod::DESCRIPTION_MIN_CHARACTERS, 'max:'.PaymentMethod::DESCRIPTION_MAX_CHARACTERS],
             'category' => ['bail', 'required', Rule::in(PaymentMethod::PAYMENT_METHOD_CATEGORIES())],
             'countries' => ['sometimes', 'nullable', 'array', 'required'],
             'countries.*' => ['string', Rule::in(collect((new CountryService)->getCountries())->map(fn($country) => $country->iso)->toArray())],
-            'metadata' => ['sometimes', 'nullable', 'array', 'required'],
-            'can_pay_later' => ['sometimes', 'required', 'boolean'],
-            'require_proof_of_payment' => ['sometimes', 'required', 'boolean'],
-            'automatically_mark_as_paid' => ['sometimes', 'required', 'boolean'],
+            'metadata' => ['sometimes', 'nullable', 'array'],
+            'require_proof_of_payment' => ['sometimes', 'boolean'],
+            'automatically_mark_as_paid' => ['sometimes', 'boolean'],
+            'contact_seller_before_payment' => ['sometimes', 'boolean'],
         ];
     }
 

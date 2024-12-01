@@ -25,11 +25,14 @@ class HomeResource extends BaseResource
             new ResourceLink('generate.mobile.verification.code', route('generate.mobile.verification.code')),
 
             new ResourceLink('show.users', route('show.users')),
+
             new ResourceLink('show.stores', route('show.stores')),
             new ResourceLink('create.store', route('create.store')),
             new ResourceLink('search.store.by.alias', route('search.store.by.alias')),
             new ResourceLink('search.store.by.ussd.mobile.number', route('search.store.by.ussd.mobile.number')),
             new ResourceLink('show.last.visited.store', route('show.last.visited.store')),
+            new ResourceLink('show.store.deposit.options', route('show.store.deposit.options')),
+            new ResourceLink('show.store.installment.options', route('show.store.installment.options')),
 
             new ResourceLink('show.friends', route('show.friends')),
             new ResourceLink('show.reviews', route('show.reviews')),
@@ -53,7 +56,14 @@ class HomeResource extends BaseResource
             new ResourceLink('create.customer', route('create.customer')),
             new ResourceLink('delete.customers', route('delete.customers')),
 
+            new ResourceLink('show.store.rolling.numbers', route('show.store.rolling.numbers')),
+            new ResourceLink('create.store.rolling.number', route('create.store.rolling.number')),
+            new ResourceLink('delete.store.rolling.numbers', route('delete.store.rolling.numbers')),
+
             new ResourceLink('show.addresses', route('show.addresses')),
+            new ResourceLink('add.address', route('add.address')),
+            new ResourceLink('remove.addresses', route('remove.addresses')),
+
             new ResourceLink('show.occasions', route('show.occasions')),
 
             new ResourceLink('create.review', route('create.review')),
@@ -73,11 +83,18 @@ class HomeResource extends BaseResource
             new ResourceLink('show.pricing.plans', route('show.pricing.plans')),
             new ResourceLink('show.notifications', route('show.notifications')),
             new ResourceLink('show.subscriptions', route('show.subscriptions')),
+
             new ResourceLink('show.payment.methods', route('show.payment.methods')),
+            new ResourceLink('create.payment.method', route('create.payment.method')),
+            new ResourceLink('delete.payment.methods', route('delete.payment.methods')),
+
             new ResourceLink('show.review.rating.options', route('show.review.rating.options')),
             new ResourceLink('show.ai.message.categories', route('show.ai.message.categories')),
 
             new ResourceLink('launch.ussd', route('launch.ussd')),
+            new ResourceLink('show.languages', route('show.languages')),
+            new ResourceLink('show.countries', route('show.countries')),
+            new ResourceLink('show.currencies', route('show.currencies')),
         ];
     }
 }

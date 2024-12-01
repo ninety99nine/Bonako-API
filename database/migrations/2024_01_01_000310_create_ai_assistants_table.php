@@ -22,7 +22,6 @@ class CreateAiAssistantsTable extends Migration
             $table->integer('remaining_paid_top_up_tokens')->default(0);
 
             $table->boolean('requires_subscription')->default(0);
-            $table->timestamp('last_subscription_end_at')->nullable();
 
             $table->foreignUuid('user_id');
             $table->timestamps();

@@ -17,9 +17,12 @@ class ProductLineResource extends BaseResource
         $productLine = $this->resource;
         $productId = $this->resource->product_id;
 
-        $this->resourceLinks = [
-            new ResourceLink('show.product.line', route('show.product.line', ['productLineId' => $productLine->id]))
-        ];
+        //  Note: The product line ID does not exist for shopping carts
+        if($productLine->id) {
+            array_push($this->resourceLinks,
+                new ResourceLink('show.product.line', route('show.product.line', ['productLineId' => $productLine->id]))
+            );
+        }
 
         if($productId) {
             array_push($this->resourceLinks,

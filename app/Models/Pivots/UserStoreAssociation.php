@@ -39,7 +39,6 @@ class UserStoreAssociation extends BasePivot
         'last_seen_on_mobile_app_at' => 'datetime',
 
         'is_associated_as_customer' => 'boolean',
-        'last_subscription_end_at' => 'datetime',
         'mobile_number' => E164PhoneNumberCast::class,
         'team_member_permissions' => TeamMemberPermissions::class,
     ];
@@ -52,7 +51,7 @@ class UserStoreAssociation extends BasePivot
         'mobile_number',
 
         /*  Team Member Information  */
-        'team_member_status', 'team_member_role', 'team_member_permissions', 'invited_to_join_team_by_user_id', 'last_subscription_end_at',
+        'team_member_status', 'team_member_role', 'team_member_permissions', 'invited_to_join_team_by_user_id',
 
         /*  Follower Information  */
         'follower_status', 'invited_to_follow_by_user_id',
@@ -104,18 +103,8 @@ class UserStoreAssociation extends BasePivot
         'is_team_member_as_creator_or_admin', 'is_team_member_as_creator', 'is_team_member_as_admin',
         'can_manage_everything', 'can_manage_orders', 'can_manage_products', 'can_manage_coupons', 'can_manage_customers',
         'can_manage_team_members', 'can_manage_instant_carts', 'can_manage_settings',
-        'has_full_permissions', 'last_subscription_has_expired'
+        'has_full_permissions'
     ];
-
-    /**
-     *  Check if this user last subscription has expired
-    */
-    protected function lastSubscriptionHasExpired(): Attribute
-    {
-        return new Attribute(
-            get: fn () => $this->getRawOriginal('last_subscription_end_at') == null ? null : \Carbon\Carbon::parse($this->getRawOriginal('last_subscription_end_at'))->isBefore(now())
-        );
-    }
 
     /**
      *  Check if this user is classified as a follower

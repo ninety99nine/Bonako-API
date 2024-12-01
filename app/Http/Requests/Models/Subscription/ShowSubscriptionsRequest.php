@@ -26,8 +26,8 @@ class ShowSubscriptionsRequest extends FormRequest
     public function rules()
     {
         return [
-            'store_id' => ['bail', 'sometimes', 'required', 'uuid'],
-            'ai_assistant_id' => ['bail', 'sometimes', 'required', 'uuid'],
+            'store_id' => ['bail', 'sometimes', 'uuid'],
+            'ai_assistant_id' => ['bail', 'sometimes', 'uuid'],
             'association' => ['bail', 'sometimes', 'nullable', Rule::in(
                 Association::SUPER_ADMIN->value
             )]

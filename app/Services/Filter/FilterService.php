@@ -322,11 +322,6 @@ class FilterService
                     ['label' => 'Offline', 'value' => 'offline'],
                 ]
             ],
-            'last_subscription_end_at' => [
-                'label' => 'Last Subscription Date',
-                'type' => 'date',
-                'options' => self::getOperatorOptions()
-            ],
             'created_at' => [
                 'label' => 'Created Date',
                 'type' => 'date',

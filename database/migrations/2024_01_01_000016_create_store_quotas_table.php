@@ -28,7 +28,7 @@ class CreateStoreQuotasTable extends Migration
             $table->index('store_id');
 
             /* Foreign Key Constraints */
-            $table->foreign('store_id')->references('id')->on('storeS')->cascadeOnDelete();
+            $table->foreign('store_id')->references('id')->on('stores')->cascadeOnDelete();
         });
     }
 

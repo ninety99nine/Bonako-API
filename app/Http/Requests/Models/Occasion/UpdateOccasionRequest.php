@@ -31,7 +31,7 @@ class UpdateOccasionRequest extends FormRequest
         return [
             'return' => ['sometimes', 'boolean'],
             'name' => [
-                'bail', 'sometimes', 'required', 'string', 'min:'.Occasion::NAME_MIN_CHARACTERS, 'max:'.Occasion::NAME_MAX_CHARACTERS,
+                'bail', 'sometimes', 'string', 'min:'.Occasion::NAME_MIN_CHARACTERS, 'max:'.Occasion::NAME_MAX_CHARACTERS,
                 Rule::unique('occasions')->ignore(request()->occasionId)
             ],
         ];

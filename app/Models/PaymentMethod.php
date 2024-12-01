@@ -37,14 +37,18 @@ class PaymentMethod extends BaseModel
     protected $casts = [
         'active' => 'boolean',
         'metadata' => JsonToArray::class,
-        'countries' => JsonToArray::class
+        'countries' => JsonToArray::class,
+        'require_proof_of_payment' => 'boolean',
+        'automatically_mark_as_paid' => 'boolean',
+        'contact_seller_before_payment' => 'boolean',
     ];
 
     protected $tranformableCasts = [];
 
     protected $fillable = [
-        'active', 'name', 'type', 'category', 'description', 'countries', 'metadata', 'can_pay_later',
-        'require_proof_of_payment', 'automatically_mark_as_paid', 'position', 'store_id'
+        'active', 'name', 'type', 'category', 'description', 'countries', 'metadata',
+        'require_proof_of_payment', 'automatically_mark_as_paid',
+        'contact_seller_before_payment', 'position', 'store_id'
     ];
 
     /****************************

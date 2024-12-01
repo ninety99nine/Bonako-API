@@ -20,7 +20,7 @@ class PhoneNumberService
         $phoneNumber = $phoneNumber instanceof PhoneNumber ? $phoneNumber : (new PhoneNumber($phoneNumber));
 
         $obj = new stdClass();
-        $obj->country_code = $phoneNumber->getCountry();
+        $obj->country = $phoneNumber->getCountry();
         $obj->dialing_code = self::getDialingCode($phoneNumber);
         $obj->national = self::getNationalPhoneNumberWithoutSpaces($phoneNumber);
         $obj->international = $phoneNumber->formatE164();

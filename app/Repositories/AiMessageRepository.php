@@ -138,7 +138,7 @@ class AiMessageRepository extends BaseRepository
         if(!$this->isAuthourized()) return ['deleted' => false, 'message' => 'You do not have permission to delete AI messages'];
         $aiMessages = $this->setQuery(AiMessage::query())->getAiMessagesByIds($aiMessageIds);
 
-        if($totalAiMessages  = $aiMessages->count()) {
+        if($totalAiMessages = $aiMessages->count()) {
 
             foreach($aiMessages as $aiMessage) {
                 $aiMessage->delete();

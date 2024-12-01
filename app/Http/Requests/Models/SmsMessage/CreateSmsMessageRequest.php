@@ -30,7 +30,7 @@ class CreateSmsMessageRequest extends FormRequest
         return [
             'return' => ['sometimes', 'boolean'],
             'send_message' => ['sometimes', 'boolean'],
-            'store_id' => ['sometimes', 'required', 'uuid'],
+            'store_id' => ['sometimes', 'uuid'],
             'recipient_mobile_number' => ['bail', 'required', 'phone'],
             'content' => ['bail', 'required', 'string', 'min:'.SmsMessage::CONTENT_MIN_CHARACTERS, 'max:'.SmsMessage::CONTENT_MAX_CHARACTERS]
         ];

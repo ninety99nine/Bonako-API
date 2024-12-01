@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use App\Repositories\StoreRepository;
 use App\Http\Controllers\Base\BaseController;
+use App\Http\Requests\Models\PaymentMethod\CreatePaymentMethodRequest;
 use App\Http\Requests\Models\Store\ShowStoresRequest;
 use App\Http\Requests\Models\Store\CreateStoreRequest;
 use App\Http\Requests\Models\Store\UpdateStoreRequest;
@@ -63,6 +64,26 @@ class StoreController extends BaseController
     public function showLastVisitedStore(ShowLastVisitedStoreRequest $request): JsonResponse
     {
         return $this->prepareOutput($this->repository->showLastVisitedStore($request->input('alias')));
+    }
+
+    /**
+     * Show store deposit percentage options.
+     *
+     * @return JsonResponse
+     */
+    public function showStoreDepositOptions(): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showStoreDepositOptions());
+    }
+
+    /**
+     * Show store installment percentage options.
+     *
+     * @return JsonResponse
+     */
+    public function showStoreInstallmentOptions(): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showStoreInstallmentOptions());
     }
 
     /**

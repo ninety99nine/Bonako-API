@@ -4,9 +4,12 @@ namespace App\Models;
 
 use App\Casts\Money;
 use App\Casts\Currency;
+use App\Enums\TaxMethod;
+use App\Casts\Percentage;
 use App\Traits\AuthTrait;
 use App\Traits\StoreTrait;
 use App\Casts\JsonToArray;
+use App\Enums\DistanceUnit;
 use App\Enums\CallToAction;
 use App\Enums\InsightPeriod;
 use App\Models\Base\BaseModel;
@@ -24,7 +27,6 @@ class Store extends BaseModel
 {
     use HasFactory, StoreTrait, UserStoreAssociationTrait, AuthTrait;
 
-    const CURRENCY = 'BWP';
     const DEFAULT_OFFLINE_MESSAGE = 'We are currently offline';
 
     const PERMISSIONS = [
@@ -86,6 +88,16 @@ class Store extends BaseModel
         return array_map(fn($method) => $method->value, InsightCategory::cases());
     }
 
+    public static function TAX_METHOD_OPTIONS(): array
+    {
+        return array_map(fn($method) => $method->value, TaxMethod::cases());
+    }
+
+    public static function DISTANCE_UNIT_OPTIONS(): array
+    {
+        return array_map(fn($method) => $method->value, DistanceUnit::cases());
+    }
+
     public static function CALL_TO_ACTION_OPTIONS(): array
     {
         return array_map(fn($method) => $method->value, CallToAction::cases());
@@ -101,6 +113,8 @@ class Store extends BaseModel
     const NAME_MAX_CHARACTERS = 25;
     const ALIAS_MIN_CHARACTERS = 3;
     const ALIAS_MAX_CHARACTERS = 25;
+    const TAX_ID_MIN_CHARACTERS = 2;
+    const TAX_ID_MAX_CHARACTERS = 50;
     const COMPANY_UIN_CHARACTERS = 13;
     const MAXIMUM_VISIBLE_PRODUCTS = 5;
     const DESCRIPTION_MIN_CHARACTERS = 10;
@@ -113,6 +127,8 @@ class Store extends BaseModel
     const SMS_SENDER_NAME_MAX_CHARACTERS = 11;
     const OFFLINE_MESSAGE_MIN_CHARACTERS = 3;
     const OFFLINE_MESSAGE_MAX_CHARACTERS = 120;
+    const SOCIAL_LINK_NAME_MIN_CHARACTERS = 1;
+    const SOCIAL_LINK_NAME_MAX_CHARACTERS = 255;
     CONST NUMBER_OF_EMPLOYEES_MIN_CHARACTERS = 1;
     const PICKUP_DESTINATION_NAME_MIN_CHARACTERS = 3;
     const PICKUP_DESTINATION_NAME_MAX_CHARACTERS = 25;
@@ -132,14 +148,18 @@ class Store extends BaseModel
         'allow_pickup' => 'boolean',
         'allow_delivery' => 'boolean',
         'identified_orders' => 'boolean',
+        'show_opening_hours' => 'boolean',
         'allow_free_delivery' => 'boolean',
         'delivery_flat_fee' => Money::class,
+        'social_links' => JsonToArray::class,
         'allow_deposit_payments' => 'boolean',
-        'last_subscription_end_at' => 'datetime',
+        'opening_hours' => JsonToArray::class,
         'allow_installment_payments' => 'boolean',
+        'tax_percentage_rate' => Percentage::class,
         'deposit_percentages' => JsonToArray::class,
         'pickup_destinations' => JsonToArray::class,
         'has_automated_payment_methods' => 'boolean',
+        'allow_checkout_on_closed_hours' => 'boolean',
         'installment_percentages' => JsonToArray::class,
         'ussd_mobile_number' => E164PhoneNumberCast::class,
         'contact_mobile_number' => E164PhoneNumberCast::class,
@@ -153,13 +173,17 @@ class Store extends BaseModel
     ];
 
     protected $fillable = [
-        'emoji', 'name', 'alias', 'ussd_mobile_number', 'contact_mobile_number', 'whatsapp_mobile_number', 'call_to_action',
-        'description', 'currency', 'verified', 'online', 'offline_message', 'identified_orders', 'user_id',
-        'last_subscription_end_at', 'allow_delivery', 'allow_free_delivery', 'pickup_note', 'delivery_note',
-        'delivery_fee', 'delivery_flat_fee', 'delivery_destinations', 'allow_pickup', 'pickup_note',
+        'emoji', 'name', 'alias', 'email', 'ussd_mobile_number', 'contact_mobile_number', 'whatsapp_mobile_number', 'call_to_action',
+        'description', 'verified', 'online', 'offline_message', 'social_links', 'identified_orders', 'user_id',
+        'allow_delivery', 'allow_free_delivery', 'pickup_note', 'delivery_note', 'delivery_fee',
+        'delivery_flat_fee', 'delivery_destinations', 'allow_pickup', 'pickup_note',
         'pickup_destinations', 'allow_deposit_payments', 'deposit_percentages',
         'allow_installment_payments', 'installment_percentages',
-        'sms_sender_name', 'has_automated_payment_methods'
+        'sms_sender_name', 'has_automated_payment_methods',
+        'country', 'language', 'currency', 'distance_unit',
+        'tax_percentage_rate', 'tax_method', 'tax_id',
+        'opening_hours', 'show_opening_hours',
+        'allow_checkout_on_closed_hours'
     ];
 
     /************
@@ -229,7 +253,9 @@ class Store extends BaseModel
      */
     public function scopeHasActiveSubscription($query)
     {
-        return $query->where('stores.last_subscription_end_at', '>' , now());
+        return $query->whereHas('subscriptions', function ($query) {
+            $query->active();
+        });
     }
 
     /********************
@@ -264,6 +290,11 @@ class Store extends BaseModel
     public function paymentMethods()
     {
         return $this->hasMany(PaymentMethod::class);
+    }
+
+    public function storeRollingNumbers()
+    {
+        return $this->hasMany(StoreRollingNumber::class);
     }
 
     public function customers()
@@ -377,7 +408,7 @@ class Store extends BaseModel
      */
     public function activeSubscriptions()
     {
-        return $this->subscriptions()->notExpired();
+        return $this->subscriptions()->active();
     }
 
     /**
@@ -385,7 +416,7 @@ class Store extends BaseModel
      */
     public function activeSubscription()
     {
-        return $this->morphOne(Subscription::class, 'owner')->latest()->notExpired();
+        return $this->morphOne(Subscription::class, 'owner')->latest()->active();
     }
 
     /**

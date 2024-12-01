@@ -26,7 +26,10 @@ class ShowPaymentMethodsRequest extends FormRequest
      */
     public function rules()
     {
-        return [];
+        return [
+            'store_id' => ['sometimes', 'uuid'],
+            'non_associated_store_id' => ['sometimes', 'uuid'],
+        ];
     }
 
     /**

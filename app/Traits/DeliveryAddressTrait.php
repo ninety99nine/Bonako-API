@@ -17,8 +17,8 @@ trait DeliveryAddressTrait
     public function completeAddress()
     {
         $countryName = function() {
-            if (empty($this->country_code)) return '';
-            return CountryService::findCountryNameByTwoLetterCountryCode($this->country_code) ?? '';
+            if (empty($this->country)) return '';
+            return CountryService::findCountryNameByTwoLetterCountryCode($this->country) ?? '';
         };
 
         return collect([$this->address_line, $this->address_line2, $this->city, $this->state, $this->zip, $countryName()])->map('trim')->filter()->unique()->join(', ');

@@ -28,9 +28,9 @@ class UpdateStoreQuotaRequest extends FormRequest
     {
         return [
             'return' => ['sometimes', 'boolean'],
-            'sms_credits' => ['bail', 'sometimes', 'required', 'integer', 'min:0'],
-            'email_credits' => ['bail', 'sometimes', 'required', 'integer', 'min:0'],
-            'whatsapp_credits' => ['bail', 'sometimes', 'required', 'integer', 'min:0']
+            'sms_credits' => ['bail', 'sometimes', 'integer', 'min:0'],
+            'email_credits' => ['bail', 'sometimes', 'integer', 'min:0'],
+            'whatsapp_credits' => ['bail', 'sometimes', 'integer', 'min:0']
         ];
     }
 

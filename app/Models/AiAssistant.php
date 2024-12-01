@@ -18,7 +18,7 @@ class AiAssistant extends BaseModel
 
     protected $fillable = [
         'total_paid_tokens', 'remaining_free_tokens', 'remaining_paid_tokens', 'remaining_paid_top_up_tokens',
-        'requires_subscription', 'last_subscription_end_at', 'user_id'
+        'requires_subscription', 'user_id'
     ];
 
     public function user()
@@ -43,11 +43,11 @@ class AiAssistant extends BaseModel
 
     public function activeSubscription()
     {
-        return $this->morphOne(Subscription::class, 'owner')->notExpired();
+        return $this->morphOne(Subscription::class, 'owner')->active();
     }
 
-    public function aiAssistantDailyUsages()
+    public function aiAssistantTokenUsage()
     {
-        return $this->hasMany(AiAssistantDailyUsage::class);
+        return $this->hasMany(AiAssistantTokenUsage::class);
     }
 }

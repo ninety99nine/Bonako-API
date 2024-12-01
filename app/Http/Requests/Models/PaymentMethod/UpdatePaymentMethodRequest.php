@@ -29,25 +29,25 @@ class UpdatePaymentMethodRequest extends FormRequest
      */
     public function rules()
     {
+        $paymentMethod = PaymentMethod::find(request()->paymentMethodId);
+
         return [
             'return' => ['sometimes', 'boolean'],
-            'active' => ['sometimes', 'required', 'boolean'],
+            'active' => ['sometimes', 'boolean'],
             'name' => [
-                'bail', 'sometimes', 'required', 'string', 'min:'.PaymentMethod::NAME_MIN_CHARACTERS, 'max:'.PaymentMethod::NAME_MAX_CHARACTERS,
-                Rule::unique('payment_methods')->ignore(request()->paymentMethodId)
+                'bail', 'sometimes', 'string', 'min:'.PaymentMethod::NAME_MIN_CHARACTERS, 'max:'.PaymentMethod::NAME_MAX_CHARACTERS,
+                $paymentMethod && $paymentMethod->store_id
+                    ? Rule::unique('payment_methods')->where('store_id', $paymentMethod->store_id)->ignore(request()->paymentMethodId)
+                    : Rule::unique('payment_methods')->ignore(request()->paymentMethodId)
             ],
-            'type' => [
-                'bail', 'sometimes', 'required', 'string', 'min:'.PaymentMethod::TYPE_MIN_CHARACTERS, 'max:'.PaymentMethod::TYPE_MAX_CHARACTERS,
-                Rule::unique('payment_methods')->ignore(request()->paymentMethodId)
-            ],
-            'description' => ['bail', 'sometimes', 'nullable', 'required', 'string', 'min:'.PaymentMethod::DESCRIPTION_MIN_CHARACTERS, 'max:'.PaymentMethod::DESCRIPTION_MAX_CHARACTERS],
-            'category' => ['bail', 'sometimes', 'required', Rule::in(PaymentMethod::PAYMENT_METHOD_CATEGORIES())],
-            'countries' => ['sometimes', 'nullable', 'array', 'required'],
-            'countries.*' => ['string', Rule::in(collect((new CountryService)->getCountries())->map(fn($country) => $country->iso)->toArray())],
-            'metadata' => ['sometimes', 'nullable', 'array', 'required'],
-            'can_pay_later' => ['sometimes', 'required', 'boolean'],
-            'require_proof_of_payment' => ['sometimes', 'required', 'boolean'],
-            'automatically_mark_as_paid' => ['sometimes', 'required', 'boolean'],
+            'type' => ['exclude'],
+            'description' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.PaymentMethod::DESCRIPTION_MIN_CHARACTERS, 'max:'.PaymentMethod::DESCRIPTION_MAX_CHARACTERS],
+            'category' => ['exclude'],
+            'countries' => ['exclude'],
+            'metadata' => ['sometimes', 'nullable', 'array'],
+            'require_proof_of_payment' => ['sometimes', 'boolean'],
+            'automatically_mark_as_paid' => ['sometimes', 'boolean'],
+            'contact_seller_before_payment' => ['sometimes', 'boolean'],
         ];
     }
 

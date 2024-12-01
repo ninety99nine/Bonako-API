@@ -26,7 +26,7 @@ class CreatePaymentMethodsTable extends Migration
             $table->string('description', PaymentMethod::DESCRIPTION_MAX_CHARACTERS)->nullable();
             $table->json('countries')->nullable();
             $table->json('metadata')->nullable();
-            $table->boolean('can_pay_later')->default(0);
+            $table->boolean('contact_seller_before_payment')->default(0);
             $table->boolean('require_proof_of_payment')->default(0);
             $table->boolean('automatically_mark_as_paid')->default(0);
 

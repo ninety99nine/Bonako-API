@@ -32,8 +32,8 @@ class ShowStoreInsightsRequest extends FormRequest
                 $this->merge(['period' => strtolower($this->request->all()['period'])]);
             }
 
-            if($this->has('category')) {
-                $this->merge(['category' => strtolower($this->request->all()['category'])]);
+            if($this->has('categories')) {
+                $this->merge(['categories' => collect($this->request->all()['categories'])->map(fn($category) => strtolower($category))->toArray()]);
             }
 
         } catch (\Throwable $th) {
@@ -51,8 +51,9 @@ class ShowStoreInsightsRequest extends FormRequest
     public function rules()
     {
         return [
+            'categories' => ['bail', 'sometimes', 'array'],
+            'categories.*' => ['bail', Rule::in(Store::INSIGHT_CATEGORIES())],
             'period' => ['bail', 'required', Rule::in(Store::INSIGHT_PERIODS())],
-            'category' => ['bail', 'sometimes', Rule::in(Store::INSIGHT_CATEGORIES())],
         ];
     }
 

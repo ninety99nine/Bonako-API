@@ -17,6 +17,7 @@ class StoreObserver
     public function saving(Store $store)
     {
         $store = $this->setStoreAlias($store);
+        $store = $this->setStoreSocialLinks($store);
     }
 
     public function creating(Store $store)
@@ -33,6 +34,12 @@ class StoreObserver
     public function created(Store $store)
     {
         StoreQuota::create(['store_id' => $store->id]);
+
+        if(!is_null($store->whatsapp_mobile_number)) {
+            $store->storeRollingNumbers()->create([
+                'mobile_number' => $store->whatsapp_mobile_number
+            ]);
+        }
     }
 
     public function updated(Store $store)
@@ -108,6 +115,21 @@ class StoreObserver
             }
         } else {
             $store->alias = Str::slug($store->alias, '-');
+        }
+
+        return $store;
+    }
+
+    /**
+     * Set store social links.
+     *
+     * @param Store $store
+     * @return Store
+     */
+    private function setStoreSocialLinks(Store $store): Store
+    {
+        if (!empty($store->social_links)) {
+            $store->social_links = collect($store->social_links)->filter(fn($socialLink) => !empty($socialLink['name']) && !empty($socialLink['link']))->toArray();
         }
 
         return $store;

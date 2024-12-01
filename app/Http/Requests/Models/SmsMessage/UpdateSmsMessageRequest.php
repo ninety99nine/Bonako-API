@@ -30,8 +30,8 @@ class UpdateSmsMessageRequest extends FormRequest
         return [
             'return' => ['sometimes', 'boolean'],
             'send_message' => ['sometimes', 'boolean'],
-            'recipient_mobile_number' => ['bail', 'sometimes', 'required', 'phone'],
-            'content' => ['bail', 'sometimes', 'required', 'string', 'min:'.SmsMessage::CONTENT_MIN_CHARACTERS, 'max:'.SmsMessage::CONTENT_MAX_CHARACTERS]
+            'recipient_mobile_number' => ['bail', 'sometimes', 'phone'],
+            'content' => ['bail', 'sometimes', 'string', 'min:'.SmsMessage::CONTENT_MIN_CHARACTERS, 'max:'.SmsMessage::CONTENT_MAX_CHARACTERS]
         ];
     }
 

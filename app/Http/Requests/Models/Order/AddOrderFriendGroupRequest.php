@@ -24,7 +24,7 @@ class AddOrderFriendGroupRequest extends FormRequest
     public function rules()
     {
         return [
-            'friend_group_id' => ['bail', 'sometimes', 'required', 'uuid'],
+            'friend_group_id' => ['bail', 'sometimes', 'uuid'],
         ];
     }
 

@@ -6,21 +6,26 @@ use App\Enums\CacheName;
 use Illuminate\Support\Str;
 use App\Helpers\CacheManager;
 use App\Traits\Base\BaseTrait;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Services\Ussd\UssdService;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\HomeResource;
 use App\Repositories\UserRepository;
-use App\Repositories\StoreRepository;
-use App\Http\Controllers\Base\Controller;
+use App\Services\Country\CountryService;
+use App\Services\Currency\CurrencyService;
+use App\Services\Language\LanguageService;
+use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Home\ShowApiHomeRequest;
-use App\Services\MobileNumber\MobileNumberService;
+use App\Http\Requests\Home\ShowCountriesRequest;
+use App\Http\Requests\Home\ShowLanguagesRequest;
+use App\Http\Requests\Home\ShowCurrenciesRequest;
 
-class HomeController extends Controller
+class HomeController extends BaseController
 {
     use BaseTrait;
 
-    public function showApiHome(ShowApiHomeRequest $request)
+    public function showApiHome(ShowApiHomeRequest $request): HomeResource
     {
         /**
          *  Since the api home endpostring does not require an authenticated user,
@@ -93,5 +98,39 @@ class HomeController extends Controller
         }
 
         return (new HomeResource($data));
+    }
+
+    /**
+     * Show countries.
+     *
+     * @param ShowCountriesRequest $request
+     * @param string|null $storeId
+     * @return JsonResponse
+     */
+    public function showCountries(ShowCountriesRequest $request): JsonResponse
+    {
+        return $this->prepareOutput((new CountryService)->getCountries());
+    }
+
+    /**
+     * Show currencies.
+     *
+     * @param ShowCurrenciesRequest $request
+     * @return JsonResponse
+     */
+    public function showCurrencies(ShowCurrenciesRequest $request): JsonResponse
+    {
+        return $this->prepareOutput((new CurrencyService)->getCurrencies());
+    }
+
+    /**
+     * Show languages.
+     *
+     * @param ShowLanguagesRequest $request
+     * @return JsonResponse
+     */
+    public function showLanguages(ShowLanguagesRequest $request): JsonResponse
+    {
+        return $this->prepareOutput((new LanguageService)->getLanguages());
     }
 }

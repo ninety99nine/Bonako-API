@@ -29,7 +29,7 @@ class UpdateMobileVerificationRequest extends FormRequest
     {
         return [
             'return' => ['sometimes', 'boolean'],
-            'code' => ['bail', 'sometimes', 'required', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS]
+            'code' => ['bail', 'sometimes', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS]
         ];
     }
 
