@@ -53,12 +53,12 @@ class Subscription extends BaseModel
 
     public function scopeActive($query)
     {
-        return $query->where('start_at', '>=', Carbon::now())->where('end_at', '<', Carbon::now());
+        return $query->where('start_at', '<=', Carbon::now())->where('end_at', '>=', Carbon::now());
     }
 
     public function scopeExpired($query)
     {
-        return $query->where('end_at', '>', Carbon::now());
+        return $query->where('end_at', '<', Carbon::now());
     }
 
     /****************************
