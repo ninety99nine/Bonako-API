@@ -87,6 +87,7 @@ class HomeResource extends BaseResource
             new ResourceLink('show.payment.methods', route('show.payment.methods')),
             new ResourceLink('create.payment.method', route('create.payment.method')),
             new ResourceLink('delete.payment.methods', route('delete.payment.methods')),
+            new ResourceLink('update.payment.method.arrangement', route('update.payment.method.arrangement')),
 
             new ResourceLink('show.review.rating.options', route('show.review.rating.options')),
             new ResourceLink('show.ai.message.categories', route('show.ai.message.categories')),

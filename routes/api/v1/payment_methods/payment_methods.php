@@ -9,6 +9,7 @@ Route::controller(PaymentMethodController::class)
         Route::get('/', 'showPaymentMethods')->name('show.payment.methods');
         Route::post('/', 'createPaymentMethod')->name('create.payment.method');
         Route::delete('/', 'deletePaymentMethods')->name('delete.payment.methods');
+        Route::post('/arrangement', 'updatePaymentMethodArrangement')->name('update.payment.method.arrangement');
 
         //  Payment Method
         Route::prefix('{paymentMethodId}')->group(function () {

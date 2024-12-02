@@ -69,7 +69,7 @@ class ProductController extends BaseController
     /**
      * Update product visibility.
      *
-     * @param CreateProductRequest $request
+     * @param UpdateProductVisibilityRequest $request
      * @return JsonResponse
      */
     public function updateProductVisibility(UpdateProductVisibilityRequest $request)
@@ -80,7 +80,7 @@ class ProductController extends BaseController
     /**
      * Update product arrangement.
      *
-     * @param CreateProductRequest $request
+     * @param UpdateProductArrangementRequest $request
      * @return JsonResponse
      */
     public function updateProductArrangement(UpdateProductArrangementRequest $request)

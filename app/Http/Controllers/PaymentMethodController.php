@@ -9,6 +9,7 @@ use App\Http\Requests\Models\PaymentMethod\ShowPaymentMethodsRequest;
 use App\Http\Requests\Models\PaymentMethod\CreatePaymentMethodRequest;
 use App\Http\Requests\Models\PaymentMethod\UpdatePaymentMethodRequest;
 use App\Http\Requests\Models\PaymentMethod\DeletePaymentMethodsRequest;
+use App\Http\Requests\Models\PaymentMethod\UpdatePaymentMethodArrangementRequest;
 
 class PaymentMethodController extends BaseController
 {
@@ -62,6 +63,17 @@ class PaymentMethodController extends BaseController
     public function deletePaymentMethods(DeletePaymentMethodsRequest $request): JsonResponse
     {
         return $this->prepareOutput($this->repository->deletePaymentMethods($request->input('payment_method_ids')));
+    }
+
+    /**
+     * Update payment method arrangement.
+     *
+     * @param UpdatePaymentMethodArrangementRequest $request
+     * @return JsonResponse
+     */
+    public function updatePaymentMethodArrangement(UpdatePaymentMethodArrangementRequest $request)
+    {
+        return $this->prepareOutput($this->repository->updatePaymentMethodArrangement($request->all()));
     }
 
     /**

@@ -2,12 +2,13 @@
 
 namespace App\Repositories;
 
-use App\Enums\PaymentMethodType;
 use App\Models\Store;
 use App\Traits\AuthTrait;
 use App\Models\PaymentMethod;
 use App\Traits\Base\BaseTrait;
+use App\Enums\PaymentMethodType;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\PaymentMethodResources;
@@ -32,21 +33,28 @@ class PaymentMethodRepository extends BaseRepository
             if($storeId) {
                 $store = Store::find($storeId);
                 if($store) {
-                    $this->setQuery($store->paymentMethods()->latest());
+                    $this->setQuery($store->paymentMethods()->orderBy('position')->latest());
                 }else{
                     return ['message' => 'This store does not exist'];
                 }
             }else if($nonAssociatedStoreId) {
                 $store = Store::find($nonAssociatedStoreId);
                 if($store) {
-                    $existingPaymentMethodTypes = $store->paymentMethods()->pluck('type')->reject(PaymentMethodType::MANUAL_PAYMENT->value);
-                    $this->setQuery(PaymentMethod::whereNull('store_id')->whereNotIn('type', $existingPaymentMethodTypes)->latest());
+
+                    $existingPaymentMethodTypes = $store->paymentMethods()->whereNotIn('type', [
+                        PaymentMethodType::MANUAL_PAYMENT->value
+                    ])->pluck('type');
+
+                    $this->setQuery(PaymentMethod::whereNull('store_id')->whereNotIn('type', [
+                        ...$existingPaymentMethodTypes,
+                        PaymentMethodType::ORANGE_AIRTIME->value
+                    ])->orderBy('position')->latest());
                 }else{
                     return ['message' => 'This store does not exist'];
                 }
             }else {
                 if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show payment methods'];
-                $this->setQuery(PaymentMethod::query()->latest());
+                $this->setQuery(PaymentMethod::query()->orderBy('position')->latest());
             }
         }
 
@@ -106,6 +114,60 @@ class PaymentMethodRepository extends BaseRepository
         }else{
             return ['deleted' => false, 'message' => 'No payment methods deleted'];
         }
+    }
+
+    /**
+     * Update payment method arrangement
+     *
+     * @param array $data
+     * @return array
+     */
+    public function updatePaymentMethodArrangement(array $data): array
+    {
+        $storeId = $data['store_id'];
+        $store = Store::find($storeId);
+
+        if($store) {
+            $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+            if(!$isAuthourized) return ['message' => 'You do not have permission to update payment method arrangement'];
+            $this->setQuery($store->paymentMethods()->orderBy('position', 'asc'));
+        }else{
+            return ['message' => 'This store does not exist'];
+        }
+
+        $paymentMethodIds = $data['payment_method_ids'];
+
+        $paymentMethods = $this->query->get();
+        $originalPaymentMethodPositions = $paymentMethods->pluck('position', 'id');
+
+        $arrangement = collect($paymentMethodIds)->filter(function ($PaymentMethodId) use ($originalPaymentMethodPositions) {
+            return collect($originalPaymentMethodPositions)->keys()->contains($PaymentMethodId);
+        })->toArray();
+
+        $movedPaymentMethodPositions = collect($arrangement)->mapWithKeys(function ($PaymentMethodId, $newPosition) use ($originalPaymentMethodPositions) {
+            return [$PaymentMethodId => ($newPosition + 1)];
+        })->toArray();
+
+        $adjustedOriginalPaymentMethodPositions = $originalPaymentMethodPositions->except(collect($movedPaymentMethodPositions)->keys())->keys()->mapWithKeys(function ($id, $index) use ($movedPaymentMethodPositions) {
+            return [$id => count($movedPaymentMethodPositions) + $index + 1];
+        })->toArray();
+
+        $paymentMethodPositions = $movedPaymentMethodPositions + $adjustedOriginalPaymentMethodPositions;
+
+        if(count($paymentMethodPositions)) {
+
+            DB::table('payment_methods')
+                ->where('store_id', $store->id)
+                ->whereIn('id', array_keys($paymentMethodPositions))
+                ->update(['position' => DB::raw('CASE id ' . implode(' ', array_map(function ($id, $position) {
+                    return 'WHEN "' . $id . '" THEN ' . $position . ' ';
+                }, array_keys($paymentMethodPositions), $paymentMethodPositions)) . 'END')]);
+
+            return ['updated' => true, 'message' => 'Payment method arrangement has been updated'];
+
+        }
+
+        return ['updated' => false, 'message' => 'No matching payment methods to update'];
     }
 
     /**
