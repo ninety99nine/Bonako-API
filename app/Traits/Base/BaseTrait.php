@@ -2,14 +2,31 @@
 
 namespace App\Traits\Base;
 
-use App\Services\Currency\CurrencyService;
+use App\Enums\ReturnType;
 use stdClass;
-use Carbon\Carbon;
 use Exception;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
+use App\Services\Country\CountryService;
+use App\Services\Currency\CurrencyService;
 
 trait BaseTrait
 {
+    /**
+     *  Get complete address
+     *
+     *  @return bool
+     */
+    public function completeAddress($addressLine, $addressLine2 = null, $city = null, $state = null, $postalCode = null, $country = null)
+    {
+        $countryName = function() use ($country) {
+            if(empty($country)) return '';
+            return CountryService::findCountryNameByTwoLetterCountryCode($country) ?? '';
+        };
+
+        return collect([$addressLine, $addressLine2, $city, $state, $postalCode, $countryName()])->map('trim')->filter()->unique()->join(', ');
+    }
+
     public function convertToPercentageFormat($value)
     {
         return [
@@ -69,6 +86,37 @@ trait BaseTrait
         } else {
             return $input;
         }
+    }
+
+    public function jsonToArray($value, $returnType = ReturnType::ARRAY) {
+
+        if( is_null($value) ) {
+
+            if($returnType == ReturnType::ARRAY->value) {
+
+                return [];
+
+            }elseif($returnType == ReturnType::NULL->value) {
+
+                return null;
+
+            }
+
+        }else if(is_array($value)) {
+
+            return $value;
+
+        }else{
+
+            /**
+             *  Json decode the data to convert json string to array
+             *
+             *  Reference: https://www.php.net/manual/en/function.json-decode.php
+             */
+            return json_decode($value, true);
+
+        }
+
     }
 
     /**

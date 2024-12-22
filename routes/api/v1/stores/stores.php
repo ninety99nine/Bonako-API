@@ -7,9 +7,11 @@ use App\Http\Controllers\CouponController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\WorkflowController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\DeliveryMethodController;
 
 Route::controller(StoreController::class)
     ->scopeBindings()
@@ -140,6 +142,16 @@ Route::controller(StoreController::class)
         //  Payment Methods
         Route::controller(PaymentMethodController::class)->prefix('payment-methods')->group(function () {
             Route::get('/', 'showPaymentMethods')->name('show.store.payment.methods');
+        });
+
+        //  Delivery Methods
+        Route::controller(DeliveryMethodController::class)->prefix('delivery-methods')->group(function () {
+            Route::get('/', 'showDeliveryMethods')->name('show.store.delivery.methods');
+        });
+
+        //  Workflows
+        Route::controller(WorkflowController::class)->prefix('workflows')->group(function () {
+            Route::get('/', 'showWorkflows')->name('show.store.workflows');
         });
 
 

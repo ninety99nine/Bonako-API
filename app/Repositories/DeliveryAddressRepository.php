@@ -7,7 +7,6 @@ use App\Traits\AuthTrait;
 use App\Enums\Association;
 use App\Traits\Base\BaseTrait;
 use App\Models\DeliveryAddress;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use App\Http\Resources\DeliveryAddressResources;

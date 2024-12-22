@@ -51,7 +51,7 @@ class UpdateCustomerRequest extends FormRequest
             'last_name' => ['bail', 'nullable', 'string', 'min:'.Customer::LAST_NAME_MIN_CHARACTERS, 'max:'.Customer::LAST_NAME_MAX_CHARACTERS],
             'notes' => ['bail', 'nullable', 'string', 'min:'.Customer::NOTES_MIN_CHARACTERS, 'max:'.Customer::NOTES_MAX_CHARACTERS],
             'mobile_number' => [
-                'bail', 'nullable', 'phone',
+                'bail', 'nullable', 'string', 'phone',
                 //  Make sure that this customer mobile number does not already exist for the same store
                 Rule::unique('customers')->where('store_id', $storeId)->ignore(request()->customerId)
             ],

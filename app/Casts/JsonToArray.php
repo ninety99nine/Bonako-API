@@ -2,6 +2,7 @@
 
 namespace App\Casts;
 
+use App\Enums\ReturnType;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 
@@ -32,7 +33,7 @@ class JsonToArray implements CastsAttributes
      */
     private $returnType;
 
-    public function __construct($type = 'array')
+    public function __construct($type = ReturnType::ARRAY->value)
     {
         //  Set the return type
         $this->returnType = $type;
@@ -49,32 +50,7 @@ class JsonToArray implements CastsAttributes
      */
     public function get($model, $key, $value, $attributes)
     {
-        if( is_null($value) ) {
-
-            if($this->returnType == 'array') {
-
-                return [];
-
-            }elseif($this->returnType == 'null') {
-
-                return null;
-
-            }
-
-        }else if(is_array($value)) {
-
-            return $value;
-
-        }else{
-
-            /**
-             *  Json decode the data to convert json string to array
-             *
-             *  Reference: https://www.php.net/manual/en/function.json-decode.php
-             */
-            return json_decode($value, true);
-
-        }
+        return $this->jsonToArray($value, $this->returnType);
     }
 
     /**

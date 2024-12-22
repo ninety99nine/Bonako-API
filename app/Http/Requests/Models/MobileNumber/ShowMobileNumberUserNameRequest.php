@@ -26,7 +26,7 @@ class ShowMobileNumberUserNameRequest extends FormRequest
     public function rules()
     {
         return [
-            'mobile_number' => ['bail', 'required', 'phone']
+            'mobile_number' => ['bail', 'required', 'string', 'phone']
         ];
     }
 

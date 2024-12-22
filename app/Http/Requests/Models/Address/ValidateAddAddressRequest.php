@@ -5,10 +5,9 @@ namespace App\Http\Requests\Models\Address;
 use App\Models\Address;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Http\FormRequest;
 
-class AddAddressRequest extends FormRequest
+class ValidateAddAddressRequest extends FormRequest
 {
     use BaseTrait;
 
@@ -53,16 +52,12 @@ class AddAddressRequest extends FormRequest
             'address_line2' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::ADDRESS2_MAX_CHARACTERS],
             'city' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::CITY_MAX_CHARACTERS],
             'state' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::STATE_MAX_CHARACTERS],
-            'zip' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::ZIP_MAX_CHARACTERS],
+            'postal_code' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::POSTAL_CODE_MAX_CHARACTERS],
             'country' => ['bail', 'required', 'string', 'size:2'],
             'place_id' => ['bail', 'sometimes', 'nullable', 'string'],
             'latitude' => ['bail', 'sometimes', 'nullable', 'numeric', 'min:-90', 'max:90'],
             'longitude' => ['bail', 'sometimes', 'nullable', 'numeric', 'min:-180', 'max:180'],
             'description' => ['bail', 'sometimes', 'nullable', 'string'],
-            'customer_id' => ['required', 'uuid'],
-            'user_id' => ['bail', 'required_without_all:store_id,customer_id', 'uuid'],
-            'store_id' => ['bail', 'required_without_all:user_id,customer_id', 'uuid'],
-            'customer_id' => ['bail', 'required_without_all:user_id,store_id', 'uuid'],
         ];
     }
 

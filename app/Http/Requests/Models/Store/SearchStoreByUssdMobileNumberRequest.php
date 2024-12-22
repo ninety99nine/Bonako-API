@@ -27,7 +27,7 @@ class SearchStoreByUssdMobileNumberRequest extends FormRequest
     public function rules()
     {
         return [
-            'ussd_mobile_number' => ['bail', 'required', 'phone']
+            'ussd_mobile_number' => ['bail', 'required', 'string', 'phone']
         ];
     }
 

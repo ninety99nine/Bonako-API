@@ -8,6 +8,7 @@ use App\Models\Coupon;
 use App\Casts\Currency;
 use App\Casts\Percentage;
 use App\Casts\JsonToArray;
+use App\Enums\DiscountType;
 use App\Traits\ItemLineTrait;
 use App\Models\Base\BaseModel;
 use Illuminate\Database\Eloquent\Model;
@@ -19,7 +20,10 @@ class CouponLine extends BaseModel
 
     protected $table = 'coupon_lines';
 
-    const DISCOUNT_TYPES = Coupon::DISCOUNT_TYPES;
+    public static function DISCOUNT_TYPES(): array
+    {
+        return array_map(fn($method) => $method->value, DiscountType::cases());
+    }
 
     protected $casts = [
         'is_cancelled' => 'boolean',

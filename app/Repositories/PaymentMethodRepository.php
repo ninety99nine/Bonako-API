@@ -9,7 +9,6 @@ use App\Traits\Base\BaseTrait;
 use App\Enums\PaymentMethodType;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\PaymentMethodResources;
 use Illuminate\Database\Eloquent\Relations\Relation;

@@ -23,7 +23,6 @@ use App\Http\Resources\UserResource;
 use App\Repositories\AuthRepository;
 use App\Repositories\BaseRepository;
 use App\Http\Resources\UserResources;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\AddressResources;
 use App\Repositories\AiMessageRepository;
 use Illuminate\Database\Eloquent\Builder;

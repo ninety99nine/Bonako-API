@@ -8,7 +8,6 @@ use App\Traits\Base\BaseTrait;
 use App\Enums\RequestFileName;
 use App\Services\AWS\AWSService;
 use Illuminate\Http\UploadedFile;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\MediaFileResources;

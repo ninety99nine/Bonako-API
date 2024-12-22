@@ -62,8 +62,8 @@ class CouponFactory extends Factory
         $activateUsingMinimumTotalProducts = $this->faker->boolean(5);
         $remainingQuantity = $activateUsingUsageLimit ? rand(10, 100) : 0;
         $minimumTotalProductQuantities = $this->faker->numberBetween(2, 10);
-        $discountType = $this->faker->randomElement(Coupon::DISCOUNT_TYPES);
         $offerFreeDelivery = $offerDisount ? $this->faker->boolean(20): true;
+        $discountType = $this->faker->randomElement(Coupon::DISCOUNT_TYPES());
         $activateUsingMinimumTotalProductQuantities = $this->faker->boolean(5);
         $activateUsingEndDatetime = $activateUsingStartDatetime ? true : $this->faker->boolean(5);
         $endDatetime = $activateUsingEndDatetime ? now()->addWeek(rand(1, 4)) : null;

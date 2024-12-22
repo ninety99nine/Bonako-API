@@ -27,7 +27,7 @@ trait TransactionTrait
      */
     public function isFailedPayment()
     {
-        return strtolower($this->getRawOriginal('payment_status')) === strtolower(TransactionPaymentStatus::FAILED->value);
+        return strtolower($this->getRawOriginal('payment_status')) === strtolower(TransactionPaymentStatus::FAILED_PAYMENT->value);
     }
 
     /**
@@ -37,7 +37,7 @@ trait TransactionTrait
      */
     public function isPendingPayment()
     {
-        return strtolower($this->getRawOriginal('payment_status')) === strtolower(TransactionPaymentStatus::PENDING->value);
+        return strtolower($this->getRawOriginal('payment_status')) === strtolower(TransactionPaymentStatus::PENDING_PAYMENT->value);
     }
 
     /**

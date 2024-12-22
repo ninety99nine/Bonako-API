@@ -89,7 +89,7 @@ class InspectCartRequest extends FormRequest
             /*  Customer */
             'customer' => ['sometimes', 'array'],
             'customer.*.email' => ['bail', 'sometimes', 'email'],
-            'customer.*.mobile_number' => ['bail', 'sometimes', 'phone'],
+            'customer.*.mobile_number' => ['bail', 'sometimes', 'string', 'phone'],
             'customer.*.first_name' => ['bail', 'sometimes', 'string', 'min:'.Customer::FIRST_NAME_MIN_CHARACTERS, 'max:'.Customer::FIRST_NAME_MAX_CHARACTERS],
             'customer.*.last_name' => ['bail', 'sometimes', 'string', 'min:'.Customer::LAST_NAME_MIN_CHARACTERS, 'max:'.Customer::LAST_NAME_MAX_CHARACTERS],
         ];

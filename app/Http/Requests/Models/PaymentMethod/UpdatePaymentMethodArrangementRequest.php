@@ -26,7 +26,7 @@ class UpdatePaymentMethodArrangementRequest extends FormRequest
         return [
             'store_id' => ['required', 'uuid'],
             'payment_method_ids.*' => ['uuid'],
-            'payment_method_ids' => ['required_without:sort_by', 'array']
+            'payment_method_ids' => ['array']
         ];
     }
 

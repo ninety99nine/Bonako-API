@@ -34,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
             'ai assistant' => 'App\Models\AiAssistant',
             'pricing plan' => 'App\Models\PricingPlan',
             'subscription' => 'App\Models\Subscription',
+            'delivery method' => 'App\Models\DeliveryMethod',
         ]);
 
         //  The ShoppingCartService class must be instantiated once

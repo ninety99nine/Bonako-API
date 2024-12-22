@@ -16,7 +16,6 @@ use App\Helpers\PlatformManager;
 use App\Models\AiMessageCategory;
 use Illuminate\Support\Collection;
 use App\Models\AiAssistantTokenUsage;
-use App\Services\Filter\FilterService;
 use App\Services\OpenAi\OpenAiService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\AiMessageResources;

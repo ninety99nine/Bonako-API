@@ -49,7 +49,7 @@ class UpdateFriendGroupRequest extends FormRequest
             'mobile_numbers' => ['array'],
             'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
             'shared' => ['bail', 'sometimes', 'boolean'],
-            'mobile_numbers.*' => ['bail', 'sometimes', 'distinct', 'phone'],
+            'mobile_numbers.*' => ['bail', 'sometimes', 'distinct', 'string', 'phone'],
             'can_add_friends' => ['bail', 'sometimes', 'boolean'],
             'description' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.FriendGroup::DESCRIPTION_MIN_CHARACTERS, 'max:'.FriendGroup::DESCRIPTION_MAX_CHARACTERS],
         ];

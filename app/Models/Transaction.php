@@ -103,12 +103,12 @@ class Transaction extends BaseModel
 
     public function scopeFailedPayment($query)
     {
-        return $query->where('payment_status', TransactionPaymentStatus::FAILED->value);
+        return $query->where('payment_status', TransactionPaymentStatus::FAILED_PAYMENT->value);
     }
 
     public function scopePendingPayment($query)
     {
-        return $query->where('payment_status', TransactionPaymentStatus::PENDING->value);
+        return $query->where('payment_status', TransactionPaymentStatus::PENDING_PAYMENT->value);
     }
 
     public function scopeSubjectToManualVerification($query)

@@ -133,4 +133,26 @@ class HomeController extends BaseController
     {
         return $this->prepareOutput((new LanguageService)->getLanguages());
     }
+
+    /**
+     * Show social media icons.
+     *
+     * @return JsonResponse
+     */
+    public function showSocialMediaIcons(): JsonResponse
+    {
+        $socialMediaPlatforms = [
+            'Whatsapp', 'Telegram', 'Messenger', 'Facebook', 'Instagram',
+            'LinkedIn', 'YouTube', 'Snapchat', 'TikTok', 'Twitch', 'X'
+        ];
+
+        $socialMediaLinks = collect($socialMediaPlatforms)->map(function($socialMediaPlatform) {
+            return [
+                'name' => $socialMediaPlatform,
+                'icon' => asset("/images/social-icons/$socialMediaPlatform.png")
+            ];
+        })->toArray();
+
+        return $this->prepareOutput($socialMediaLinks);
+    }
 }

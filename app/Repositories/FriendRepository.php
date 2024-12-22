@@ -7,7 +7,6 @@ use App\Traits\AuthTrait;
 use App\Enums\Association;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\FriendResources;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;

@@ -7,13 +7,14 @@ Route::controller(AddressController::class)
     ->prefix('addresses')
     ->group(function () {
         Route::get('/', 'showAddresses')->name('show.addresses');
-        Route::post('/', 'addAddress')->name('add.address');
-        Route::delete('/', 'removeAddresses')->name('remove.addresses');
+        Route::post('/', 'createAddress')->name('create.address');
+        Route::delete('/', 'deleteAddresses')->name('delete.addresses');
+        Route::post('/validate', 'validateAddAddress')->name('validate.add.address');
 
         //  Address
         Route::prefix('{addressId}')->group(function () {
             Route::get('/', 'showAddress')->name('show.address');
             Route::put('/', 'updateAddress')->name('update.address');
-            Route::delete('/', 'removeAddress')->name('remove.address');
+            Route::delete('/', 'deleteAddress')->name('delete.address');
         });
 });

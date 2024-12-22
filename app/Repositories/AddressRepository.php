@@ -9,8 +9,8 @@ use App\Models\Customer;
 use App\Traits\AuthTrait;
 use App\Enums\Association;
 use App\Traits\Base\BaseTrait;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\AddressResources;
+use App\Models\DeliveryMethod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -44,12 +44,12 @@ class AddressRepository extends BaseRepository
     }
 
     /**
-     * Add address.
+     * Create address.
      *
      * @param array $data
      * @return Address|array
      */
-    public function addAddress(array $data): Address|array
+    public function createAddress(array $data): Address|array
     {
         if(isset($data['user_id'])) {
 
@@ -90,19 +90,36 @@ class AddressRepository extends BaseRepository
                 return ['created' => false, 'message' => 'The customer does not exist'];
             }
 
+        }else if(isset($data['delivery_method_id'])) {
+
+            $deliveryMethod = DeliveryMethod::with(['store'])->find($data['delivery_method_id']);
+
+            if($deliveryMethod) {
+                $store = $deliveryMethod->store;
+                if($store) {
+                    $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    if(!$isAuthourized) return ['message' => 'You do not have permission to add addresses'];
+                    $data = array_merge($data, ['owner_id' => $deliveryMethod->id, 'owner_type' => $deliveryMethod->getResourceName()]);
+                }else{
+                    return ['created' => false, 'message' => 'The store does not exist'];
+                }
+            }else{
+                return ['created' => false, 'message' => 'The delivery method does not exist'];
+            }
+
         }
 
         $address = Address::create($data);
-        return $this->showSavedResource($address, 'added');
+        return $this->showCreatedResource($address);
     }
 
     /**
-     * Remove addresses.
+     * Delete addresses.
      *
      * @param array $addressIds
      * @return array
      */
-    public function removeAddresses(array $addressIds): array
+    public function deleteAddresses(array $addressIds): array
     {
         if($this->getQuery() == null) {
             if($this->isAuthourized()) {
@@ -174,6 +191,13 @@ class AddressRepository extends BaseRepository
                     }else{
                         return ['update' => false, 'message' => 'The store does not exist'];
                     }
+                }else if(($deliveryMethod = $owner) instanceof DeliveryMethod) {
+                    $store = $deliveryMethod->store;
+                    if($store) {
+                        $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    }else{
+                        return ['update' => false, 'message' => 'The store does not exist'];
+                    }
                 }
             }
 
@@ -192,12 +216,12 @@ class AddressRepository extends BaseRepository
     }
 
     /**
-     * Remove address.
+     * Delete address.
      *
      * @param string $addressId
      * @return array
      */
-    public function removeAddress(string $addressId): array
+    public function deleteAddress(string $addressId): array
     {
         $address = Address::with(['owner'])->find($addressId);
 
@@ -215,7 +239,14 @@ class AddressRepository extends BaseRepository
                     if($store) {
                         $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
                     }else{
-                        return ['update' => false, 'message' => 'The store does not exist'];
+                        return ['deleted' => false, 'message' => 'The store does not exist'];
+                    }
+                }else if(($deliveryMethod = $owner) instanceof DeliveryMethod) {
+                    $store = $deliveryMethod->store;
+                    if($store) {
+                        $isAuthourized = $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                    }else{
+                        return ['deleted' => false, 'message' => 'The store does not exist'];
                     }
                 }
             }
@@ -225,17 +256,17 @@ class AddressRepository extends BaseRepository
                 $deleted = $address->delete();
 
                 if ($deleted) {
-                    return ['removed' => true, 'message' => 'Address removed'];
+                    return ['deleted' => true, 'message' => 'Address deleted'];
                 }else{
-                    return ['removed' => false, 'message' => 'Address removal unsuccessful'];
+                    return ['deleted' => false, 'message' => 'Address delete unsuccessful'];
                 }
 
             }else{
-                return ['removed' => false, 'message' => 'You do not have permission to remove this address'];
+                return ['deleted' => false, 'message' => 'You do not have permission to delete this address'];
             }
 
         }else{
-            return ['removed' => false, 'message' => 'This address does not exist'];
+            return ['deleted' => false, 'message' => 'This address does not exist'];
         }
     }
 

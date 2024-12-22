@@ -9,7 +9,6 @@ use App\Models\AiAssistant;
 use App\Models\Subscription;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\SubscriptionResources;

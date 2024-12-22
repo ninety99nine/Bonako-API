@@ -28,7 +28,7 @@ class VerifyMobileVerificationCodeRequest extends FormRequest
     public function rules()
     {
         return array_merge(
-            $this->hasAuthUser() ? [] : ['mobile_number' => ['bail', 'required', 'phone']],
+            $this->hasAuthUser() ? [] : ['mobile_number' => ['bail', 'required', 'string', 'phone']],
             ['verification_code' => ['bail', 'required', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS]
         ]);
     }

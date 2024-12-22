@@ -407,7 +407,7 @@ class OrangeAirtimeService
             $transaction->update([
                 'failure_type' => $failureType,
                 'failure_reason' => $failureReason,
-                'payment_status' => $status ? TransactionPaymentStatus::PAID : TransactionPaymentStatus::FAILED,
+                'payment_status' => $status ? TransactionPaymentStatus::PAID : TransactionPaymentStatus::FAILED_PAYMENT,
                 'metadata' => [
                     'airtime_billing_rating_type' => $ratingType,
                     'airtime_billing_funds_after_deduction' => $fundsAfterDeduction,
@@ -425,7 +425,7 @@ class OrangeAirtimeService
             $transaction->update([
                 'failure_type' => $failureType,
                 'failure_reason' => $th->getMessage(),
-                'payment_status' => TransactionPaymentStatus::FAILED
+                'payment_status' => TransactionPaymentStatus::FAILED_PAYMENT
             ]);
 
             //  Return a fresh instance of the transaction

@@ -61,8 +61,9 @@ class HomeResource extends BaseResource
             new ResourceLink('delete.store.rolling.numbers', route('delete.store.rolling.numbers')),
 
             new ResourceLink('show.addresses', route('show.addresses')),
-            new ResourceLink('add.address', route('add.address')),
-            new ResourceLink('remove.addresses', route('remove.addresses')),
+            new ResourceLink('create.address', route('create.address')),
+            new ResourceLink('delete.addresses', route('delete.addresses')),
+            new ResourceLink('validate.add.address', route('validate.add.address')),
 
             new ResourceLink('show.occasions', route('show.occasions')),
 
@@ -89,6 +90,22 @@ class HomeResource extends BaseResource
             new ResourceLink('delete.payment.methods', route('delete.payment.methods')),
             new ResourceLink('update.payment.method.arrangement', route('update.payment.method.arrangement')),
 
+            new ResourceLink('show.delivery.methods', route('show.delivery.methods')),
+            new ResourceLink('create.delivery.method', route('create.delivery.method')),
+            new ResourceLink('delete.delivery.methods', route('delete.delivery.methods')),
+            new ResourceLink('update.delivery.method.arrangement', route('update.delivery.method.arrangement')),
+
+            new ResourceLink('show.workflows', route('show.workflows')),
+            new ResourceLink('create.workflow', route('create.workflow')),
+            new ResourceLink('delete.workflows', route('delete.workflows')),
+            new ResourceLink('show.workflow.options', route('show.workflow.options')),
+            new ResourceLink('update.workflow.arrangement', route('update.workflow.arrangement')),
+
+            new ResourceLink('show.workflow.steps', route('show.workflow.steps')),
+            new ResourceLink('create.workflow.step', route('create.workflow.step')),
+            new ResourceLink('delete.workflow.steps', route('delete.workflow.steps')),
+            new ResourceLink('update.workflow.step.arrangement', route('update.workflow.step.arrangement')),
+
             new ResourceLink('show.review.rating.options', route('show.review.rating.options')),
             new ResourceLink('show.ai.message.categories', route('show.ai.message.categories')),
 
@@ -96,6 +113,7 @@ class HomeResource extends BaseResource
             new ResourceLink('show.languages', route('show.languages')),
             new ResourceLink('show.countries', route('show.countries')),
             new ResourceLink('show.currencies', route('show.currencies')),
+            new ResourceLink('show.social.media.icons', route('show.social.media.icons')),
         ];
     }
 }

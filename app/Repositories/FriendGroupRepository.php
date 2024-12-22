@@ -17,7 +17,6 @@ use App\Enums\UserFriendGroupStatus;
 use App\Http\Resources\UserResources;
 use App\Http\Resources\OrderResources;
 use App\Http\Resources\StoreResources;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\FriendGroupResources;
 use Illuminate\Support\Facades\Notification;

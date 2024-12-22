@@ -6,7 +6,6 @@ use App\Traits\AuthTrait;
 use App\Models\CouponLine;
 use App\Traits\Base\BaseTrait;
 use App\Repositories\BaseRepository;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\CouponLineResources;
 
 class CouponLineRepository extends BaseRepository

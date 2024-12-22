@@ -1,11 +1,10 @@
 <?php
 
-use App\Models\Store;
 use App\Models\CouponLine;
-use Illuminate\Support\Arr;
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use App\Enums\DiscountType;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
 
 class CreateCouponLinesTable extends Migration
 {
@@ -26,7 +25,7 @@ class CreateCouponLinesTable extends Migration
 
             /*  Offer Discount Information */
             $table->boolean('offer_discount')->default(false);
-            $table->enum('discount_type', CouponLine::DISCOUNT_TYPES)->default(Arr::last(CouponLine::DISCOUNT_TYPES));
+            $table->enum('discount_type', CouponLine::DISCOUNT_TYPES())->default(DiscountType::FIXED);
             $table->unsignedTinyInteger('discount_percentage_rate')->default(0);
             $table->decimal('discount_fixed_rate', 10, 2)->default(0);
 

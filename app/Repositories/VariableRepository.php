@@ -6,7 +6,6 @@ use App\Models\Product;
 use App\Models\Variable;
 use App\Traits\AuthTrait;
 use App\Traits\Base\BaseTrait;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\VariableResources;
 
 class VariableRepository extends BaseRepository

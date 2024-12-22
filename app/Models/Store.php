@@ -282,6 +282,11 @@ class Store extends BaseModel
         return $this->morphOne(Address::class, 'owner');
     }
 
+    public function workflows()
+    {
+        return $this->hasMany(Workflow::class);
+    }
+
     public function storeQuota()
     {
         return $this->hasOne(StoreQuota::class);
@@ -290,6 +295,11 @@ class Store extends BaseModel
     public function paymentMethods()
     {
         return $this->hasMany(PaymentMethod::class);
+    }
+
+    public function deliveryMethods()
+    {
+        return $this->hasMany(DeliveryMethod::class);
     }
 
     public function storeRollingNumbers()

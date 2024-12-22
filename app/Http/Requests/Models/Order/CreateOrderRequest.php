@@ -120,7 +120,7 @@ class CreateOrderRequest extends FormRequest
                 'customer' => ['required', 'array'],
                 'customer.first_name' => ['bail', 'required', 'string', 'min:'.Customer::FIRST_NAME_MIN_CHARACTERS, 'max:'.Customer::FIRST_NAME_MAX_CHARACTERS],
                 'customer.last_name' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.Customer::LAST_NAME_MIN_CHARACTERS, 'max:'.Customer::LAST_NAME_MAX_CHARACTERS],
-                'customer.mobile_number' => ['bail', 'sometimes', 'nullable', 'phone'],
+                'customer.mobile_number' => ['bail', 'sometimes', 'nullable', 'string', 'phone'],
                 'customer.email' => ['bail', 'sometimes', 'nullable', 'string', 'email'],
             ],
 

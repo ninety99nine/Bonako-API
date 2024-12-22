@@ -94,9 +94,9 @@ class CreateStoreRequest extends FormRequest
             'opening_hours.*.hours.*.*' => ['bail', 'string', 'regex:/^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$/'],
 
             'email' => ['bail', 'nullable', 'sometimes', 'email'],
-            'ussd_mobile_number' => ['bail', 'nullable', 'sometimes', 'phone'],
-            'contact_mobile_number' => ['bail', 'nullable', 'sometimes', 'phone'],
-            'whatsapp_mobile_number' => ['bail', 'nullable', 'sometimes', 'phone'],
+            'ussd_mobile_number' => ['bail', 'nullable', 'sometimes', 'string', 'phone'],
+            'contact_mobile_number' => ['bail', 'nullable', 'sometimes', 'string', 'phone'],
+            'whatsapp_mobile_number' => ['bail', 'nullable', 'sometimes', 'string', 'phone'],
 
             'country' => ['bail', 'sometimes', Rule::in(collect((new CountryService)->getCountries())->map(fn($country) => $country->iso)->toArray())],
             'currency' => ['bail', 'sometimes', Rule::in(collect((new CurrencyService)->getCurrencies())->map(fn($currency) => $currency['code'])->toArray())],

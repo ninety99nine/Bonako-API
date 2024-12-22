@@ -10,4 +10,5 @@ Route::controller(HomeController::class)
         Route::get('/languages', 'showLanguages')->name('show.languages');
         Route::get('/countries', 'showCountries')->name('show.countries');
         Route::get('/currencies', 'showCurrencies')->name('show.currencies');
+        Route::get('/social-media-icons', 'showSocialMediaIcons')->name('show.social.media.icons');
 });

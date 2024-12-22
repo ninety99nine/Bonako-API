@@ -51,9 +51,11 @@ class StoreResource extends BaseResource
             new ResourceLink('show.store.reviews', route('show.store.reviews', ['storeId' => $store->id])),
             new ResourceLink('show.store.products', route('show.store.products', ['storeId' => $store->id])),
             new ResourceLink('show.store.customers', route('show.store.customers', ['storeId' => $store->id])),
+            new ResourceLink('show.store.workflows', route('show.store.workflows', ['storeId' => $store->id])),
             new ResourceLink('show.store.transactions', route('show.store.transactions', ['storeId' => $store->id])),
             new ResourceLink('show.store.subscriptions', route('show.store.subscriptions', ['storeId' => $store->id])),
             new ResourceLink('show.store.payment.methods', route('show.store.payment.methods', ['storeId' => $store->id])),
+            new ResourceLink('show.store.delivery.methods', route('show.store.delivery.methods', ['storeId' => $store->id])),
         ];
     }
 }

@@ -37,7 +37,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'DPO (Direct Pay Online)',
                 'type' => PaymentMethodType::DPO,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with DPO (Direct Pay Online) and experience fast, secure payments with ease',
+                'instruction' => 'Pay with DPO (Direct Pay Online) and experience fast, secure payments with ease',
                 'metadata' => [
                     'company_token' =>  config('app.DPO_COMPANY_TOKEN'),
                     'email_payment_request' =>  false,
@@ -101,7 +101,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Pix',
                 'type' => PaymentMethodType::PIX,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Pix for instant, secure payments directly from your bank account',
+                'instruction' => 'Pay with Pix for instant, secure payments directly from your bank account',
                 'countries' => [
                     'BR' // Brazil
                 ]
@@ -111,7 +111,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'UPI',
                 'type' => PaymentMethodType::UPI,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with UPI for instant, secure transactions straight from your mobile device',
+                'instruction' => 'Pay with UPI for instant, secure transactions straight from your mobile device',
                 'countries' => [
                     'IN' // India
                 ]
@@ -121,7 +121,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Yoco',
                 'type' => PaymentMethodType::YOCO,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Yoco for fast and secure transactions using your mobile device',
+                'instruction' => 'Pay with Yoco for fast and secure transactions using your mobile device',
                 'countries' => [
                     'ZA' // South Africa
                 ]
@@ -131,7 +131,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'QRIS',
                 'type' => PaymentMethodType::QRIS,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with QRIS for quick and secure transactions using your smartphone. Simply scan the QR code for a seamless and hassle-free payment experience',
+                'instruction' => 'Pay with QRIS for quick and secure transactions using your smartphone. Simply scan the QR code for a seamless and hassle-free payment experience',
                 'countries' => [
                     'ID' // Indonesia
                 ]
@@ -141,7 +141,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Wise',
                 'type' => PaymentMethodType::WISE,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Wise for fast, secure, and cost-effective international transactions',
+                'instruction' => 'Pay with Wise for fast, secure, and cost-effective international transactions',
                 'countries' => null // Global
             ],
             [
@@ -149,7 +149,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Lynk',
                 'type' => PaymentMethodType::LYNK,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Lynk for secure and efficient mobile payments',
+                'instruction' => 'Pay with Lynk for secure and efficient mobile payments',
                 'countries' => [
                     'JM' // Jamaica
                 ]
@@ -159,7 +159,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Cash',
                 'type' => PaymentMethodType::CASH,
                 'category' => PaymentMethodCategory::MANUAL,
-                'description' => 'Pay with Cash for a straightforward and reliable payment option',
+                'instruction' => 'Pay with Cash for a straightforward and reliable payment option',
                 'countries' => null // Global
             ],
             [
@@ -167,7 +167,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Unayo',
                 'type' => PaymentMethodType::UNAYO,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Unayo for secure and easy mobile transactions',
+                'instruction' => 'Pay with Unayo for secure and easy mobile transactions',
                 'countries' => [
                     'BW', // Botswana
                     'GH', // Ghana
@@ -184,7 +184,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'GCash',
                 'type' => PaymentMethodType::GCASH,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with GCash for fast, secure, and convenient mobile payments',
+                'instruction' => 'Pay with GCash for fast, secure, and convenient mobile payments',
                 'countries' => [
                     'PH', // Philippines
                     'MY', // Malaysia
@@ -224,7 +224,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'eSewa',
                 'type' => PaymentMethodType::ESEWA,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with eSewa for secure and efficient mobile payments',
+                'instruction' => 'Pay with eSewa for secure and efficient mobile payments',
                 'countries' => [
                     'NP', // Nepal
                     'IN', // India
@@ -238,7 +238,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Venmo',
                 'type' => PaymentMethodType::VENMO,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Venmo for fast and secure payments directly from your mobile device',
+                'instruction' => 'Pay with Venmo for fast and secure payments directly from your mobile device',
                 'countries' => [
                     'US' // United States
                 ]
@@ -248,7 +248,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Zelle',
                 'type' => PaymentMethodType::ZELLE,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Zelle for instant, secure payments directly from your bank account',
+                'instruction' => 'Pay with Zelle for instant, secure payments directly from your bank account',
                 'countries' => [
                     'US' // United States
                 ]
@@ -258,7 +258,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Ziina',
                 'type' => PaymentMethodType::ZIINA,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Ziina for secure and effortless mobile transactions',
+                'instruction' => 'Pay with Ziina for secure and effortless mobile transactions',
                 'countries' => [
                     'AE' // United Arab Emirates
                 ]
@@ -268,7 +268,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Kaspi',
                 'type' => PaymentMethodType::KASPI,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Kaspi for secure and efficient mobile transactions',
+                'instruction' => 'Pay with Kaspi for secure and efficient mobile transactions',
                 'countries' => [
                     'KZ' // Kazakhstan
                 ]
@@ -278,7 +278,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'M-Pesa',
                 'type' => PaymentMethodType::MPESA,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with M-Pesa for secure and convenient mobile money transfers',
+                'instruction' => 'Pay with M-Pesa for secure and convenient mobile money transfers',
                 'countries' => [
                     'KE', // Kenya
                     'TZ', // Tanzania
@@ -293,7 +293,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'MyZaka',
                 'type' => PaymentMethodType::MYZAKA,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with MyZaka for fast and secure mobile transactions',
+                'instruction' => 'Pay with MyZaka for fast and secure mobile transactions',
                 'countries' => [
                     'BW' // Botswana
                 ]
@@ -303,7 +303,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Stripe',
                 'type' => PaymentMethodType::STRIPE,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with Stripe for fast, secure, and scalable online payments',
+                'instruction' => 'Pay with Stripe for fast, secure, and scalable online payments',
                 'countries' => [
                     'AU', // Australia
                     'AT', // Austria
@@ -362,7 +362,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'PayPal',
                 'type' => PaymentMethodType::PAYPAL,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with PayPal for secure and convenient online payments',
+                'instruction' => 'Pay with PayPal for secure and convenient online payments',
                 'countries' => [
                     'AL', // Albania
                     'DZ', // Algeria
@@ -545,7 +545,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Xendit',
                 'type' => PaymentMethodType::XENDIT,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with Xendit for fast, secure, and efficient online transactions',
+                'instruction' => 'Pay with Xendit for fast, secure, and efficient online transactions',
                 'countries' => [
                     'ID', // Indonesia
                     'PH', // Philippines
@@ -559,7 +559,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Pocket',
                 'type' => PaymentMethodType::POCKET,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with Pocket for secure and convenient mobile payments',
+                'instruction' => 'Pay with Pocket for secure and convenient mobile payments',
                 'countries' => [
                     'BN', // Brunei
                     'TH', // Thailand
@@ -586,7 +586,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'PayNow',
                 'type' => PaymentMethodType::PAYNOW,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with PayNow for instant and secure payments',
+                'instruction' => 'Pay with PayNow for instant and secure payments',
                 'countries' => [
                     'SG', // Singapore
                 ]
@@ -596,7 +596,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'WigWag',
                 'type' => PaymentMethodType::WIGWAG,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with WigWag for fast and secure mobile payments',
+                'instruction' => 'Pay with WigWag for fast and secure mobile payments',
                 'countries' => [
                     'NG', // Nigeria
                     'ZA', // South Africa
@@ -607,7 +607,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Tikkie',
                 'type' => PaymentMethodType::TIKKIE,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Tikkie for quick and easy payments via a simple link',
+                'instruction' => 'Pay with Tikkie for quick and easy payments via a simple link',
                 'countries' => [
                     'NL', // Netherlands
                 ]
@@ -617,7 +617,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Airtel',
                 'type' => PaymentMethodType::AIRTEL,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Airtel for secure and convenient mobile transactions',
+                'instruction' => 'Pay with Airtel for secure and convenient mobile transactions',
                 'countries' => [
                     'CD', // Democratic Republic of Congo
                     'CG', // Republic of Congo
@@ -639,7 +639,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'EcoCash',
                 'type' => PaymentMethodType::ECOCASH,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with EcoCash for fast and secure mobile payments',
+                'instruction' => 'Pay with EcoCash for fast and secure mobile payments',
                 'countries' => [
                     'ZW', // Zimbabwe
                 ]
@@ -649,7 +649,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'iKhokha',
                 'type' => PaymentMethodType::IKHOKHA,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with iKhokha for fast, secure, and easy mobile transactions',
+                'instruction' => 'Pay with iKhokha for fast, secure, and easy mobile transactions',
                 'countries' => [
                     'ZA', // South Africa
                 ]
@@ -659,7 +659,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Revolut',
                 'type' => PaymentMethodType::REVOLUT,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Revolut for secure and flexible financial transactions',
+                'instruction' => 'Pay with Revolut for secure and flexible financial transactions',
                 'countries' => [
                     'GB', // United Kingdom
                     'DE', // Germany
@@ -678,7 +678,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Pesapal',
                 'type' => PaymentMethodType::PESAPAL,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Pesapal for secure and convenient online transactions',
+                'instruction' => 'Pay with Pesapal for secure and convenient online transactions',
                 'countries' => [
                     'KE', // Kenya
                     'UG', // Uganda
@@ -694,7 +694,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'PayHere',
                 'type' => PaymentMethodType::PAYHERE,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with PayHere for secure and efficient online payments',
+                'instruction' => 'Pay with PayHere for secure and efficient online payments',
                 'countries' => [
                     'LK', // Sri Lanka
                 ]
@@ -704,7 +704,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'PayFast',
                 'type' => PaymentMethodType::PAYFAST,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with PayFast for secure and speedy online payments',
+                'instruction' => 'Pay with PayFast for secure and speedy online payments',
                 'countries' => [
                     'ZA', // South Africa
                 ]
@@ -714,7 +714,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'DuitNow',
                 'type' => PaymentMethodType::DUITNOW,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with DuitNow for instant and secure transactions directly from your bank account',
+                'instruction' => 'Pay with DuitNow for instant and secure transactions directly from your bank account',
                 'countries' => [
                     'MY', // Malaysia
                 ]
@@ -724,7 +724,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'MonCash',
                 'type' => PaymentMethodType::MONCASH,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with MonCash for fast, secure, and convenient mobile payments',
+                'instruction' => 'Pay with MonCash for fast, secure, and convenient mobile payments',
                 'countries' => [
                     'HT', // Haiti
                 ]
@@ -734,7 +734,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'MTN MoMo',
                 'type' => PaymentMethodType::MTN_MOMO,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with MTN MoMo for fast and secure mobile payments',
+                'instruction' => 'Pay with MTN MoMo for fast and secure mobile payments',
                 'countries' => [
                     'CD', // Democratic Republic of Congo
                     'CG', // Republic of Congo
@@ -762,7 +762,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Cellmoni',
                 'type' => PaymentMethodType::CELLMONI,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Cellmoni for secure and convenient mobile transactions',
+                'instruction' => 'Pay with Cellmoni for secure and convenient mobile transactions',
                 'countries' => [
                     'CM', // Cameroon
                     'PG', // Papua New Guinea
@@ -773,7 +773,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'TigoPesa',
                 'type' => PaymentMethodType::TIGOPESA,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with TigoPesa for fast, secure, and convenient mobile payments',
+                'instruction' => 'Pay with TigoPesa for fast, secure, and convenient mobile payments',
                 'countries' => [
                     'TZ', // Tanzania
                     'ML', // Mali
@@ -784,7 +784,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'InnBucks',
                 'type' => PaymentMethodType::INNBUCKS,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with InnBucks for fast and secure mobile payments',
+                'instruction' => 'Pay with InnBucks for fast and secure mobile payments',
                 'countries' => [
                     'ZW', // Zimbabwe
                 ]
@@ -794,7 +794,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Cash App',
                 'type' => PaymentMethodType::CASH_APP,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Cash App for quick, secure, and easy transactions',
+                'instruction' => 'Pay with Cash App for quick, secure, and easy transactions',
                 'countries' => [
                     'US', // United States
                     'GB', // United Kingdom
@@ -805,7 +805,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Paystack',
                 'type' => PaymentMethodType::PAYSTACK,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with Paystack for fast and secure online payments',
+                'instruction' => 'Pay with Paystack for fast and secure online payments',
                 'countries' => [
                     'NG', // Nigeria
                     'GH', // Ghana
@@ -819,7 +819,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Razorpay',
                 'type' => PaymentMethodType::RAZORPAY,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with Razorpay for fast, secure, and seamless online transactions',
+                'instruction' => 'Pay with Razorpay for fast, secure, and seamless online transactions',
                 'countries' => [
                     'IN', // India
                     'SG', // Singapore
@@ -831,7 +831,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'PromptPay',
                 'type' => PaymentMethodType::PROMPTPAY,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with PromptPay for instant and secure transactions',
+                'instruction' => 'Pay with PromptPay for instant and secure transactions',
                 'countries' => [
                     'TH', // Thailand
                 ]
@@ -841,7 +841,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Touch n Go',
                 'type' => PaymentMethodType::TOUCH_N_GO,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Touch n Go for fast, secure, and convenient mobile payments',
+                'instruction' => 'Pay with Touch n Go for fast, secure, and convenient mobile payments',
                 'countries' => [
                     'MY', // Malaysia
                 ]
@@ -851,7 +851,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'FNB eWallet',
                 'type' => PaymentMethodType::FNB_EWALLET,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with FNB eWallet for secure and convenient mobile transactions',
+                'instruction' => 'Pay with FNB eWallet for secure and convenient mobile transactions',
                 'countries' => [
                     'BW', // Botswana
                     'ZA', // South Africa
@@ -862,7 +862,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Mercado Pago',
                 'type' => PaymentMethodType::MERCADO_PAGO,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Mercado Pago for secure and flexible online payments',
+                'instruction' => 'Pay with Mercado Pago for secure and flexible online payments',
                 'countries' => [
                     'AR', // Argentina
                     'BR', // Brazil
@@ -880,7 +880,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'FNB Pay2Cell',
                 'type' => PaymentMethodType::FNB_PAY2CELL,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with FNB Pay2Cell for secure and straightforward mobile payments',
+                'instruction' => 'Pay with FNB Pay2Cell for secure and straightforward mobile payments',
                 'countries' => [
                     'BW', // Botswana
                     'ZA', // South Africa
@@ -891,7 +891,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'SEPA Credit Transfer',
                 'type' => PaymentMethodType::SEPA,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with SEPA Credit Transfer for fast and secure bank-to-bank payments within Europe',
+                'instruction' => 'Pay with SEPA Credit Transfer for fast and secure bank-to-bank payments within Europe',
                 'countries' => [
                     'AT', // Austria
                     'BE', // Belgium
@@ -928,7 +928,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Orange Money',
                 'type' => PaymentMethodType::ORANGE_MONEY,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Orange Money for secure and easy mobile transactions',
+                'instruction' => 'Pay with Orange Money for secure and easy mobile transactions',
                 'countries' => [
                     'BW', // Botswana
                     'BF', // Burkina Faso (under the Airtel Money brand)
@@ -956,7 +956,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Store Credit',
                 'type' => PaymentMethodType::STORE_CREDIT,
                 'category' => PaymentMethodCategory::MANUAL,
-                'description' => 'Pay with Store Credit for a seamless and convenient checkout experience',
+                'instruction' => 'Pay with Store Credit for a seamless and convenient checkout experience',
                 'countries' => null // Global
             ],
             [
@@ -964,7 +964,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Bank Transfer',
                 'type' => PaymentMethodType::BANK_TRANSFER,
                 'category' => PaymentMethodCategory::MANUAL,
-                'description' => 'Pay with Bank Transfer for secure payments directly from your bank account',
+                'instruction' => 'Pay with Bank Transfer for secure payments directly from your bank account',
                 'countries' => null // Global
             ],
             [
@@ -972,7 +972,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Manual Payment',
                 'type' => PaymentMethodType::MANUAL_PAYMENT,
                 'category' => PaymentMethodCategory::MANUAL,
-                'description' => 'Pay with our payment option for fast and secure transactions',
+                'instruction' => 'Pay with our payment option for fast and secure transactions',
                 'countries' => null // Global
             ],
             [
@@ -980,7 +980,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Orange Airtime',
                 'type' => PaymentMethodType::ORANGE_AIRTIME,
                 'category' => PaymentMethodCategory::AUTOMATED,
-                'description' => 'Pay with Orange Airtime for quick and straightforward mobile transactions',
+                'instruction' => 'Pay with Orange Airtime for quick and straightforward mobile transactions',
                 'countries' => null // Global
             ],
             [
@@ -988,7 +988,7 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Smega Mobile Money',
                 'type' => PaymentMethodType::SMEGA_MOBILE_MONEY,
                 'category' => PaymentMethodCategory::LOCAL,
-                'description' => 'Pay with Smega Mobile Money for fast, secure, and convenient mobile transactions',
+                'instruction' => 'Pay with Smega Mobile Money for fast, secure, and convenient mobile transactions',
                 'countries' => [
                     'BW', // Botswana
                 ]

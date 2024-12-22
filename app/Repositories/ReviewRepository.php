@@ -8,7 +8,6 @@ use App\Traits\AuthTrait;
 use App\Enums\Association;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\ReviewResources;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;

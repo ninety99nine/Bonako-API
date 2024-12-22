@@ -50,7 +50,7 @@ class UpdateAddressRequest extends FormRequest
             'address_line2' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::ADDRESS2_MAX_CHARACTERS],
             'city' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::CITY_MAX_CHARACTERS],
             'state' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::STATE_MAX_CHARACTERS],
-            'zip' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::ZIP_MAX_CHARACTERS],
+            'postal_code' => ['bail', 'sometimes', 'nullable', 'string', 'max:' . Address::POSTAL_CODE_MAX_CHARACTERS],
             'country' => ['bail', 'required', 'string', 'size:2'],
             'place_id' => ['bail', 'sometimes', 'nullable', 'string'],
             'latitude' => ['bail', 'sometimes', 'nullable', 'numeric', 'min:-90', 'max:90'],

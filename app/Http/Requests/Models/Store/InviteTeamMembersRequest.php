@@ -81,7 +81,7 @@ class InviteTeamMembersRequest extends FormRequest
         return [
 
             'mobile_numbers' => ['required', 'array'],
-            'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
+            'mobile_numbers.*' => ['bail', 'distinct', 'string', 'phone'],
 
             'permissions' => ['required', 'array'],
             'permissions.*' => ['bail', 'string',  Rule::in($permissions)]

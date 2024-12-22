@@ -6,7 +6,6 @@ use App\Traits\AuthTrait;
 use App\Enums\Association;
 use App\Traits\Base\BaseTrait;
 use App\Repositories\BaseRepository;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\NotificationResources;
 use Illuminate\Notifications\DatabaseNotification;
 

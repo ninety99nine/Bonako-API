@@ -10,7 +10,6 @@ use App\Models\Transaction;
 use App\Models\PaymentMethod;
 use App\Enums\RequestFileName;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\TransactionResource;
 use App\Http\Resources\TransactionResources;

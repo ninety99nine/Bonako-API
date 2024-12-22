@@ -7,7 +7,6 @@ use App\Traits\AuthTrait;
 use App\Traits\Base\BaseTrait;
 use App\Repositories\BaseRepository;
 use App\Http\Resources\CartResources;
-use App\Services\Filter\FilterService;
 
 class CartRepository extends BaseRepository
 {

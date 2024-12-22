@@ -1,11 +1,14 @@
 <?php
 
-namespace App\Http\Requests\Models\Address;
+namespace App\Http\Requests\Models\Workflow;
 
+use App\Traits\Base\BaseTrait;
 use Illuminate\Foundation\Http\FormRequest;
 
-class RemoveAddressesRequest extends FormRequest
+class ShowWorkflowsRequest extends FormRequest
 {
+    use BaseTrait;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -24,8 +27,7 @@ class RemoveAddressesRequest extends FormRequest
     public function rules()
     {
         return [
-            'address_ids' => ['required', 'array'],
-            'address_ids.*' => ['bail', 'required', 'uuid', 'distinct']
+            'store_id' => ['sometimes', 'uuid']
         ];
     }
 

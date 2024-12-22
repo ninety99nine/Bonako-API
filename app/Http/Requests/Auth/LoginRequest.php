@@ -37,7 +37,7 @@ class LoginRequest extends FormRequest
         $hasPasswordSetForAccount = $hasMobileNumber ? (User::searchMobileNumber($mobileNumber)->first()->password ?? false) : false;
 
         return [
-            'mobile_number' => ['bail', 'required', 'phone', 'exists:users,mobile_number'],
+            'mobile_number' => ['bail', 'required', 'string', 'phone', 'exists:users,mobile_number'],
             'password' => array_merge(
                 //  If the request is not from the ussd server then the password is required
                 ['bail', Rule::requiredIf(!$requestIsFromUssdServer), 'string', 'min:'.User::PASSWORD_MIN_CHARACTERS],

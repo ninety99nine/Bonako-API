@@ -93,7 +93,7 @@ class CreateFriendGroupRequest extends FormRequest
                 },
             ],
             'mobile_numbers' => ['array'],
-            'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
+            'mobile_numbers.*' => ['bail', 'distinct', 'string', 'phone'],
             'emoji' => ['bail', 'sometimes', 'nullable', 'string'],
             'shared' => ['bail', 'sometimes', 'boolean'],
             'can_add_friends' => ['bail', 'sometimes', 'boolean'],

@@ -6,7 +6,6 @@ use App\Models\AiLesson;
 use App\Traits\AuthTrait;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\AiLessonResources;
 use Illuminate\Database\Eloquent\Relations\Relation;

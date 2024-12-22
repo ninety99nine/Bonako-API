@@ -7,7 +7,6 @@ use App\Traits\AuthTrait;
 use App\Traits\Base\BaseTrait;
 use App\Models\MobileVerification;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\MobileVerificationResources;
 use App\Services\CodeGenerator\CodeGeneratorService;

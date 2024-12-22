@@ -30,7 +30,7 @@ class ResetPasswordRequest extends FormRequest
     public function rules()
     {
         return [
-            'mobile_number' => ['bail', 'required', 'phone', 'exists:users,mobile_number'],
+            'mobile_number' => ['bail', 'required', 'string', 'phone', 'exists:users,mobile_number'],
             'verification_code' => ['bail', 'required', 'integer', 'min:'.MobileVerification::CODE_CHARACTERS,
                 Rule::exists('mobile_verifications', 'code')->where('mobile_number', request()->input('mobile_number')),
             ],

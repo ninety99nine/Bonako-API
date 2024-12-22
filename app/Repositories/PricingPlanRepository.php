@@ -16,7 +16,6 @@ use App\Enums\PaymentMethodType;
 use Illuminate\Support\Collection;
 use App\Traits\MessageCrafterTrait;
 use App\Enums\TransactionFailureType;
-use App\Services\Filter\FilterService;
 use App\Enums\TransactionPaymentStatus;
 use Illuminate\Database\Eloquent\Builder;
 use App\Enums\TransactionVerificationType;
@@ -258,7 +257,7 @@ class PricingPlanRepository extends BaseRepository
                     $msisdn = $this->getAuthUser()->mobile_number->formatE164();
                     $transaction = OrangeAirtimeService::billUsingAirtime($msisdn, $mobileNetworkProductId, $transaction);
 
-                    if($transaction->payment_status == TransactionPaymentStatus::FAILED->value) {
+                    if($transaction->payment_status == TransactionPaymentStatus::FAILED_PAYMENT->value) {
                         return [
                             'successful' => false,
                             'message' => $transaction->failure_reason ?? $transaction->failure_type,
@@ -348,7 +347,7 @@ class PricingPlanRepository extends BaseRepository
 
             $transaction->update([
                 'failure_reason' => $e->getMessage(),
-                'payment_status' => TransactionPaymentStatus::FAILED->value,
+                'payment_status' => TransactionPaymentStatus::FAILED_PAYMENT->value,
                 'failure_type' => TransactionFailureType::PAYMENT_VERIFICATION_FAILED->value
             ]);
 
@@ -612,7 +611,7 @@ class PricingPlanRepository extends BaseRepository
             'description' => $pricingPlan->description,
             'owner_type' => $pricingPlan->getResourceName(),
             'requested_by_user_id' => $this->getAuthUser()->id,
-            'payment_status' => TransactionPaymentStatus::PENDING->value,
+            'payment_status' => TransactionPaymentStatus::PENDING_PAYMENT->value,
             'verification_type' => TransactionVerificationType::AUTOMATIC->value,
         ];
     }

@@ -23,7 +23,7 @@ class CreatePaymentMethodsTable extends Migration
             $table->string('name', PaymentMethod::NAME_MAX_CHARACTERS);
             $table->string('type', PaymentMethod::TYPE_MAX_CHARACTERS);
             $table->enum('category', PaymentMethod::PAYMENT_METHOD_CATEGORIES());
-            $table->string('description', PaymentMethod::DESCRIPTION_MAX_CHARACTERS)->nullable();
+            $table->string('instruction', PaymentMethod::INSTRUCTION_MAX_CHARACTERS)->nullable();
             $table->json('countries')->nullable();
             $table->json('metadata')->nullable();
             $table->boolean('contact_seller_before_payment')->default(0);

@@ -84,8 +84,6 @@ class UpdateCouponRequest extends FormRequest
      */
     public function rules()
     {
-        $discountTypes = collect(Coupon::DISCOUNT_TYPES)->map(fn($discountType) => strtolower($discountType));
-
         $offerDiscount = request()->filled('offer_discount') && $this->isTruthy(request()->input('offer_discount'));
         $offerFreeDelivery = request()->filled('offer_free_delivery') && $this->isTruthy(request()->input('offer_free_delivery'));
         $activateUsingCode = request()->filled('activate_using_code') && $this->isTruthy(request()->input('activate_using_code'));
@@ -117,7 +115,7 @@ class UpdateCouponRequest extends FormRequest
                 ['bail', 'sometimes', 'boolean'],
                 $offerFreeDelivery ? [] : ['required']
             ),
-            'discount_type' => ['bail', 'sometimes', Rule::in($discountTypes)],
+            'discount_type' => ['bail', 'sometimes', Rule::in(Coupon::DISCOUNT_TYPES())],
             'discount_percentage_rate' => ['bail', 'sometimes', 'min:1', 'max:100', 'numeric'],
             'discount_fixed_rate' => ['bail', 'sometimes', 'min:1', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
 
@@ -189,7 +187,7 @@ class UpdateCouponRequest extends FormRequest
     public function messages()
     {
         return [
-            'discount_type.in' => 'Answer "'.collect(Coupon::DISCOUNT_TYPES)->join('", "', '" or "').'" to indicate the coupon discount type',
+            'discount_type.in' => 'Answer "'.collect(Coupon::DISCOUNT_TYPES())->join('", "', '" or "').'" to indicate the coupon discount type',
         ];
     }
 

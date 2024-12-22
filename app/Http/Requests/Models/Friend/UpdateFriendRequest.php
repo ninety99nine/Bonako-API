@@ -31,7 +31,7 @@ class UpdateFriendRequest extends FormRequest
             'first_name' => ['bail', 'required', 'string', 'min:'.Friend::FIRST_NAME_MIN_CHARACTERS, 'max:'.Friend::FIRST_NAME_MAX_CHARACTERS],
             'last_name' => ['bail', 'required', 'string', 'min:'.Friend::LAST_NAME_MIN_CHARACTERS, 'max:'.Friend::LAST_NAME_MAX_CHARACTERS],
             'mobile_number' => [
-                'bail', 'required', 'phone',
+                'bail', 'required', 'string', 'phone',
                 function ($attribute, $value, $fail) use ($userId, $friendId) {
 
                     $friendExists = Friend::where('user_id', $userId)

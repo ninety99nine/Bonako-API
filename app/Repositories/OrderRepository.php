@@ -256,7 +256,7 @@ class OrderRepository extends BaseRepository
             OrderStatus::READY_FOR_PICKUP->value,
             OrderPaymentStatus::PAID->value,
             OrderPaymentStatus::UNPAID->value,
-            OrderPaymentStatus::PENDING->value,
+            OrderPaymentStatus::PENDING_PAYMENT->value,
             OrderPaymentStatus::PARTIALLY_PAID->value,
         ]);
 
@@ -727,7 +727,7 @@ class OrderRepository extends BaseRepository
             if(!$paymentMethod->isAutomated()) return ['requested' => false, 'message' => 'The '.$paymentMethod->name.' payment method is not an automated method of payment'];
             if(!$paymentMethod->active) return ['requested' => false, 'message' => 'The '.$paymentMethod->name.' payment method has been deactivated'];
 
-            $transactionPayload = $this->prepareTransactionPayload($order, TransactionPaymentStatus::PENDING, $paymentMethod, $data);
+            $transactionPayload = $this->prepareTransactionPayload($order, TransactionPaymentStatus::PENDING_PAYMENT, $paymentMethod, $data);
             $transaction = $this->getTransactionRepository()->authourize()->shouldReturnModel()->createTransaction($transactionPayload);
             $transaction->setRelation('paymentMethod', $paymentMethod);
             $transaction->setRelation('owner', $order);
@@ -775,7 +775,7 @@ class OrderRepository extends BaseRepository
 
                 $transaction->update([
                     'failure_reason' => $e->getMessage(),
-                    'payment_status' => TransactionPaymentStatus::FAILED->value,
+                    'payment_status' => TransactionPaymentStatus::FAILED_PAYMENT->value,
                     'failure_type' => TransactionFailureType::PAYMENT_REQUEST_FAILED->value
                 ]);
 
@@ -843,7 +843,7 @@ class OrderRepository extends BaseRepository
 
                 $transaction->update([
                     'failure_reason' => $e->getMessage(),
-                    'payment_status' => TransactionPaymentStatus::FAILED->value,
+                    'payment_status' => TransactionPaymentStatus::FAILED_PAYMENT->value,
                     'failure_type' => TransactionFailureType::PAYMENT_VERIFICATION_FAILED->value
                 ]);
 
@@ -1637,7 +1637,6 @@ class OrderRepository extends BaseRepository
 
                 return [
                     'order_id' => $order->id,
-                    'zip' => $data['zip'] ?? null,
                     'type' => $data['type'] ?? null,
                     'city' => $data['city'] ?? null,
                     'state' => $data['state'] ?? null,
@@ -1647,6 +1646,7 @@ class OrderRepository extends BaseRepository
                     'place_id' => $data['place_id'] ?? null,
                     'longitude' => $data['longitude'] ?? null,
                     'description' => $data['description'] ?? null,
+                    'postal_code' => $data['postal_code'] ?? null,
                     'address_line2' => $data['address_line2'] ?? null
                 ];
             }
@@ -1820,10 +1820,10 @@ class OrderRepository extends BaseRepository
         }
 
         if($deliveryAddress = $order->deliveryAddress) {
-            if($deliveryAddress->zip) $customerZip = $deliveryAddress->zip;
+            $customerAddress = $deliveryAddress->address_line;
             if($deliveryAddress->city) $customerCity = $deliveryAddress->city;
-            $customerAddress = $deliveryAddress->completeAddressWithoutCityAndCountry();
             if($deliveryAddress->country) $customerCountry = $deliveryAddress->country;
+            if($deliveryAddress->postal_code) $customerZip = $deliveryAddress->postal_code;
         }
 
         return [
@@ -1937,7 +1937,7 @@ class OrderRepository extends BaseRepository
         $outstandingPercentage = (int) ($grandTotal > 0 ? ($outstandingTotal / $grandTotal * 100) : 0);
 
         if( $pendingPercentage != 0 ) {
-            $paymentStatus = OrderPaymentStatus::PENDING;
+            $paymentStatus = OrderPaymentStatus::PENDING_PAYMENT;
         }elseif( $paidPercentage == 0 ) {
             $paymentStatus = OrderPaymentStatus::UNPAID;
         }elseif( $paidPercentage == 100 ) {

@@ -19,7 +19,7 @@ class AddressResource extends BaseResource
         $this->resourceLinks = [
             new ResourceLink('show.address', route('show.address', ['addressId' => $address->id])),
             new ResourceLink('update.address', route('update.address', ['addressId' => $address->id])),
-            new ResourceLink('remove.address', route('remove.address', ['addressId' => $address->id])),
+            new ResourceLink('delete.address', route('delete.address', ['addressId' => $address->id])),
         ];
     }
 }

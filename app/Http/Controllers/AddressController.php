@@ -5,9 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use App\Repositories\AddressRepository;
 use App\Http\Controllers\Base\BaseController;
-use App\Http\Requests\Models\Address\AddAddressRequest;
+use App\Http\Requests\Models\Address\CreateAddressRequest;
 use App\Http\Requests\Models\Address\UpdateAddressRequest;
-use App\Http\Requests\Models\Address\RemoveAddressesRequest;
+use App\Http\Requests\Models\Address\DeleteAddressesRequest;
+use App\Http\Requests\Models\Address\ValidateAddAddressRequest;
 
 class AddressController extends BaseController
 {
@@ -34,25 +35,38 @@ class AddressController extends BaseController
     }
 
     /**
-     * Add address.
+     * Create address.
      *
-     * @param AddAddressRequest $request
+     * @param CreateAddressRequest $request
      * @return JsonResponse
      */
-    public function addAddress(AddAddressRequest $request): JsonResponse
+    public function createAddress(CreateAddressRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->repository->addAddress($request->all()));
+        return $this->prepareOutput($this->repository->createAddress($request->all()));
     }
 
     /**
-     * Remove addresses.
+     * Delete addresses.
      *
-     * @param RemoveAddressesRequest $request
+     * @param DeleteAddressesRequest $request
      * @return JsonResponse
      */
-    public function removeAddresses(RemoveAddressesRequest $request): JsonResponse
+    public function deleteAddresses(DeleteAddressesRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->repository->removeAddresses($request->input('address_ids')));
+        return $this->prepareOutput($this->repository->deleteAddresses($request->input('address_ids')));
+    }
+
+    /**
+     * Validate add address.
+     *
+     * @param ValidateAddAddressRequest $request
+     * @return JsonResponse
+     */
+    public function validateAddAddress(ValidateAddAddressRequest $request): JsonResponse
+    {
+        return $this->prepareOutput([
+            'complete_address' => $this->completeAddress($request->input('address_line'),$request->input('address_line2'),$request->input('city'),$request->input('state'),$request->input('postal_code'),$request->input('country'))
+        ]);
     }
 
     /**
@@ -79,13 +93,13 @@ class AddressController extends BaseController
     }
 
     /**
-     * Remove address.
+     * Delete address.
      *
      * @param string $addressId
      * @return JsonResponse
      */
-    public function removeAddress(string $addressId): JsonResponse
+    public function deleteAddress(string $addressId): JsonResponse
     {
-        return $this->prepareOutput($this->repository->removeAddress($addressId));
+        return $this->prepareOutput($this->repository->deleteAddress($addressId));
     }
 }

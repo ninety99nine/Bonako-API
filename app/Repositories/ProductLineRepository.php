@@ -6,7 +6,6 @@ use App\Traits\AuthTrait;
 use App\Models\ProductLine;
 use App\Traits\Base\BaseTrait;
 use App\Repositories\BaseRepository;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\ProductLineResources;
 
 class ProductLineRepository extends BaseRepository

@@ -48,7 +48,7 @@ class UpdateUserRequest extends FormRequest
             'last_name' => ['bail', 'sometimes', 'string', 'min:'.User::LAST_NAME_MIN_CHARACTERS, 'max:'.User::LAST_NAME_MAX_CHARACTERS],
             'about_me' => ['bail', 'nullable', 'string', 'min:'.User::ABOUT_ME_MIN_CHARACTERS, 'max:'.User::ABOUT_ME_MAX_CHARACTERS],
             'mobile_number' => [
-                'bail', 'sometimes', 'phone', $uniqueMobileNumber
+                'bail', 'sometimes', 'string', 'phone', $uniqueMobileNumber
             ],
 
             /**

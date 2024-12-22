@@ -8,6 +8,7 @@ use App\Traits\Base\BaseTrait;
 use App\Enums\PaymentMethodType;
 use App\Traits\PaymentMethodTrait;
 use App\Enums\PaymentMethodCategory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class PaymentMethod extends BaseModel
@@ -21,8 +22,8 @@ class PaymentMethod extends BaseModel
     const NAME_MAX_CHARACTERS = 40;
     const TYPE_MIN_CHARACTERS = 3;
     const TYPE_MAX_CHARACTERS = 40;
-    const DESCRIPTION_MIN_CHARACTERS = 3;
-    const DESCRIPTION_MAX_CHARACTERS = 200;
+    const INSTRUCTION_MIN_CHARACTERS = 3;
+    const INSTRUCTION_MAX_CHARACTERS = 200;
 
     public static function PAYMENT_METHOD_TYPES(): array
     {
@@ -46,7 +47,7 @@ class PaymentMethod extends BaseModel
     protected $tranformableCasts = [];
 
     protected $fillable = [
-        'active', 'name', 'type', 'category', 'description', 'countries', 'metadata',
+        'active', 'name', 'type', 'category', 'instruction', 'countries', 'metadata',
         'require_proof_of_payment', 'automatically_mark_as_paid',
         'contact_seller_before_payment', 'position', 'store_id'
     ];
@@ -98,5 +99,34 @@ class PaymentMethod extends BaseModel
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /****************************
+     *  ACCESSORS               *
+     ***************************/
+
+    protected $appends = [
+        'image_url', 'is_manual', 'is_automated'
+    ];
+
+    protected function imageUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => asset('/images/payment-method-logos/'.$this->type.'.jpg')
+        );
+    }
+
+    protected function isManual(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => strtolower($this->category) == PaymentMethodCategory::MANUAL
+        );
+    }
+
+    protected function isAutomated(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => strtolower($this->category) == PaymentMethodCategory::AUTOMATED
+        );
     }
 }

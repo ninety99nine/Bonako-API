@@ -7,7 +7,6 @@ use App\Traits\AuthTrait;
 use App\Models\StoreQuota;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\StoreQuotaResources;
 use Illuminate\Database\Eloquent\Relations\Relation;

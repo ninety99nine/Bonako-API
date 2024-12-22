@@ -48,7 +48,7 @@ class RemoveStoreTeamMembersRequest extends FormRequest
     {
         return [
             'mobile_numbers' => ['required', 'array'],
-            'mobile_numbers.*' => ['bail', 'distinct', 'phone'],
+            'mobile_numbers.*' => ['bail', 'distinct', 'string', 'phone'],
         ];
     }
 

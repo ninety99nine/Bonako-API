@@ -7,7 +7,6 @@ use App\Models\Customer;
 use App\Traits\AuthTrait;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\OrderResources;
 use App\Http\Resources\CustomerResources;
 use Illuminate\Database\Eloquent\Builder;

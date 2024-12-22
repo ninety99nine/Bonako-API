@@ -6,7 +6,6 @@ use App\Traits\AuthTrait;
 use App\Traits\Base\BaseTrait;
 use App\Models\AiMessageCategory;
 use Illuminate\Support\Collection;
-use App\Services\Filter\FilterService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Resources\AiMessageCategoryResources;
 use Illuminate\Database\Eloquent\Relations\Relation;

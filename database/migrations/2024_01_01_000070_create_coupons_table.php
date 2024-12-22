@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DiscountType;
 use App\Models\Store;
 use App\Models\Coupon;
 use Illuminate\Support\Arr;
@@ -27,7 +28,7 @@ class CreateCouponsTable extends Migration
 
             /*  Offer Discount Information */
             $table->boolean('offer_discount')->default(false);
-            $table->enum('discount_type', Coupon::DISCOUNT_TYPES)->default(Arr::last(Coupon::DISCOUNT_TYPES));
+            $table->enum('discount_type', Coupon::DISCOUNT_TYPES())->default(DiscountType::FIXED);
             $table->decimal('discount_percentage_rate', 5, 2)->default(0);
             $table->decimal('discount_fixed_rate', 10, 2)->default(0);
 

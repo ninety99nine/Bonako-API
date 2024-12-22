@@ -15,7 +15,7 @@ class Address extends BaseModel
     const ADDRESS2_MAX_CHARACTERS = 255;
     const CITY_MAX_CHARACTERS = 100;
     const STATE_MAX_CHARACTERS = 100;
-    const ZIP_MAX_CHARACTERS = 20;
+    const POSTAL_CODE_MAX_CHARACTERS = 20;
 
     public static function TYPES(): array
     {
@@ -23,7 +23,7 @@ class Address extends BaseModel
     }
 
     protected $fillable = [
-        'type', 'address_line', 'address_line2', 'city', 'state', 'zip', 'country', 'place_id',
+        'type', 'address_line', 'address_line2', 'city', 'state', 'postal_code', 'country', 'place_id',
         'latitude', 'longitude', 'description', 'owner_id', 'owner_type'
     ];
 
@@ -55,6 +55,6 @@ class Address extends BaseModel
 
     protected function getCompleteAddressAttribute()
     {
-        return $this->completeAddress();
+        return $this->completeAddress($this->address_line, $this->address_line2, $this->city, $this->state, $this->postal_code, $this->country);
     }
 }

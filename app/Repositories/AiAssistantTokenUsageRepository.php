@@ -6,7 +6,6 @@ use App\Traits\AuthTrait;
 use App\Traits\Base\BaseTrait;
 use App\Repositories\BaseRepository;
 use App\Models\AiAssistantTokenUsage;
-use App\Services\Filter\FilterService;
 use App\Http\Resources\AiAssistantTokenUsageResources;
 
 class AiAssistantTokenUsageRepository extends BaseRepository

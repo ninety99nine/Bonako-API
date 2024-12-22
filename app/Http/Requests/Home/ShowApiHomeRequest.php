@@ -27,7 +27,7 @@ class ShowApiHomeRequest extends FormRequest
     public function rules()
     {
         return [
-            'mobile_number' => ['bail', 'phone']
+            'mobile_number' => ['bail', 'string', 'phone']
         ];
     }
 

@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Base;
 
 use Illuminate\View\View;
 use Illuminate\Http\Response;
+use App\Traits\Base\BaseTrait;
 use Illuminate\Http\JsonResponse;
 
 class BaseController extends Controller
 {
+    use BaseTrait;
+
     /**
      * Prepare the output for the response.
      *

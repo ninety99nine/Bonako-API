@@ -41,7 +41,7 @@ class UpdatePaymentMethodRequest extends FormRequest
                     : Rule::unique('payment_methods')->ignore(request()->paymentMethodId)
             ],
             'type' => ['exclude'],
-            'description' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.PaymentMethod::DESCRIPTION_MIN_CHARACTERS, 'max:'.PaymentMethod::DESCRIPTION_MAX_CHARACTERS],
+            'instruction' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.PaymentMethod::INSTRUCTION_MIN_CHARACTERS, 'max:'.PaymentMethod::INSTRUCTION_MAX_CHARACTERS],
             'category' => ['exclude'],
             'countries' => ['exclude'],
             'metadata' => ['sometimes', 'nullable', 'array'],

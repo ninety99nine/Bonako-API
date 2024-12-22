@@ -31,7 +31,7 @@ class CreateStoreRollingNumberRequest extends FormRequest
             'return' => ['sometimes', 'boolean'],
             'store_id' => ['required', 'uuid'],
             'mobile_number' => [
-                'bail', 'required', 'phone',
+                'bail', 'required', 'string', 'phone',
                 /**
                  *  Make sure that this product name does not already exist on the same store
                  *  (Except for the same product)

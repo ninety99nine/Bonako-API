@@ -21,7 +21,7 @@ class CreateAddressesTable extends Migration
             $table->string('address_line2', Address::ADDRESS2_MAX_CHARACTERS)->nullable();
             $table->string('city', Address::CITY_MAX_CHARACTERS)->nullable();
             $table->string('state', Address::STATE_MAX_CHARACTERS)->nullable();
-            $table->string('zip', Address::ZIP_MAX_CHARACTERS)->nullable();
+            $table->string('postal_code', Address::POSTAL_CODE_MAX_CHARACTERS)->nullable();
             $table->char('country', 2)->nullable();
             $table->string('place_id')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
