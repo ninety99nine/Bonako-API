@@ -20,7 +20,7 @@ class WorkflowResource extends BaseResource
             new ResourceLink('show.workflow', route('show.workflow', ['workflowId' => $workflow->id])),
             new ResourceLink('update.workflow', route('update.workflow', ['workflowId' => $workflow->id])),
             new ResourceLink('delete.workflow', route('delete.workflow', ['workflowId' => $workflow->id])),
-            new ResourceLink('show.workflow.steps', route('show.workflow.steps', ['workflowId' => $workflow->id])),
+            new ResourceLink('show.workflow.steps', route('show.workflow.workflow.steps', ['workflowId' => $workflow->id])),
         ];
     }
 }

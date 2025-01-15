@@ -21,7 +21,7 @@ Route::controller(WorkflowController::class)
 
             //  Workflow Steps
             Route::controller(WorkflowStepController::class)->prefix('workflow-steps')->group(function () {
-                Route::get('/', 'showWorkflowSteps')->name('show.workflow.steps');
+                Route::get('/', 'showWorkflowSteps')->name('show.workflow.workflow.steps');
             });
         });
 });
