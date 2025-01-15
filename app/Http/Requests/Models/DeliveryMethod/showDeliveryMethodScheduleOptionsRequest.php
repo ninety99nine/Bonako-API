@@ -7,7 +7,7 @@ use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class showDeliveryMethodScheduleOptionsRequest extends FormRequest
+class ShowDeliveryMethodScheduleOptionsRequest extends FormRequest
 {
     use BaseTrait;
 
