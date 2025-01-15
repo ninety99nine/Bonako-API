@@ -13,7 +13,7 @@ use App\Services\Currency\CurrencyService;
 trait BaseTrait
 {
     /**
-     *  Get complete address
+     *  Complete address.
      *
      *  @return bool
      */
@@ -29,9 +29,11 @@ trait BaseTrait
 
     public function convertToPercentageFormat($value)
     {
+        $roundedValue = (float) $value;
+
         return [
-            'value' => $value,
-            'value_symbol' => $value.'%',
+            'value' => $roundedValue,
+            'value_symbol' => $roundedValue . '%',
         ];
     }
 

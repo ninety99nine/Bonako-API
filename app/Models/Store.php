@@ -14,6 +14,7 @@ use App\Enums\CallToAction;
 use App\Enums\InsightPeriod;
 use App\Models\Base\BaseModel;
 use App\Enums\InsightCategory;
+use App\Enums\CheckoutFeeType;
 use App\Casts\E164PhoneNumberCast;
 use App\Casts\DeliveryDestinations;
 use App\Traits\UserStoreAssociationTrait;
@@ -78,6 +79,11 @@ class Store extends BaseModel
         'Friend Group Member', 'Customer', 'Assigned', 'Recent Visitor', 'Associated', 'Active Subscription'
     ];
 
+    public static function CHECKOUT_FEE_TYPES(): array
+    {
+        return array_map(fn($method) => $method->value, CheckoutFeeType::cases());
+    }
+
     public static function INSIGHT_PERIODS(): array
     {
         return array_map(fn($method) => $method->value, InsightPeriod::cases());
@@ -128,6 +134,8 @@ class Store extends BaseModel
     const OFFLINE_MESSAGE_MIN_CHARACTERS = 3;
     const OFFLINE_MESSAGE_MAX_CHARACTERS = 120;
     const SOCIAL_LINK_NAME_MIN_CHARACTERS = 1;
+    const CHECKOUT_FEE_NAME_MIN_CHARACTERS = 3;
+    const CHECKOUT_FEE_NAME_MAX_CHARACTERS = 25;
     const SOCIAL_LINK_NAME_MAX_CHARACTERS = 255;
     CONST NUMBER_OF_EMPLOYEES_MIN_CHARACTERS = 1;
     const PICKUP_DESTINATION_NAME_MIN_CHARACTERS = 3;
@@ -154,8 +162,8 @@ class Store extends BaseModel
         'social_links' => JsonToArray::class,
         'allow_deposit_payments' => 'boolean',
         'opening_hours' => JsonToArray::class,
+        'checkout_fees' => JsonToArray::class,
         'allow_installment_payments' => 'boolean',
-        'tax_percentage_rate' => Percentage::class,
         'deposit_percentages' => JsonToArray::class,
         'pickup_destinations' => JsonToArray::class,
         'has_automated_payment_methods' => 'boolean',
@@ -168,22 +176,19 @@ class Store extends BaseModel
     ];
 
     protected $tranformableCasts = [
+        'rating' => 'decimal:1',            //  Eager loaded using the withAvg() method
         'currency' => Currency::class,
-        'rating' => 'decimal:1' //  Eager loaded using the withAvg() method
+        'tax_percentage_rate' => Percentage::class
     ];
 
     protected $fillable = [
         'emoji', 'name', 'alias', 'email', 'ussd_mobile_number', 'contact_mobile_number', 'whatsapp_mobile_number', 'call_to_action',
-        'description', 'verified', 'online', 'offline_message', 'social_links', 'identified_orders', 'user_id',
-        'allow_delivery', 'allow_free_delivery', 'pickup_note', 'delivery_note', 'delivery_fee',
-        'delivery_flat_fee', 'delivery_destinations', 'allow_pickup', 'pickup_note',
-        'pickup_destinations', 'allow_deposit_payments', 'deposit_percentages',
-        'allow_installment_payments', 'installment_percentages',
-        'sms_sender_name', 'has_automated_payment_methods',
-        'country', 'language', 'currency', 'distance_unit',
-        'tax_percentage_rate', 'tax_method', 'tax_id',
-        'opening_hours', 'show_opening_hours',
-        'allow_checkout_on_closed_hours'
+        'description', 'verified', 'online', 'offline_message', 'social_links', 'identified_orders', 'user_id', 'allow_delivery',
+        'allow_free_delivery', 'pickup_note', 'delivery_note', 'delivery_fee', 'delivery_flat_fee', 'delivery_destinations',
+        'allow_pickup', 'pickup_note', 'pickup_destinations', 'allow_deposit_payments', 'deposit_percentages',
+        'allow_installment_payments', 'installment_percentages', 'sms_sender_name', 'has_automated_payment_methods',
+        'country', 'language', 'currency', 'distance_unit', 'tax_percentage_rate', 'tax_method', 'tax_id',
+        'show_opening_hours', 'opening_hours', 'checkout_fees', 'allow_checkout_on_closed_hours'
     ];
 
     /************

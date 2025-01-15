@@ -28,9 +28,9 @@ abstract class BaseRepository
     protected $authourized = false;
     protected $returnType = ReturnType::ARRAY;
     protected string|null $resourceName = null;
-    protected string|null $resourceClass = null;
     protected string|null $modelClassName = null;
-    protected string|null $resourceCollectionClass = null;
+    protected string|null $resourceClassName = null;
+    protected string|null $resourceCollectionClassName = null;
 
     /**
      * Check if is authourized.
@@ -133,7 +133,7 @@ abstract class BaseRepository
      */
     private function getResourceClassName(): string
     {
-        return $this->resourceClassNmae ?? $this->getFallbackResourceClassName();
+        return $this->resourceClassName ?? $this->getFallbackResourceClassName();
     }
 
     /**
@@ -147,21 +147,21 @@ abstract class BaseRepository
     }
 
     /**
-     * Get the resource collection class.
+     * Get the resource collection class name.
      *
      * @return string
      */
-    private function getResourceCollectionClass(): string
+    private function getResourceCollectionClassName(): string
     {
-        return $this->resourceCollectionClass ?? $this->getFallbackResourceCollectionClass();
+        return $this->resourceCollectionClassName ?? $this->getFallbackResourceCollectionClassName();
     }
 
     /**
-     * Get the fallback resource collection class.
+     * Get the fallback resource collection class name.
      *
      * @return string
      */
-    private function getFallbackResourceCollectionClass(): string
+    private function getFallbackResourceCollectionClassName(): string
     {
         return 'App\Http\Resources\\' . Str::replace('Repository', 'Resources', class_basename($this));
     }
@@ -217,8 +217,15 @@ abstract class BaseRepository
      * Inclusion Filter:
      * -------------------------------------
      *
-     * status:in:active+pending
-     * payment_status:in:active+pending+failed
+     * status:in:active,pending
+     * payment_status:in:active,pending,failed
+     *
+     * -------------------------------------
+     * Exclusion Filter:
+     * -------------------------------------
+     *
+     * status:not_in:active,pending
+     * payment_status:not_in:active,pending,failed
      *
      * -------------------------------------
      * LIKE Filter
@@ -298,6 +305,9 @@ abstract class BaseRepository
             if($operator == 'in') {
                 $options = explode(',', $input1);
                 $query = $this->getQuery()->whereIn($column, $options);
+            }if($operator == 'not_in') {
+                $options = explode(',', $input1);
+                $query = $this->getQuery()->whereNotIn($column, $options);
             }else if($operator == 'like') {
                 $query = $this->getQuery()->where($column, $operator, '%'.$input1.'%');
             }else{
@@ -377,6 +387,7 @@ abstract class BaseRepository
             'eq'  => '=',
             'neq'  => '!=',
             'in'  => 'in',
+            'not_in'  => 'not_in',
             'bt' => 'bt',
             'bt_ex' => 'bt_ex',
         ];
@@ -411,6 +422,18 @@ abstract class BaseRepository
 
             return $query;
         }
+
+        if ($operator === 'not_in') {
+            $options = explode(',', $value);
+            $query = $this->getQuery();
+
+            foreach ($options as $option) {
+                $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT($jsonColumn, '$jsonPath')) != ?", [$option]);
+            }
+
+            return $query;
+        }
+
 
         if ($operator === 'like') return $this->getQuery()->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT($jsonColumn, '$jsonPath'))) LIKE LOWER(?)", ['%' . $value . '%']);
         if ($operator === 'bt') return $this->getQuery()->whereRaw("JSON_UNQUOTE(JSON_EXTRACT($jsonColumn, '$jsonPath')) BETWEEN ? AND ?", [$value, $value2]);
@@ -588,8 +611,8 @@ abstract class BaseRepository
         $perPage = request()->filled('per_page') ? (int) request()->input('per_page') : $this->perPage;
         $perPage = ($perPage <= $this->maxPerPage) ? $perPage : $this->perPage;
 
-        $resourceCollectionClass = $this->getResourceCollectionClass();
-        return new $resourceCollectionClass($this->query->paginate($perPage));
+        $resourceCollectionClassName = $this->getResourceCollectionClassName();
+        return new $resourceCollectionClassName($this->query->paginate($perPage));
     }
 
     /**

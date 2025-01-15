@@ -59,7 +59,6 @@ class CreateAddressRequest extends FormRequest
             'latitude' => ['bail', 'sometimes', 'nullable', 'numeric', 'min:-90', 'max:90'],
             'longitude' => ['bail', 'sometimes', 'nullable', 'numeric', 'min:-180', 'max:180'],
             'description' => ['bail', 'sometimes', 'nullable', 'string'],
-            'customer_id' => ['required', 'uuid'],
             'user_id' => ['bail', 'required_without_all:store_id,customer_id,delivery_method_id', 'uuid'],
             'store_id' => ['bail', 'required_without_all:user_id,customer_id,delivery_method_id', 'uuid'],
             'customer_id' => ['bail', 'required_without_all:user_id,store_id,delivery_method_id', 'uuid'],

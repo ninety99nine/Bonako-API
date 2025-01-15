@@ -17,7 +17,7 @@ class Cart extends BaseModel
 
     protected $casts = [
         'is_abandoned' => 'boolean',
-        'sub_total' => Money::class,
+        'subtotal' => Money::class,
         'grand_total' => Money::class,
         'delivery_fee' => Money::class,
         'allow_free_delivery' => 'boolean',
@@ -43,7 +43,7 @@ class Cart extends BaseModel
     protected $fillable = [
 
         /*  Pricing  */
-        'currency', 'sub_total', 'coupon_discount_total', 'sale_discount_total',
+        'currency', 'subtotal', 'coupon_discount_total', 'sale_discount_total',
         'coupon_and_sale_discount_total', 'grand_total',
 
         /*  Delivery  */

@@ -44,12 +44,11 @@ class StoreResource extends BaseResource
             new ResourceLink('accept.invitation.to.join.store.team', route('accept.invitation.to.join.store.team', ['storeId' => $store->id])),
             new ResourceLink('decline.invitation.to.join.store.team', route('decline.invitation.to.join.store.team', ['storeId' => $store->id])),
 
-            new ResourceLink('inspect.store.shopping.cart', route('inspect.store.shopping.cart', ['storeId' => $store->id])),
-
             new ResourceLink('show.store.orders', route('show.store.orders', ['storeId' => $store->id])),
             new ResourceLink('show.store.coupons', route('show.store.coupons', ['storeId' => $store->id])),
             new ResourceLink('show.store.reviews', route('show.store.reviews', ['storeId' => $store->id])),
             new ResourceLink('show.store.products', route('show.store.products', ['storeId' => $store->id])),
+            new ResourceLink('show.store.shopping.products', route('show.store.shopping.products', ['storeId' => $store->id])),
             new ResourceLink('show.store.customers', route('show.store.customers', ['storeId' => $store->id])),
             new ResourceLink('show.store.workflows', route('show.store.workflows', ['storeId' => $store->id])),
             new ResourceLink('show.store.transactions', route('show.store.transactions', ['storeId' => $store->id])),

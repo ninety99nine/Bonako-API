@@ -23,6 +23,8 @@ class HomeResource extends BaseResource
             new ResourceLink('show.terms.and.conditions.takeaways', route('show.terms.and.conditions.takeaways')),
             new ResourceLink('verify.mobile.verification.code', route('verify.mobile.verification.code')),
             new ResourceLink('generate.mobile.verification.code', route('generate.mobile.verification.code')),
+            new ResourceLink('show.auth.user', route('show.auth.user')),
+            new ResourceLink('show.social.login.links', route('show.social.login.links')),
 
             new ResourceLink('show.users', route('show.users')),
 
@@ -94,6 +96,7 @@ class HomeResource extends BaseResource
             new ResourceLink('create.delivery.method', route('create.delivery.method')),
             new ResourceLink('delete.delivery.methods', route('delete.delivery.methods')),
             new ResourceLink('update.delivery.method.arrangement', route('update.delivery.method.arrangement')),
+            new ResourceLink('show.delivery.method.schedule.options', route('show.delivery.method.schedule.options')),
 
             new ResourceLink('show.workflows', route('show.workflows')),
             new ResourceLink('create.workflow', route('create.workflow')),
@@ -114,6 +117,9 @@ class HomeResource extends BaseResource
             new ResourceLink('show.countries', route('show.countries')),
             new ResourceLink('show.currencies', route('show.currencies')),
             new ResourceLink('show.social.media.icons', route('show.social.media.icons')),
+            new ResourceLink('show.country.address.options', route('show.country.address.options')),
+
+            new ResourceLink('inspect.shopping.cart', route('inspect.shopping.cart')),
         ];
     }
 }

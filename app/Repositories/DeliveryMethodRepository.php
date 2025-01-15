@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use Carbon\Carbon;
 use App\Models\Store;
 use App\Traits\AuthTrait;
 use App\Models\DeliveryMethod;
@@ -9,6 +10,7 @@ use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
+use App\Enums\DeliveryMethodScheduleType;
 use App\Http\Resources\DeliveryMethodResources;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
@@ -177,6 +179,106 @@ class DeliveryMethodRepository extends BaseRepository
         }
 
         return ['updated' => false, 'message' => 'No matching delivery methods to update'];
+    }
+
+    /**
+     * Show delivery method schedule options.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function showDeliveryMethodScheduleOptions(array $data): array
+    {
+        $deliveryDate = $data['delivery_date'] ?? null;
+        $data['set_schedule'] = true;
+
+        $deliveryMethod = new DeliveryMethod();
+        $deliveryMethod->fill($data);
+
+        $scheduleOptions = [
+            'delivery_message' => null,
+            'available_time_slots' => [],
+            'min_date' => $deliveryMethod->minDate(),
+            'max_date' => $deliveryMethod->maxDate(),
+            'dates_disabled' => $deliveryMethod->datesDisabled(),
+            'days_of_week_disabled' => $deliveryMethod->daysOfWeekDisabled(),
+            'schedule_key_points' => [] // Add explanations here
+        ];
+
+        $availableDays = collect($deliveryMethod->operational_hours)
+            ->filter(fn($day) => $day['available'])
+            ->keys()
+            ->map(fn($dayIndex) => Carbon::create()->startOfWeek()->addDays($dayIndex)->format('l'))
+            ->toArray();
+
+        if (empty($availableDays)) {
+            $scheduleOptions['schedule_key_points'][] = 'Orders are allowed on any day of the week';
+        } elseif (count($availableDays) == 7) {
+            $scheduleOptions['schedule_key_points'][] = 'Orders are allowed on all days of the week';
+        } else {
+            $formattedDays = count($availableDays) > 1
+                ? implode(', ', array_slice($availableDays, 0, -1)) . ' and ' . end($availableDays)
+                : $availableDays[0];
+
+            $scheduleOptions['schedule_key_points'][] = sprintf(
+                'Orders are allowed on %d %s of the week: %s',
+                count($availableDays), count($availableDays) == 1 ? 'day' : 'days', $formattedDays
+            );
+        }
+
+        if ($deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE->value) {
+            $scheduleOptions['schedule_key_points'][] = 'Customers must specify only date without the time for delivery';
+        } else {
+            $scheduleOptions['schedule_key_points'][] = 'Customers must specify both date and time for delivery';
+        }
+
+        if ($deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE_AND_TIME->value && $deliveryMethod->auto_generate_timeslots) {
+            $scheduleOptions['schedule_key_points'][] = 'Auto generate additional time options between the specified timeslots for each day of the week';
+        }
+
+        // Minimum notice for orders
+        if ($deliveryMethod->require_minimum_notice_for_orders && $deliveryMethod->earliest_delivery_time_value > 0) {
+            $unit = $deliveryMethod->earliest_delivery_time_unit;
+            $value = $deliveryMethod->earliest_delivery_time_value;
+            $unitText = $value == 1 ? $unit : $unit . 's';
+
+            $scheduleOptions['schedule_key_points'][] = sprintf(
+                'Orders must be placed at least %d %s before the delivery date (%d %s notice)',
+                $value, $unitText, $value, $unitText
+            );
+        }
+
+        // Maximum notice for orders
+        if ($deliveryMethod->restrict_maximum_notice_for_orders && $deliveryMethod->latest_delivery_time_value > 0) {
+            $value = $deliveryMethod->latest_delivery_time_value;
+            $unitText = $value == 1 ? 'day' : 'days';
+
+            $scheduleOptions['schedule_key_points'][] = sprintf(
+                'Orders cannot be scheduled for delivery more than %d %s in advance',
+                $value, $unitText
+            );
+        }
+
+        // Delivery message
+        if ($deliveryDate && $deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE_AND_TIME->value) {
+            $isValidDate = $deliveryMethod->isValidDate($deliveryDate);
+
+            if ($isValidDate) {
+                $scheduleOptions['available_time_slots'] = $deliveryMethod->availableTimeSlots($deliveryDate);
+
+                // Format delivery message
+                $deliveryDate = Carbon::parse($deliveryDate);
+
+                $scheduleOptions['delivery_message'] = sprintf(
+                    'Your order will be delivered on %s (%s), just %s from now.',
+                    $deliveryDate->format('d M Y'),                 // e.g., "15 Jan 2025"
+                    $deliveryDate->format('D'),                     // e.g., "Wed"
+                    $deliveryDate->diffForHumans(null, true)        // e.g., "6 days"
+                );
+            }
+        }
+
+        return $scheduleOptions;
     }
 
     /**

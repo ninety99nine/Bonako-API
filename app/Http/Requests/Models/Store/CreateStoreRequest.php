@@ -93,6 +93,12 @@ class CreateStoreRequest extends FormRequest
             'opening_hours.*.hours.*' => ['bail', 'array'],
             'opening_hours.*.hours.*.*' => ['bail', 'string', 'regex:/^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$/'],
 
+            'checkout_fees' => ['bail', 'sometimes', 'array', 'max:5'],
+            'checkout_fees.name' => ['bail', 'required', 'string', 'min:'.Store::CHECKOUT_FEE_NAME_MIN_CHARACTERS, 'max:'.Store::CHECKOUT_FEE_NAME_MAX_CHARACTERS],
+            'checkout_fees.type' => ['bail', 'required', Rule::in(Store::CHECKOUT_FEE_TYPES())],
+            'checkout_fees.flat_rate' => ['bail', 'required_without:checkout_fees.percentage_rate', 'min:0', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'checkout_fees.percentage_rate' => ['bail', 'required_without:checkout_fees.flat_rate', 'min:0', 'max:100', 'numeric'],
+
             'email' => ['bail', 'nullable', 'sometimes', 'email'],
             'ussd_mobile_number' => ['bail', 'nullable', 'sometimes', 'string', 'phone'],
             'contact_mobile_number' => ['bail', 'nullable', 'sometimes', 'string', 'phone'],
@@ -104,7 +110,7 @@ class CreateStoreRequest extends FormRequest
             'distance_unit' => ['bail', 'sometimes', Rule::in(Store::DISTANCE_UNIT_OPTIONS())],
             'tax_method' => ['bail', 'sometimes', Rule::in(Store::TAX_METHOD_OPTIONS())],
             'tax_id' => ['bail', 'sometimes', 'nullable', 'string', 'min:'.Store::TAX_ID_MIN_CHARACTERS, 'max:'.Store::TAX_ID_MAX_CHARACTERS],
-            'tax_percentage_rate' => ['bail', 'sometimes', 'min:1', 'max:100', 'numeric'],
+            'tax_percentage_rate' => ['bail', 'sometimes', 'min:0', 'max:100', 'numeric'],
 
             'delivery_note' => ['bail', 'sometimes', 'nullable', 'min:'.Store::DELIVERY_NOTE_MIN_CHARACTERS, 'max:'.Store::DELIVERY_NOTE_MAX_CHARACTERS],
             'allow_delivery' => ['bail', 'sometimes', 'boolean'],

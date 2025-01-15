@@ -20,6 +20,8 @@ use App\Http\Requests\Home\ShowApiHomeRequest;
 use App\Http\Requests\Home\ShowCountriesRequest;
 use App\Http\Requests\Home\ShowLanguagesRequest;
 use App\Http\Requests\Home\ShowCurrenciesRequest;
+use App\Services\CountryAddress\CountryAddressService;
+use App\Http\Requests\Home\ShowCountryAddressOptionsRequest;
 
 class HomeController extends BaseController
 {
@@ -132,6 +134,18 @@ class HomeController extends BaseController
     public function showLanguages(ShowLanguagesRequest $request): JsonResponse
     {
         return $this->prepareOutput((new LanguageService)->getLanguages());
+    }
+
+    /**
+     * Show country address options.
+     *
+     * @param ShowCountryAddressOptionsRequest $request
+     * @param string|null $storeId
+     * @return JsonResponse
+     */
+    public function showCountryAddressOptions(ShowCountryAddressOptionsRequest $request): JsonResponse
+    {
+        return $this->prepareOutput((new CountryAddressService)->getCountryAddressOptions());
     }
 
     /**

@@ -28,6 +28,11 @@ class AuthRepository extends BaseRepository
 {
     use AuthTrait, BaseTrait;
 
+    protected string|null $resourceName = 'User';
+    protected string|null $modelClassName = 'App\Models\User';
+    protected string|null $resourceClassName = 'App\Http\Resources\UserResource';
+    protected string|null $resourceCollectionClassName = 'App\Http\Resources\User\Resources';
+
     /**
      * Login.
      *
@@ -52,6 +57,17 @@ class AuthRepository extends BaseRepository
         }
 
         $this->updateAccountPassword($user, $data['password']);
+        return $this->getUserAndAccessToken($user);
+    }
+
+    /**
+     * Social login.
+     *
+     * @param User $user
+     * @return array
+     */
+    public function socailLogin(User $user): array
+    {
         return $this->getUserAndAccessToken($user);
     }
 
@@ -159,6 +175,39 @@ class AuthRepository extends BaseRepository
                 'takeaways' => 'As a seller on '.config('app.name').', you need to register with accurate and authorized business details. Ensure your product listings are accurate, up-to-date, and comply with relevant laws. Update your product availability regularly to avoid disappointing customers. Fulfill orders promptly and ensure the quality of your products before delivery. Set transparent and fair prices, and note that '.config('app.name').' may deduct fees—review the fee structure on our platform. Respond to customer inquiries promptly and professionally. You are responsible for safeguarding customer data and using it solely for order fulfillment or communication via '.config('app.name').'. Improper use of data can lead to penalties. Customer feedback through reviews and ratings is essential for improving your business. In case of disputes, try to resolve them directly with the buyer, but '.config('app.name').' can mediate if necessary. Unethical behavior or violation of the terms may lead to the suspension or termination of your account. Additionally, the shortcodes provided by '.config('app.name').' remain our property and may be reassigned if your subscription ends. For the full terms and conditions, please visit our website at '.route('show.terms.and.conditions')
             ]
         ];
+    }
+
+    /**
+     * Show social login links.
+     *
+     * @return User|array|null
+     */
+    public function showSocialLoginLinks(): array
+    {
+        $platforms = ['google', 'facebook', 'linkedin'];
+
+        return collect($platforms)->map(function($platform) {
+
+            $platformCapitalized = ucfirst($platform);
+            $label = 'Continue with '.$platformCapitalized;
+
+            return [
+                'platform' => $platformCapitalized,
+                'label' => $label,
+                'url' => route("social-auth-$platform"),
+                'logo_url' => asset("/images/social-login-icons/$platform.png")
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Show auth user.
+     *
+     * @return User|array|null
+     */
+    public function showAuthUser(): User|array|null
+    {
+        return $this->showResourceExistence(request()->auth_user);
     }
 
     /**

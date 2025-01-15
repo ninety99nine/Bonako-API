@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Auth;
 
-use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use App\Repositories\AuthRepository;
 use App\Http\Requests\Auth\LoginRequest;
@@ -128,12 +127,22 @@ class AuthController extends BaseController
     }
 
     /**
-     * Show terms and conditions takeaways.
+     * Show social login links.
      *
      * @return JsonResponse
      */
-    public function showTermsAndConditionsTakeaways(): JsonResponse
+    public function showSocialLoginLinks(): JsonResponse
     {
-        return $this->prepareOutput($this->repository->showTermsAndConditionsTakeaways());
+        return $this->prepareOutput($this->repository->showSocialLoginLinks());
+    }
+
+    /**
+     * Show auth user.
+     *
+     * @return JsonResponse
+     */
+    public function showAuthUser(): JsonResponse
+    {
+        return $this->prepareOutput($this->repository->showAuthUser());
     }
 }

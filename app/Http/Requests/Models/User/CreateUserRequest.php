@@ -40,6 +40,7 @@ class CreateUserRequest extends FormRequest
             'first_name' => ['bail', 'required', 'string', 'min:'.User::FIRST_NAME_MIN_CHARACTERS, 'max:'.User::FIRST_NAME_MAX_CHARACTERS],
             'last_name' => ['bail', 'required', 'string', 'min:'.User::LAST_NAME_MIN_CHARACTERS, 'max:'.User::LAST_NAME_MAX_CHARACTERS],
             'about_me' => ['bail', 'nullable', 'string', 'min:'.User::ABOUT_ME_MIN_CHARACTERS, 'max:'.User::ABOUT_ME_MAX_CHARACTERS],
+            'email' => ['bail', 'sometimes', 'email', 'unique:users,email'],
             'mobile_number' => ['bail', 'required', 'string', 'phone', 'unique:users,mobile_number'],
             /**
              *  Since the creation of an account can be done by any user creating their

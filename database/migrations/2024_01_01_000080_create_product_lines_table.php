@@ -59,12 +59,13 @@ class CreateProductLinesTable extends Migration
 
             $table->decimal('sale_discount_total', 10, 2)->default(0);
             $table->decimal('grand_total', 10, 2)->default(0);
-            $table->decimal('sub_total', 10, 2)->default(0);
+            $table->decimal('subtotal', 10, 2)->default(0);
 
             /*  Quantity Information  */
             $table->unsignedSmallInteger('original_quantity')->default(1);
             $table->unsignedSmallInteger('quantity')->default(1);
-            $table->boolean('exceeded_maximum_allowed_quantity_per_order')->default(false);
+            $table->boolean('has_limited_stock')->default(false);
+            $table->boolean('has_exceeded_maximum_allowed_quantity_per_order')->default(false);
 
             /*  Cancellation Information  */
             $table->boolean('is_cancelled')->default(false);

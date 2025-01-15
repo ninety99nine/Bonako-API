@@ -59,6 +59,7 @@ class UpdateDeliveryMethodRequest extends FormRequest
             'auto_generate_time_slots' => ['sometimes', 'boolean'],
             'time_slot_interval_value' => ['sometimes', 'integer', 'min:1'],
             'time_slot_interval_unit' => ['sometimes', Rule::in(DeliveryMethod::AUTO_GENERATE_TIME_SLOTS_UNITS())],
+            'same_day_delivery' => ['sometimes', 'boolean'],
             'require_minimum_notice_for_orders' => ['sometimes', 'boolean'],
             'earliest_delivery_time_value' => ['sometimes', 'integer', 'min:1'],
             'earliest_delivery_time_unit' => ['sometimes', Rule::in(DeliveryMethod::DELIVERY_TIME_UNITS())],

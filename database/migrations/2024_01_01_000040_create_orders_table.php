@@ -67,6 +67,9 @@ class CreateOrdersTable extends Migration
             $table->foreignUuid('collection_verified_by_user_id')->nullable();
             $table->text('collection_note')->nullable();
 
+            /* Delivery */
+            $table->timestamp('delivery_date')->nullable();
+
             /* Relationships */
             $table->foreignUuid('cart_id');
             $table->foreignUuid('store_id');

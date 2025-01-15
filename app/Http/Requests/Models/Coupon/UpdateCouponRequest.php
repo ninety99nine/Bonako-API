@@ -171,7 +171,7 @@ class UpdateCouponRequest extends FormRequest
 
             /*  Usage Activation Information  */
             'activate_using_usage_limit' => ['bail', 'sometimes', 'boolean'],
-            'remaining_quantity' => ['bail', 'sometimes', Rule::requiredIf($activateUsingUsageLimit), 'min:1', 'max:'.Coupon::REMAINING_QUANTITY_MAX, 'numeric'],
+            'remaining_quantity' => ['bail', 'sometimes', Rule::requiredIf($activateUsingUsageLimit), 'min:0', 'max:'.Coupon::REMAINING_QUANTITY_MAX, 'numeric'],
 
             /*  Customer Activation Information  */
             'activate_for_existing_customer' => ['bail', 'sometimes', 'boolean'],

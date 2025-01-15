@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use App\Repositories\StoreRepository;
 use App\Http\Controllers\Base\BaseController;
-use App\Http\Requests\Models\PaymentMethod\CreatePaymentMethodRequest;
 use App\Http\Requests\Models\Store\ShowStoresRequest;
 use App\Http\Requests\Models\Store\CreateStoreRequest;
 use App\Http\Requests\Models\Store\UpdateStoreRequest;
@@ -13,9 +12,9 @@ use App\Http\Requests\Models\Store\InviteFollowersRequest;
 use App\Http\Requests\Models\Store\InviteTeamMembersRequest;
 use App\Http\Requests\Models\Store\ShowStoreInsightsRequest;
 use App\Http\Requests\Models\Store\SearchStoreByAliasRequest;
+use App\Http\Requests\Models\Store\ShowLastVisitedStoreRequest;
 use App\Http\Requests\Models\Store\RemoveStoreTeamMembersRequest;
 use App\Http\Requests\Models\Store\SearchStoreByUssdMobileNumberRequest;
-use App\Http\Requests\Models\Store\ShowLastVisitedStoreRequest;
 use App\Http\Requests\Models\Store\UpdateStoreTeamMemberPermissionsRequest;
 
 class StoreController extends BaseController
@@ -471,16 +470,5 @@ class StoreController extends BaseController
     public function declineInvitationToJoinStoreTeam(string $storeId): JsonResponse
     {
         return $this->prepareOutput($this->repository->declineInvitationToJoinStoreTeam($storeId));
-    }
-
-    /**
-     * Inspect store shopping cart.
-     *
-     * @param string $storeId
-     * @return JsonResponse
-     */
-    public function inspectStoreShoppingCart(string $storeId): JsonResponse
-    {
-        return $this->prepareOutput($this->repository->inspectStoreShoppingCart($storeId));
     }
 }

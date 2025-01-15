@@ -10,6 +10,7 @@ Route::controller(DeliveryMethodController::class)
         Route::post('/', 'createDeliveryMethod')->name('create.delivery.method');
         Route::delete('/', 'deleteDeliveryMethods')->name('delete.delivery.methods');
         Route::post('/arrangement', 'updateDeliveryMethodArrangement')->name('update.delivery.method.arrangement');
+        Route::post('/schedule-options', 'showDeliveryMethodScheduleOptions')->withoutMiddleware('auth:sanctum')->name('show.delivery.method.schedule.options');
 
         //  Delivery Method
         Route::prefix('{deliveryMethodId}')->group(function () {

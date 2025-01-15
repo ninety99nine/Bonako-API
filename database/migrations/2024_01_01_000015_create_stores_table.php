@@ -39,6 +39,7 @@ class CreateStoresTable extends Migration
             $table->boolean('show_opening_hours')->default(false);
             $table->boolean('allow_checkout_on_closed_hours')->default(true);
             $table->json('opening_hours')->nullable();
+            $table->json('checkout_fees')->nullable();
             $table->boolean('verified')->default(false);
             $table->boolean('online')->default(true);
             $table->string('offline_message', Store::OFFLINE_MESSAGE_MAX_CHARACTERS)->default(Store::DEFAULT_OFFLINE_MESSAGE);

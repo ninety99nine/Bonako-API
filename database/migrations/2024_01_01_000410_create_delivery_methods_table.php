@@ -57,6 +57,7 @@ class CreateDeliveryMethodsTable extends Migration
             $table->unsignedTinyInteger('time_slot_interval_value')->default(1);
             $table->enum('time_slot_interval_unit', DeliveryMethod::AUTO_GENERATE_TIME_SLOTS_UNITS())->default(AutoGenerateTimeSlotsUnit::HOUR);
 
+            $table->boolean('same_day_delivery')->default(false);
             $table->boolean('require_minimum_notice_for_orders')->default(false);
             $table->unsignedTinyInteger('earliest_delivery_time_value')->default(1);
             $table->enum('earliest_delivery_time_unit', DeliveryMethod::DELIVERY_TIME_UNITS())->default(DeliveryTimeUnit::DAY);

@@ -37,6 +37,7 @@ class UpdateUserRequest extends FormRequest
         $requestFromUssdServer = UssdService::verifyIfRequestFromUssdServer();
 
         $alreadyHasPassword = !empty($currentUser->password);
+        $uniqueEmail = Rule::unique('users')->ignore($currentUser->id);
         $uniqueMobileNumber = Rule::unique('users')->ignore($currentUser->id);
         $passwordHasBeenChanged = request()->filled('password') ? !(Hash::check(request()->input('password'), $currentUser->password)) : false;
         $mobileNumberHasBeenChanged = request()->filled('mobile_number') ? (
@@ -47,6 +48,9 @@ class UpdateUserRequest extends FormRequest
             'first_name' => ['bail', 'sometimes', 'string', 'min:'.User::FIRST_NAME_MIN_CHARACTERS, 'max:'.User::FIRST_NAME_MAX_CHARACTERS],
             'last_name' => ['bail', 'sometimes', 'string', 'min:'.User::LAST_NAME_MIN_CHARACTERS, 'max:'.User::LAST_NAME_MAX_CHARACTERS],
             'about_me' => ['bail', 'nullable', 'string', 'min:'.User::ABOUT_ME_MIN_CHARACTERS, 'max:'.User::ABOUT_ME_MAX_CHARACTERS],
+            'email' => [
+                'bail', 'sometimes', 'email', $uniqueEmail
+            ],
             'mobile_number' => [
                 'bail', 'sometimes', 'string', 'phone', $uniqueMobileNumber
             ],

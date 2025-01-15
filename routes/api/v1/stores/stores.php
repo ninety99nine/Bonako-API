@@ -21,8 +21,10 @@ Route::controller(StoreController::class)
     Route::get('/', 'showStores')->name('show.stores');
     Route::post('/', 'createStore')->name('create.store');
 
-    Route::post('/search-by-alias', 'searchStoreByAlias')->name('search.store.by.alias');
-    Route::post('/search-by-ussd-mobile-number', 'searchStoreByUssdMobileNumber')->name('search.store.by.ussd.mobile.number');
+    Route::withoutMiddleware('auth:sanctum')->group(function () {
+        Route::post('/search-by-alias', 'searchStoreByAlias')->name('search.store.by.alias');
+        Route::post('/search-by-ussd-mobile-number', 'searchStoreByUssdMobileNumber')->name('search.store.by.ussd.mobile.number');
+    });
 
     Route::get('/last-visited-store', 'showLastVisitedStore')->name('show.last.visited.store');
     Route::get('/deposit-options', 'showStoreDepositOptions')->name('show.store.deposit.options');
@@ -97,21 +99,22 @@ Route::controller(StoreController::class)
         Route::post('/accept-invitation-to-join-store-team', 'acceptInvitationToJoinStoreTeam')->name('accept.invitation.to.join.store.team');
         Route::post('/decline-invitation-to-join-store-team', 'declineInvitationToJoinStoreTeam')->name('decline.invitation.to.join.store.team');
 
-        //  Shopping carts
-        Route::prefix('shopping-cart')->group(function () {
-
-            Route::post('/', 'inspectStoreShoppingCart')->name('inspect.store.shopping.cart');
-
-        });
-
         //  Orders
         Route::controller(OrderController::class)->prefix('orders')->group(function () {
             Route::get('/', 'showOrders')->name('show.store.orders');
         });
 
         //  Products
-        Route::controller(ProductController::class)->prefix('products')->group(function () {
-            Route::get('/', 'showProducts')->name('show.store.products');
+        Route::controller(ProductController::class)->group(function () {
+
+            Route::prefix('products')->group(function () {
+                Route::get('/', 'showProducts')->name('show.store.products');
+            });
+
+            Route::withoutMiddleware('auth:sanctum')->group(function () {
+                Route::get('/shopping/products', 'showProducts')->name('show.store.shopping.products');
+            });
+
         });
 
         //  Coupons

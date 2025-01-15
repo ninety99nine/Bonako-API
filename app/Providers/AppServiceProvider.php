@@ -5,7 +5,6 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Repositories\CustomerRepository;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Services\ShoppingCart\ShoppingCartService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
 class AppServiceProvider extends ServiceProvider
@@ -36,9 +35,6 @@ class AppServiceProvider extends ServiceProvider
             'subscription' => 'App\Models\Subscription',
             'delivery method' => 'App\Models\DeliveryMethod',
         ]);
-
-        //  The ShoppingCartService class must be instantiated once
-        $this->app->singleton(ShoppingCartService::class, fn($app) => new ShoppingCartService(new CustomerRepository));
 
         /*
          *  Disable Wrapping API Resources

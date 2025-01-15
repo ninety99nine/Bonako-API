@@ -3,6 +3,7 @@
 use App\Jobs\SendSms;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebController;
+use App\Http\Controllers\Auth\SocialAuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,9 +16,18 @@ use App\Http\Controllers\WebController;
 |
 */
 
-//  Remove this when running on production
-Route::get('/php-info', function () {
-    return phpinfo();
+//  Social Sign-in
+Route::controller(SocialAuthController::class)
+->prefix('auth')
+->group(function () {
+    Route::get('google', 'redirectToGoogle')->name('social-auth-google');
+    Route::get('google/callback', 'handleGoogleCallback');
+
+    Route::get('facebook', 'redirectToFacebook')->name('social-auth-facebook');
+    Route::get('facebook/callback', 'handleFacebookCallback');
+
+    Route::get('linkedin', 'redirectToLinkedIn')->name('social-auth-linkedin');
+    Route::get('linkedin/callback', 'handleLinkedInCallback');
 });
 
 Route::controller(WebController::class)->group(function(){

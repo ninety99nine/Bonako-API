@@ -8,7 +8,8 @@ Route::controller(HomeController::class)
     ->group(function () {
         Route::get('/', 'showApiHome')->name('api.home');
         Route::get('/languages', 'showLanguages')->name('show.languages');
-        Route::get('/countries', 'showCountries')->name('show.countries');
         Route::get('/currencies', 'showCurrencies')->name('show.currencies');
         Route::get('/social-media-icons', 'showSocialMediaIcons')->name('show.social.media.icons');
+        Route::get('/countries', 'showCountries')->withoutMiddleware('format.response.payload')->name('show.countries');
+        Route::get('/country-address-options', 'showCountryAddressOptions')->withoutMiddleware('format.response.payload')->name('show.country.address.options');
 });

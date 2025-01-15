@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Auth;
 
-use App\Models\MobileVerification;
 use App\Traits\AuthTrait;
+use App\Models\MobileVerification;
 use Illuminate\Foundation\Http\FormRequest;
 
 class VerifyMobileVerificationCodeRequest extends FormRequest

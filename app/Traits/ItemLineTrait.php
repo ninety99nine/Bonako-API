@@ -14,24 +14,12 @@ trait ItemLineTrait
      *
      *  @param string $changeType
      *  @param string|null $message
-     *  @param ProductLine|null $existingItemLine
      */
-    public function recordDetectedChange($changeType, $message = null, $existingItemLine = null)
+    public function recordDetectedChange($changeType, $message = null)
     {
-        /**
-         *  Check if the user has already been notified about this detected change.
-         *  If the existing item line is Null, or the existing item line is present
-         *  but already has a detected change that matches the current change then
-         *  the user has already been notified otherwise they have not been
-         *  notified.
-         */
-        $notifiedUser = ($existingItemLine === null) ? false : $existingItemLine->hasDetectedChange($changeType);
-
         $this->detected_changes = collect($this->detected_changes)->push([
-            'date' => now(),
             'type' => $changeType,
-            'message' => $message,
-            'notified_user' => $notifiedUser
+            'message' => $message
         ])->all();
 
         return $this;

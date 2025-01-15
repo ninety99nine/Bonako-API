@@ -69,6 +69,7 @@ class Order extends BaseModel
     protected $casts = [
         'cancelled_at' => 'datetime',
         'paid_total' => Money::class,
+        'delivery_date' => 'datetime',
         'grand_total' => Money::class,
         'pending_total' => Money::class,
         'collection_verified' => 'boolean',
@@ -116,6 +117,9 @@ class Order extends BaseModel
 
         /* Collection Verification */
         'collection_code','collection_qr_code','collection_code_expires_at','collection_verified','collection_verified_at','collection_verified_by_user_id', 'collection_note',
+
+        /* Delivery */
+        'delivery_date',
 
         /* Relationships */
         'cart_id','store_id','occasion_id','friend_group_id',

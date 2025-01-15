@@ -17,10 +17,14 @@ class CreateUsersTable extends Migration
             $table->string('first_name', User::FIRST_NAME_MAX_CHARACTERS);
             $table->string('last_name', User::LAST_NAME_MAX_CHARACTERS)->nullable();
             $table->string('about_me', User::ABOUT_ME_MAX_CHARACTERS)->nullable();
-            $table->string('profile_photo')->nullable();
+            $table->string('email')->nullable()->unique();
+            $table->timestamp('email_verified_at')->nullable();
             $table->string('mobile_number', 20)->nullable()->unique();
             $table->timestamp('mobile_number_verified_at')->nullable();
             $table->string('password')->nullable();
+            $table->string('google_id')->nullable()->unique();
+            $table->string('facebook_id')->nullable()->unique();
+            $table->string('linkedin_id')->nullable()->unique();
             $table->timestamp('last_seen_at')->nullable();
             $table->boolean('is_super_admin')->default(false);
             $table->boolean('is_guest')->default(false);
@@ -34,6 +38,10 @@ class CreateUsersTable extends Migration
             $table->index(['first_name', 'last_name']);
             $table->index('registered_by_user_id');
             $table->index('mobile_number');
+            $table->index('linkedin_id');
+            $table->index('facebook_id');
+            $table->index('google_id');
+            $table->index('email');
         });
     }
 

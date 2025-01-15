@@ -20,7 +20,6 @@ use App\Enums\TeamMemberStatus;
 use App\Helpers\PlatformManager;
 use App\Enums\InvitationResponse;
 use Illuminate\Support\Facades\DB;
-use App\Http\Resources\CartResource;
 use App\Http\Resources\UserResources;
 use App\Http\Resources\StoreResources;
 use Illuminate\Database\Eloquent\Builder;
@@ -1635,24 +1634,6 @@ class StoreRepository extends BaseRepository
 
         }else{
             return ['updated' => false, 'message' => 'This store does not exist'];
-        }
-    }
-
-    /**
-     * Inspect store shopping cart.
-     *
-     * @param string $storeId
-     * @return CartResource|array
-     */
-    public function inspectStoreShoppingCart(string $storeId): CartResource|array
-    {
-       $store = Store::find($storeId);
-
-        if($store) {
-            $cart = $this->getShoppingCartService()->startInspection($store);
-            return new CartResource($cart);
-        }else{
-            return ['message' => 'This store does not exist'];
         }
     }
 

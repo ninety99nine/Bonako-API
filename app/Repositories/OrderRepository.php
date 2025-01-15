@@ -1511,6 +1511,7 @@ class OrderRepository extends BaseRepository
         $hasMobileNumber = isset($data['mobile_number']);
         if($hasMobileNumber) return $store->customers()->searchMobileNumber($data['mobile_number'])->first();
         if($hasEmail) return $store->customers()->searchEmail($data['email'])->first();
+        return null;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Enums;
 
 enum Association:string {
+    case SHOPPER = 'shopper';
     case FOLLOWER = 'follower';
     case CUSTOMER = 'customer';
     case TEAM_MEMBER = 'team member';

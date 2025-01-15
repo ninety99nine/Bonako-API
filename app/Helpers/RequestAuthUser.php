@@ -58,17 +58,12 @@ class RequestAuthUser
 
                 }
 
-            } else {
-
-                //  If no bearer token is provided, the request is not authenticated
-                $this->authUser = null;
-
             }
 
         }
 
-        //  If the autheticated user is available
-        if($this->authUser) {
+        //  If the autheticated user is available but not set
+        if($this->authUser && !auth()->hasUser()) {
 
             //  Set the autheticated user
             auth()->setUser($this->authUser);

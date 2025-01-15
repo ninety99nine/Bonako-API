@@ -22,11 +22,12 @@ class ProductLine extends BaseModel
         'on_sale' => 'boolean',
         'has_price' => 'boolean',
         'is_cancelled' => 'boolean',
-        'sub_total' => Money::class,
+        'subtotal' => Money::class,
         'unit_loss' => Money::class,
         'unit_price' => Money::class,
         'grand_total' => Money::class,
         'unit_profit' => Money::class,
+        'has_limited_stock' => 'boolean',
         'unit_sale_price' => Money::class,
         'unit_cost_price' => Money::class,
         'unit_sale_discount' => Money::class,
@@ -34,11 +35,11 @@ class ProductLine extends BaseModel
         'sale_discount_total' => Money::class,
         'detected_changes' => JsonToArray::class,
         'cancellation_reasons' => JsonToArray::class,
-        'exceeded_maximum_allowed_quantity_per_order' => 'boolean',
+        'has_exceeded_maximum_allowed_quantity_per_order' => 'boolean',
     ];
 
     protected $tranformableCasts = [
-        'exceeded_maximum_allowed_quantity_per_order' => Status::class,
+        'has_exceeded_maximum_allowed_quantity_per_order' => Status::class,
         'unit_sale_discount_percentage' => Percentage::class,
         'unit_profit_percentage' => Percentage::class,
         'unit_loss_percentage' => Percentage::class,
@@ -61,11 +62,11 @@ class ProductLine extends BaseModel
         'is_free', 'currency', 'unit_regular_price', 'unit_sale_price', 'unit_cost_price',
         'on_sale', 'unit_sale_discount', 'unit_sale_discount_percentage', 'has_price',
         'unit_price', 'unit_profit', 'unit_profit_percentage', 'unit_loss',
-        'unit_loss_percentage', 'sale_discount_total', 'sub_total',
+        'unit_loss_percentage', 'sale_discount_total', 'subtotal',
         'grand_total',
 
         /*  Quantity Information  */
-        'quantity', 'original_quantity', 'exceeded_maximum_allowed_quantity_per_order',
+        'quantity', 'original_quantity', 'has_limited_stock', 'has_exceeded_maximum_allowed_quantity_per_order',
 
         /*  Cancellation Information  */
         'is_cancelled', 'cancellation_reasons',

@@ -41,13 +41,14 @@ class User extends BaseAuthenticatable /* Authenticatable */
         'is_guest' => 'boolean',
         'last_seen_at' => 'datetime',
         'is_super_admin' => 'boolean',
+        'email_verified_at' => 'datetime',
         'mobile_number_verified_at' => 'datetime',
         'mobile_number' => E164PhoneNumberCast::class,
     ];
 
     protected $fillable = [
-        'first_name', 'last_name', 'about_me', 'profile_photo', 'password', 'mobile_number', 'mobile_number_verified_at',
-        'last_seen_at', 'registered_by_user_id', 'is_guest', 'is_super_admin'
+        'first_name', 'last_name', 'about_me', 'password', 'email', 'email_verified_at', 'mobile_number', 'mobile_number_verified_at',
+        'google_id', 'facebook_id', 'linkedin_id', 'last_seen_at', 'registered_by_user_id', 'is_guest', 'is_super_admin'
     ];
 
     protected $hidden = [

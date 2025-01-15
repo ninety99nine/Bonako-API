@@ -10,6 +10,7 @@ use App\Http\Requests\Models\DeliveryMethod\CreateDeliveryMethodRequest;
 use App\Http\Requests\Models\DeliveryMethod\UpdateDeliveryMethodRequest;
 use App\Http\Requests\Models\DeliveryMethod\DeleteDeliveryMethodsRequest;
 use App\Http\Requests\Models\DeliveryMethod\UpdateDeliveryMethodArrangementRequest;
+use App\Http\Requests\Models\DeliveryMethod\ShowDeliveryMethodScheduleOptionsRequest;
 
 class DeliveryMethodController extends BaseController
 {
@@ -71,6 +72,17 @@ class DeliveryMethodController extends BaseController
     public function updateDeliveryMethodArrangement(UpdateDeliveryMethodArrangementRequest $request)
     {
         return $this->prepareOutput($this->repository->updateDeliveryMethodArrangement($request->all()));
+    }
+
+    /**
+     * Show delivery method schedule options.
+     *
+     * @param ShowDeliveryMethodScheduleOptionsRequest $request
+     * @return JsonResponse
+     */
+    public function showDeliveryMethodScheduleOptions(ShowDeliveryMethodScheduleOptionsRequest $request)
+    {
+        return $this->prepareOutput($this->repository->showDeliveryMethodScheduleOptions($request->all()));
     }
 
     /**

@@ -7,7 +7,7 @@ use App\Models\Customer;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
-use App\Http\Requests\Models\ShoppingCart\InspectCartRequest;
+use App\Http\Requests\Models\ShoppingCart\InspectShoppingCartRequest;
 
 class CreateOrderRequest extends FormRequest
 {
@@ -124,8 +124,8 @@ class CreateOrderRequest extends FormRequest
                 'customer.email' => ['bail', 'sometimes', 'nullable', 'string', 'email'],
             ],
 
-            // Merge with rules from the InspectCartRequest
-            (new InspectCartRequest())->rules()
+            // Merge with rules from the InspectShoppingCartRequest
+            (new InspectShoppingCartRequest())->rules()
 
         );
     }
@@ -137,7 +137,7 @@ class CreateOrderRequest extends FormRequest
      */
     public function messages()
     {
-        return (new InspectCartRequest())->messages();
+        return (new InspectShoppingCartRequest())->messages();
     }
 
     /**
@@ -147,6 +147,6 @@ class CreateOrderRequest extends FormRequest
      */
     public function attributes()
     {
-        return (new InspectCartRequest())->attributes();
+        return (new InspectShoppingCartRequest())->attributes();
     }
 }

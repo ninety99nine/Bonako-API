@@ -2,70 +2,304 @@
 
 namespace App\Services\ShoppingCart;
 
-use stdClass;
 use Carbon\Carbon;
-use App\Models\Cart;
 use App\Models\Store;
 use App\Models\Product;
 use App\Enums\CacheName;
-use App\Models\Customer;
+use App\Enums\TaxMethod;
 use App\Models\CouponLine;
 use App\Models\ProductLine;
-use Illuminate\Support\Str;
+use App\Enums\DiscountType;
 use App\Helpers\CacheManager;
+use App\Enums\CheckoutFeeType;
 use App\Traits\Base\BaseTrait;
-use App\Exceptions\CartRequiresStoreException;
+use App\Enums\StockQuantityType;
+use App\Enums\DeliveryMethodFeeType;
+use App\Enums\AllowedQuantityPerOrder;
+use App\Enums\DeliveryMethodScheduleType;
 
-/**
- *  Note that the shopping cart service is instantiated once.
- *  The service can only exist as one instance (Singleton).
- *
- *  Refer to our AppServiceProvider
- */
 class ShoppingCartService
 {
     use BaseTrait;
 
     public $store;
-    public $currency;
-    public $existingCart;
-    public $subTotal = 0;
+    public $vat = null;
+    public $subtotal = 0;
+    public $feeTotal = 0;
+    public $vatRate = null;
+    public $discounts = [];
     public $grandTotal = 0;
-    public $deliveryFee = 0;
-    public $relatedProducts;
+    public $currency = null;
+    public $discountTotal = 0;
+    public $tipFlatRate = null;
     public $cartProducts = [];
     public $storeCoupons = [];
-    public $deliveryDestination;
-    public $cartCouponCodes = [];
-    public $detectedChanges = [];
-    public $saleDiscountTotal = 0;
-    public $couponDiscountTotal = 0;
+    public $additionalFees = [];
+    public $deliveryDate = null;
+    public $existingCart = null;
+    public $relatedProducts = [];
+    public $deliveryMethod = null;
+    public $cartCouponCode = null;
+    public $deliveryTimeslot = null;
+    public $deliveryMethodTips = [];
     public $existingCouponLines = [];
-    public $allowFreeDelivery = false;
+    public $tipPercentageRate = null;
+    public $scheduleIsRequired = null;
+    public $scheduleIsComplete = null;
     public $isExistingCustomer = null;
+    public $subtotalAfterDiscount = 0;
     public $existingProductLines = [];
     public $specifiedCouponLines = [];
     public $specifiedProductLines = [];
-    public $deliveryDestinationName = [];
-    public $totalSpecifiedCouponLines = 0;
-    public $totalSpecifiedProductLines = 0;
-    public $couponAndSaleDiscountTotal = 0;
-    public $totalSpecifiedCancelledCouponLines = 0;
-    public $totalSpecifiedProductLineQuantities = 0;
-    public $totalSpecifiedCancelledProductLines = 0;
-    public $totalSpecifiedUnCancelledCouponLines = 0;
+    public $scheduleIncompleteReasons = [];
+    public $detectedCouponLineChanges = [];
+    public $deliveryMethodAvailable = null;
+    public $availableDeliveryTimeSlots = [];
+    public $detectedProductLineChanges = [];
+    public $deliveryMethodUnavailabilityReasons = [];
     public $totalSpecifiedUnCancelledProductLines = 0;
-    public $totalSpecifiedCancelledProductLineQuantities = 0;
     public $totalSpecifiedUncancelledProductLineQuantities = 0;
 
+    public function startInspection(Store $store)
+    {
+        $this->setStore($store);
+        $this->setStoreCoupons();
+        $this->setStoreCurrency();
+
+        $this->setCartProducts();
+        $this->setCartCouponCode();
+        $this->setCartTipRate();
+
+        $this->setExistingCustomerStatus();
+        $this->setExistingShoppingCartFromCache();
+
+        $this->setSpecifiedProductLines();
+        $this->calculateProductLineTotals();
+        $totalSpecifiedProductLines = $this->countSpecifiedProductLines();
+        $totalSpecifiedCancelledProductLines = $this->countSpecifiedCancelledProductLines();
+        $this->totalSpecifiedUnCancelledProductLines = $this->countSpecifiedUnCancelledProductLines();
+        $totalSpecifiedProductLineQuantities = $this->countSpecifiedProductLineQuantities();
+        $totalSpecifiedCancelledProductLineQuantities = $this->countSpecifiedCancelledProductLineQuantities();
+        $this->totalSpecifiedUncancelledProductLineQuantities = $this->countSpecifiedUncancelledProductLineQuantities();
+
+        $this->setSpecifiedCouponLines();
+
+        $totalSpecifiedCouponLines = $this->countSpecifiedCouponLines();
+        $totalSpecifiedCancelledCouponLines = $this->countSpecifiedCancelledCouponLines();
+        $totalSpecifiedUnCancelledCouponLines = $this->countSpecifiedUnCancelledCouponLines();
+
+        $this->setDeliveryDate();
+        $this->setDeliveryMethod();
+        $this->setDeliveryTimeslot();
+        $this->handleDeliveryMethod();
+
+        $this->applyCouponLineDiscounts();
+        $this->calculateTaxTotals();
+        $this->calculateCustomFeeTotals();
+        $this->calculateDeliveryFeeTotals();
+        $this->calculateTipFeeTotals();
+        $this->calculateGrandTotal();
+
+        $vatRate = $this->convertToPercentageFormat($this->vatRate);
+        $vat = $this->convertToMoneyFormat($this->vat, $this->currency);
+        $subtotal = $this->convertToMoneyFormat($this->subtotal, $this->currency);
+        $feeTotal = $this->convertToMoneyFormat($this->feeTotal, $this->currency);
+        $grandTotal = $this->convertToMoneyFormat($this->grandTotal, $this->currency);
+        $discountTotal = $this->convertToMoneyFormat($this->discountTotal, $this->currency);
+        $subtotalAfterDiscount = $this->convertToMoneyFormat($this->subtotalAfterDiscount, $this->currency);
+
+        return [
+            'totals' => [
+                'subtotal' => $subtotal,
+                'discounts' => $this->discounts,
+                'discount_total' => $discountTotal,
+                'subtotal_after_discount' => $subtotalAfterDiscount,
+                'vat' => [
+                    'method' => $this->store->tax_method,
+                    'rate' => $vatRate,
+                    'amount' => $vat,
+                ],
+                'additional_fees' => $this->additionalFees,
+                'fee_total' => $feeTotal,
+                'grand_total' => $grandTotal,
+            ],
+            'totals_summary' => [
+                'product_lines' => [
+                    'total' => $totalSpecifiedProductLines,
+                    'total_cancelled' => $totalSpecifiedCancelledProductLines,
+                    'total_uncancelled' => $this->totalSpecifiedUnCancelledProductLines,
+                    'total_quantities' => $totalSpecifiedProductLineQuantities,
+                    'total_cancelled_quantities' => $totalSpecifiedCancelledProductLineQuantities,
+                    'total_uncancelled_quantities' => $this->totalSpecifiedUncancelledProductLineQuantities,
+                ],
+                'coupon_lines' => [
+                    'total' => $totalSpecifiedCouponLines,
+                    'total_cancelled' => $totalSpecifiedCancelledCouponLines,
+                    'total_uncancelled' => $totalSpecifiedUnCancelledCouponLines,
+                ],
+            ],
+            'delivery' => [
+                'method' => $this->deliveryMethod ? [
+                    'name' => $this->deliveryMethod->name,
+                    'is_available' => $this->deliveryMethodAvailable,
+                    'unavailability_reasons' => $this->deliveryMethodUnavailabilityReasons,
+                    'tips' => $this->deliveryMethodTips,
+                ] : null,
+            ],
+            'schedule' => [
+                'is_required' => $this->scheduleIsRequired,
+                'is_complete' => $this->scheduleIsComplete,
+                'incomplete_reasons' => $this->scheduleIncompleteReasons
+            ],
+            'address' => [
+                'is_required' => $this->scheduleIsComplete,
+                'incomplete_reasons' => $this->scheduleIncompleteReasons
+            ],
+            'changes' => [
+                'detected_product_line_changes' => $this->detectedProductLineChanges,
+                'detected_coupon_line_changes' => $this->detectedCouponLineChanges,
+            ],
+            'checkout' => [
+                'can_checkout' => $this->canCheckout(),
+            ],
+            'product_lines' => $this->getTransformedProductLines(),
+            'coupon_lines' => $this->getTransformedCouponLines(),
+        ];
+
+        //  deliveryTimeslots
+
+    }
+
     /**
-     *  Get the shopping cart cache manager
+     *  Set store.
+     *
+     *  @return void
+     */
+    public function setStore($store): void
+    {
+        $this->store = $store;
+    }
+
+    /**
+     *  Set store coupons.
+     *
+     *  @return void
+     */
+    public function setStoreCoupons(): void
+    {
+        $this->storeCoupons = $this->store->coupons;
+    }
+
+    /**
+     *  Set store currency.
+     *
+     *  @return void
+     */
+    public function setStoreCurrency(): void
+    {
+        $this->currency = $this->store->currency;
+    }
+
+    /**
+     *  Set cart products.
+     *
+     *  @return void
+     */
+    public function setCartProducts(): void
+    {
+        $this->cartProducts = is_string($cartProducts = request()->input('cart_products')) ? json_decode($cartProducts) : $cartProducts;
+    }
+
+    /**
+     *  Set cart coupon code.
+     *
+     *  @return void
+     */
+    public function setCartCouponCode(): void
+    {
+        $this->cartCouponCode = request()->has('cart_coupon_code') ? request()->input('cart_coupon_code') : null;
+    }
+
+    /**
+     *  Set cart tip rate.
+     *
+     *  @return void
+     */
+    public function setCartTipRate(): void
+    {
+        if(request()->has('tip_flat_rate')) {
+            $this->tipFlatRate = request()->input('tip_flat_rate');
+        }else if(request()->has('tip_percentage_rate')) {
+            $this->tipPercentageRate = request()->input('tip_percentage_rate');
+        }
+    }
+
+    /**
+     *  Set delivery date.
+     *
+     *  @return void
+     */
+    public function setDeliveryDate(): void
+    {
+        $this->deliveryDate = request()->has('delivery_date') ? request()->input('delivery_date') : null;
+    }
+
+    /**
+     *  Set delivery timeslot.
+     *
+     *  @return void
+     */
+    public function setDeliveryTimeslot(): void
+    {
+        $this->deliveryTimeslot = request()->has('delivery_timeslot') ? request()->input('delivery_timeslot') : null;
+    }
+
+    /**
+     *  Set delivery method.
+     *
+     *  @return void
+     */
+    public function setDeliveryMethod(): void
+    {
+        $this->deliveryMethod = request()->has('delivery_method_id') ? $this->store->deliveryMethods()->active()->find(request()->input('delivery_method_id')) : null;
+    }
+
+    /**
+     *  Set existing customer status.
+     *
+     *  @return void
+     */
+    public function setExistingCustomerStatus(): void
+    {
+        $customerArray = request()->input('customer');
+        $customerEmail = $customerArray['email'] ?? null;
+        $customerMobileNumber = $customerArray['mobile_number'] ?? null;
+
+        if($customerMobileNumber){
+
+            $this->isExistingCustomer = $this->getIsCustomerStatusCacheManager()->remember(now()->addMinutes(5), function () use ($customerMobileNumber){
+                return $this->store->customers()->searchMobileNumber($customerMobileNumber)->exists();
+            });
+
+        }
+
+        if(!$this->isExistingCustomer && $customerEmail){
+
+            $this->isExistingCustomer = $this->getIsCustomerStatusCacheManager()->remember(now()->addMinutes(5), function () use ($customerEmail){
+                return $this->store->customers()->searchEmail($customerEmail)->exists();
+            });
+
+        }
+    }
+
+    /**
+     *  Get shopping cart cache manager.
      *
      *  @return CacheManager
      */
-    public function getShoppingCartCacheManager()
+    public function getShoppingCartCacheManager(): CacheManager
     {
-        return (new CacheManager(CacheName::SHOPPING_CART))->append($this->store->id)->append(request()->auth_user->id);
+        return (new CacheManager(CacheName::SHOPPING_CART))->append($this->store->id)->append(request()->auth_user_exists ? request()->auth_user->id : request()->input('guest_id'));
     }
 
     /**
@@ -75,68 +309,24 @@ class ShoppingCartService
      */
     public function getIsCustomerStatusCacheManager()
     {
-        return (new CacheManager(CacheName::IS_CUSTOMER_STATUS))->append($this->store->id)->append(request()->auth_user->id);
+        return (new CacheManager(CacheName::IS_CUSTOMER_STATUS))->append($this->store->id)->append(request()->auth_user_exists ? request()->auth_user->id : request()->input('guest_id'));
     }
 
     /**
-     *  Forget the cache values stored in memory
+     *  Set existing shopping cart from cache.
      *
-     *  @return $this
+     *  @return void
      */
-    public function forgetCache()
+    public function setExistingShoppingCartFromCache(): void
     {
-        //  Forget the shopping cart
-        $this->getShoppingCartCacheManager()->forget();
-
-        //  Forget the customer existence status
-        $this->getIsCustomerStatusCacheManager()->forget();
-
-        //  Return the current shopping cart service instance
-        return $this;
-    }
-
-    /**
-     *  Start the cart inspection to determine the cart totals
-     *  and important cart changes before converting the
-     *  current shopping cart into an order
-     */
-    public function startInspection(Store $store)
-    {
-        //  Get the shopping store
-        $this->store = $store;
-
-        //  Check that the cart shopping store exists
-        if( !$this->store ) throw new CartRequiresStoreException;
-
-        //  Get the store coupons
-        $this->storeCoupons = $this->store->coupons;
-
-        $customerArray = request()->input('customer');
-        $customerEmail = $customerArray['email'] ?? null;
-        $customerMobileNumber = $customerArray['mobile_number'] ?? null;
-
-        if($customerMobileNumber) {
-
-            $this->isExistingCustomer = $this->getIsCustomerStatusCacheManager()->remember(now()->addMinutes(10), function () use ($customerMobileNumber) {
-                return Customer::searchMobileNumber($customerMobileNumber)->first();
-            });
-
-        }else if($customerEmail) {
-
-            $this->isExistingCustomer = $this->getIsCustomerStatusCacheManager()->remember(now()->addMinutes(10), function () use ($customerEmail) {
-                return Customer::searchEmail($customerEmail)->first();
-            });
-
-        }
-
-        //  Check if the shopping cart exists in memory
-        if( $this->getShoppingCartCacheManager()->has() ) {
+        //  Check if the shopping cart exists in memory (cached)
+        if($this->getShoppingCartCacheManager()->has()){
 
             //  Get the shopping cart stored in memory (cached)
             $this->existingCart = $this->getShoppingCartCacheManager()->get();
 
             //  If we have an existing cached cart
-            if( $this->existingCart ) {
+            if($this->existingCart){
 
                 //  Get the existing product lines of the cached cart
                 $this->existingProductLines = $this->existingCart->productLines;
@@ -147,805 +337,853 @@ class ShoppingCartService
             }
 
         }
+    }
 
-        //  Check if the cart has products
-        if( request()->filled('cart_products') ) {
+    /**
+     *  Set specified product lines based on cart products.
+     *
+     *  @return void
+     */
+    public function setSpecifiedProductLines(): void
+    {
+        $cartProductIds = $this->cartProductIds();
+        if(empty($cartProductIds)) return;
 
-            /**
-             *  Get the specified cart products. Make sure that the specified cart products are
-             *  in array format since the request supports JSON encoded data i.e string data
-             */
-            $this->cartProducts = is_string($cartProducts = request()->input('cart_products')) ? json_decode($cartProducts) : $cartProducts;
+        $this->relatedProducts = Product::forStore($this->store->id)
+            ->whereIn('id', $cartProductIds)
+            ->doesNotSupportVariations()
+            ->get();
+
+        $this->specifiedProductLines = $this->mapRelatedProductsToProductLines();
+    }
+
+    /**
+     *  Get cart product IDs.
+     *
+     *  @return array
+     */
+    public function cartProductIds(): array
+    {
+        return collect($this->cartProducts)->pluck('id')->toArray();
+    }
+
+    /**
+     *  Map related products to product lines.
+     *
+     *  @return array
+     */
+    protected function mapRelatedProductsToProductLines(): array
+    {
+        return collect($this->relatedProducts)
+            ->map(fn($relatedProduct) => $this->mapToProductLine($relatedProduct))
+            ->all();
+    }
+
+    /**
+     *  Map a related product to a product line.
+     *
+     *  @param Product $relatedProduct The related product.
+     *  @return ProductLine|null
+     */
+    protected function mapToProductLine($relatedProduct): ?ProductLine
+    {
+        $existingProductLine = collect($this->existingProductLines)->firstWhere('product_id', $relatedProduct->id);
+
+        $productLine = $this->prepareProductLine($relatedProduct);
+        $productLine = $this->detectChangesAgainstRelatedProduct($productLine, $relatedProduct, $existingProductLine);
+        $productLine = $this->detectChangesAgainstExistingProductLine($productLine, $existingProductLine);
+
+        return $productLine;
+    }
+
+    /**
+     *  Calculate the quantity of a product line.
+     *
+     *  @param Product $relatedProduct The related product.
+     *  @param int $originalQuantity The original quantity from the cart.
+     *  @return array
+     */
+    protected function calculateProductLineQuantity($relatedProduct, int $originalQuantity): array
+    {
+        $hasLimitedStock = false;
+        $quantity = $originalQuantity;
+        $hasStock = $relatedProduct->has_stock;
+        $hasExceededMaximumAllowedQuantityPerOrder = false;
+
+        if($relatedProduct->stock_quantity_type == StockQuantityType::LIMITED->value){
+
+            $stockQuantity = $relatedProduct->stock_quantity;
+            $hasLimitedStock = $stockQuantity > 0 && $stockQuantity < $quantity;
+
+            if($hasStock && $hasLimitedStock){
+                $quantity = $stockQuantity; // Limited stock, reduce quantity
+            }
 
         }
 
-        //  Check if the cart has coupons
-        if( request()->filled('cart_coupon_codes') ) {
-
-            /**
-             *  Get the specified cart coupon codes. Make sure that the specified cart coupon codes
-             *  are in array format since the request supports JSON encoded data i.e string data
-             */
-            $this->cartCouponCodes = is_string($cartCouponCodes = request()->input('cart_coupon_codes')) ? json_decode($cartCouponCodes) : $cartCouponCodes;
-
+        if($relatedProduct->allowed_quantity_per_order == AllowedQuantityPerOrder::LIMITED->value){
+            $maximumAllowedQuantityPerOrder = $relatedProduct->maximum_allowed_quantity_per_order;
+            if($hasStock) $quantity = min($quantity, $maximumAllowedQuantityPerOrder);
+            $hasExceededMaximumAllowedQuantityPerOrder = true;
         }
 
-        //  Check if the cart has a destination name
-        if( request()->filled('delivery_destination_name') ) {
+        return [$quantity, $hasStock, $hasLimitedStock, $hasExceededMaximumAllowedQuantityPerOrder];
+    }
 
-            //  Get the shopping cart delivery destination name
-            $this->deliveryDestinationName = request()->input('delivery_destination_name');
+    /**
+     *  Calculate the subtotal of a product line.
+     *
+     *  @param Product $relatedProduct The related product.
+     *  @param int $quantity The quantity of the product line.
+     *  @return float
+     */
+    protected function calculateProductLineSubtotal($relatedProduct, int $quantity): float
+    {
+        return $relatedProduct->getRawOriginal('unit_regular_price') * $quantity;
+    }
 
-        }
+    /**
+     *  Calculate the grand total of a product line.
+     *
+     *  @param Product $relatedProduct The related product.
+     *  @param int $quantity The quantity of the product line.
+     *  @return float
+     */
+    protected function calculateProductLineGrandTotal($relatedProduct, int $quantity): float
+    {
+        return $relatedProduct->getRawOriginal('unit_price') * $quantity;
+    }
 
+    /**
+     *  Calculate the total sale discount for a product line.
+     *
+     *  @param Product $relatedProduct The related product.
+     *  @param int $quantity The quantity of the product line.
+     *  @return float
+     */
+    protected function calculateProductLineSaleDiscountTotal($relatedProduct, int $quantity): float
+    {
+        return $relatedProduct->getRawOriginal('unit_sale_discount') * $quantity;
+    }
 
+    /**
+     * Prepare product line.
+     *
+     * @param Product $relatedProduct The related product.
+     * @return ProductLine
+     */
+    private function prepareProductLine($relatedProduct): ProductLine
+    {
+        $cartProduct = collect($this->cartProducts)->first(fn($cartProduct) => $relatedProduct->id == $cartProduct['id']);
 
+        $originalQuantity = $cartProduct['quantity'];
+        [$quantity, $hasStock, $hasLimitedStock, $hasExceededMaximumAllowedQuantityPerOrder] = $this->calculateProductLineQuantity($relatedProduct, $originalQuantity);
 
+        $subtotal = $this->calculateProductLineSubtotal($relatedProduct, $quantity);
+        $grandTotal = $this->calculateProductLineGrandTotal($relatedProduct, $quantity);
+        $saleDiscountTotal = $this->calculateProductLineSaleDiscountTotal($relatedProduct, $quantity);
 
+        $productLine = new ProductLine(array_merge($relatedProduct->getAttributes(), [
+            'quantity' => $quantity,
+            'is_cancelled' => false,
+            'subtotal' => $subtotal,
+            'detected_changes' => [],
+            'grand_total' => $grandTotal,
+            'cancellation_reasons' => [],
+            'store_id' => $this->store->id,
+            'product_id' => $relatedProduct->id,
+            'has_limited_stock' => $hasLimitedStock,
+            'original_quantity' => $originalQuantity,
+            'sale_discount_total' => $saleDiscountTotal,
+            'has_exceeded_maximum_allowed_quantity_per_order' => $hasExceededMaximumAllowedQuantityPerOrder,
+        ]));
 
+        return $productLine;
+    }
 
-
-
-
-        //  Set the store currency
-        $this->currency = $this->store->currency;
-
-        //  Get the shopping cart product lines
-        $this->specifiedProductLines = $this->getSpecifiedProductLines();
-
-        //  Detect changes on the product lines
-        $this->detectChangesOnProductLines();
-
-        //  Get the specified coupon lines
-        $this->specifiedCouponLines = $this->getSpecifiedCouponLines();
-
-        //  Calculate the total product lines
-        $this->totalSpecifiedProductLines = $this->countSpecifiedProductLines();
-
-        //  Calculate the total product line quantities
-        $this->totalSpecifiedProductLineQuantities = $this->countSpecifiedProductLineQuantities();
-
-        //  Calculate the total cancelled product lines
-        $this->totalSpecifiedCancelledProductLines = $this->countSpecifiedCancelledProductLines();
-
-        //  Calculate the total cancelled product lines quantities
-        $this->totalSpecifiedCancelledProductLineQuantities = $this->countSpecifiedCancelledProductLineQuantities();
-
-        //  Calculate the total uncancelled product lines
-        $this->totalSpecifiedUnCancelledProductLines = $this->countSpecifiedUnCancelledProductLines();
-
-        //  Calculate the total uncancelled product lines quantities
-        $this->totalSpecifiedUncancelledProductLineQuantities = $this->countSpecifiedUncancelledProductLineQuantities();
-
-        //  Calculate the total coupon lines
-        $this->totalSpecifiedCouponLines = $this->countSpecifiedCouponLines();
-
-        //  Calculate the total cancelled coupon lines
-        $this->totalSpecifiedCancelledCouponLines = $this->countSpecifiedCancelledCouponLines();
-
-        //  Calculate the total uncancelled coupon lines
-        $this->totalSpecifiedUnCancelledCouponLines = $this->countSpecifiedUnCancelledCouponLines();
-
-        //  Get the matching delivery destination
-        $this->deliveryDestination = $this->getDeliveryDestination();
-
-        //  Determine if we can offer free delivery
-        $this->allowFreeDelivery = $this->offerFreeDelivery();
-
-        //  Calculate and set the shopping cart totals (Important to apply coupon calculations)
-        $this->calculateAndSetPricingTotals();
-
-        //  Return a new shopping cart instance
-        $shoppingCart = new Cart([
-
-            /*  Pricing  */
-            'currency' => $this->currency,
-            'sub_total' => $this->subTotal,
-            'grand_total' => $this->grandTotal,
-            'sale_discount_total' => $this->saleDiscountTotal,
-            'coupon_discount_total' => $this->couponDiscountTotal,
-            'coupon_and_sale_discount_total' => $this->couponAndSaleDiscountTotal,
-
-            /*  Delivery  */
-            'delivery_fee' => $this->deliveryFee,
-            'has_delivery_fee' => $this->deliveryFee > 0,
-            'allow_free_delivery' => $this->allowFreeDelivery,
-            'delivery_destination' => $this->deliveryDestination,
-
-            /*  Product Line Totals  */
-            'total_products' => $this->totalSpecifiedProductLines,
-            'total_product_quantities' => $this->totalSpecifiedProductLineQuantities,
-
-            'total_cancelled_products' => $this->totalSpecifiedCancelledProductLines,
-            'total_cancelled_product_quantities' => $this->totalSpecifiedCancelledProductLineQuantities,
-
-            'total_uncancelled_products' => $this->totalSpecifiedUnCancelledProductLines,
-            'total_uncancelled_product_quantities' => $this->totalSpecifiedUncancelledProductLineQuantities,
-
-            /*  Coupon Line Totals  */
-            'total_coupons' => $this->totalSpecifiedCouponLines,
-            'total_cancelled_coupons' => $this->totalSpecifiedCancelledCouponLines,
-            'total_uncancelled_coupons' => $this->totalSpecifiedUnCancelledCouponLines,
-
-            /*  Customer  */
-            'is_existing_customer' => $this->isExistingCustomer,
-
-            /*  Changes  */
-            'is_abandoned',
-
-            /*  Instant Cart  */
-            'instant_cart_id',
-
-            /*  Ownership  */
-            'store_id' => $this->store->id
-
-        ]);
-
-        //  Determine if we have a coupon and sale discount on cart creation
-        $hasNewCouponAndSaleDiscountOnFirstRequest = ($this->existingCart == null && $shoppingCart->coupon_and_sale_discount_total->amount > 0);
-
-        //  Determine if we have a coupon and sale discount on cart creation
-        $hasNewCouponAndSaleDiscountOnFollowUpRequests = ($this->existingCart != null && ($shoppingCart->coupon_and_sale_discount_total->amount != $this->existingCart->coupon_and_sale_discount_total->amount));
-
-        if($hasNewCouponAndSaleDiscountOnFirstRequest || $hasNewCouponAndSaleDiscountOnFollowUpRequests) {
-            $hasNewCouponAndSaleDiscount = true;
+    /**
+     * Detect changes against the related product.
+     *
+     * @param ProductLine $productLine
+     * @param Product $relatedProduct
+     * @param ProductLine|null $existingProductLine
+     * @return ProductLine
+     */
+    protected function detectChangesAgainstRelatedProduct(ProductLine $productLine, Product $relatedProduct, ProductLine|null $existingProductLine): ProductLine
+    {
+        if($this->hasNoStock($relatedProduct)){
+            $this->handleNoStock($productLine, $existingProductLine);
         }else{
-            $hasNewCouponAndSaleDiscount = false;
+            if($this->hasLimitedStockAtLowest($productLine, $relatedProduct)){
+                $this->handleLimitedStock($productLine, $existingProductLine);
+            }
+            if($this->hasExceededMaximumAllowedQuantityAtLowest($productLine, $relatedProduct)){
+                $this->handleExceededMaximumAllowedQuantityPerOrder($productLine, $existingProductLine);
+            }
         }
 
-        /**
-         *  Set whether or not this shopping cart has a new coupon and sale discount.
-         *  This could be a discount we received on the first shopping cart request,
-         *  or on follow-up requests e.g we didn't have a discount before but now
-         *  we do.
-         */
-        $shoppingCart->has_new_coupon_and_sale_discount = $hasNewCouponAndSaleDiscount;
-
-        /**
-         *  Set whether or not this shopping cart has a new coupon and sale discount.
-         *  This could be a discount we received on the first shopping cart request,
-         *  or on follow-up requests e.g we didn't have a discount before but now
-         *  we do.
-         */
-        $shoppingCart->has_new_coupon_and_sale_discount = $hasNewCouponAndSaleDiscount;
-
-        /**
-         *  The detected_changes attribute is not part of the Fillable Array
-         *  of the Cart Model since this attribute must never be saved to
-         *  the database table.
-         *
-         *  However for this instance of the Cart Model we would like to
-         *  include the detected_changes attribute as part of the Model
-         *  fillable array so that this field can be picked up by the
-         *  getTransformableFields() method found on the BaseModel
-         *  class, which is executed to limit the fields to show
-         *  when returning a JSON response of the payload.
-         *
-         *  ----------------
-         *  We no longer need this, since we use getAttributes() instead
-         *  of our customer getTransformableFields() method. So please
-         *  Remove this line below and this entire comment.
-         *
-         *  $shoppingCart->mergeFillable(['detected_changes']);
-         */
-
-        //  Enable the detected_changes field to be available for this Cart Model
-        //  $shoppingCart->mergeFillable(['detected_changes']);
-
-        //  Set the detected_changes field value for this Cart Model
-        $shoppingCart->detected_changes = $this->detectedChanges;
-
-        //  Manually set the shopping cart relations
-        $shoppingCart->setRelations([
-            'productLines' => $this->specifiedProductLines,
-            'couponLines' => $this->specifiedCouponLines
-        ]);
-
-        //  Cache the shopping cart for exactly 10 minutes
-        $this->getShoppingCartCacheManager()->put($shoppingCart, now()->addMinutes(10));
-
-        //  Return the shopping cart
-        return $shoppingCart;
-
-    }
-
-    public function getSpecifiedProductLines()
-    {
-        //  If we have the shopping cart products, then extract the product ids
-        $cartProductIds = collect($this->cartProducts)->pluck('id')->toArray();
-
-        //  If we have atleast one shopping cart product id
-        if( count($cartProductIds) ) {
-
-            /**
-             *  Get the related products that match the specified shopping cart product ids for the given store.
-             *  These products must not support variations, but must be a node product. These are products that
-             *  have no nested children (variations). This is important since products that support variations
-             *  do not have a single price, but support multiple prices via variations.
-             */
-            $this->relatedProducts = Product::forStore($this->store->id)
-                                        ->whereIn('id', $cartProductIds)
-                                        ->doesNotSupportVariations()
-                                        ->get();
-
-
-            //  Foreach related product
-            return collect($this->relatedProducts)->map(function($relatedProduct) {
-
-                //  Get the related product that matches the given shopping cart product id
-                $cartProduct = collect($this->cartProducts)->first(fn($cartProduct) => $relatedProduct->id == $cartProduct['id']);
-
-                //  If we have a related product
-                if( $relatedProduct ) {
-
-                    //  Set the quantity otherwise default to "1" (Original quantity before suggested changes)
-                    $originalQuantity =  $cartProduct['quantity'] ?? 1;
-
-                    //  Set the available stock quantity
-                    $stockQuantity = $relatedProduct->stock_quantity;
-
-                    //  Check the no stock status
-                    $noStock = ($relatedProduct->stock_quantity_type == 'limited') &&
-                               ($stockQuantity == 0);
-
-                    //  Check the limited stock status
-                    $limitedStock = ($relatedProduct->stock_quantity_type == 'limited') &&
-                                    ($stockQuantity < $originalQuantity) &&
-                                    ($stockQuantity > 0);
-
-                    //  If we have limited stock
-                    if( $limitedStock ) {
-
-                        //  Default to available stock quantity
-                        $quantity = $stockQuantity;
-
-                    //  If we have stock or we don't have stock
-                    }else {
-
-                        /**
-                         *  (1) Has Stock
-                         *  -------------
-                         *
-                         *  In this case we can default to the original quantity
-                         *  since we have enough stock.
-                         *
-                         *  (2) No stock
-                         *  ------------
-                         *
-                         *  In this case we will default to the original quantity
-                         *  rather than setting the value to Zero (0). This is
-                         *  because we can have the original quantity so that
-                         *  the pricing information is calculated but then
-                         *  we set this product line as cancelled due to
-                         *  no stock.
-                         *
-                         *  This way we can flexibly allow the store users
-                         *  to uncancel this product line and process an
-                         *  order with exactly what the customer wants.
-                         *  This approach is more flexible.
-                         */
-                        $quantity = $originalQuantity;
-
-                    }
-
-                    //  Set the maximum allowed quantity per order
-                    $maximumAllowedQuantityPerOrder = $relatedProduct->maximum_allowed_quantity_per_order;
-
-                    //  Check if we have exceeded the maximum allowed quantity per order
-                    $exceededMaximumAllowedQuantityPerOrder = ($relatedProduct->allowed_quantity_per_order == 'limited') &&
-                                                              ($quantity > $maximumAllowedQuantityPerOrder);
-
-
-                    /**
-                     *  If we have exceeded the maximum allowed quantity per order,
-                     *  then we must reduce the quantity.
-                     *  -------------
-                     *
-                     *  Note that this is simply a precaution incase we do not restrict
-                     *  the user to input a quantity less than or equal to the maximum
-                     *  allowed quantity per order from the front-end e.g USSD, WEB or
-                     *  Mobile App. This is the back-end restriction fallback logic to
-                     *  make sure we never allow quantities that exceed that maximum
-                     *  set.
-                     *
-                     *  However it is always better to implement a front-end check
-                     *  to restrict the user to input a quantity that is less than
-                     *  this maximum figure if the product does not support
-                     *  "unlimited" product quantities per order.
-                     *
-                     *  Remember that the logic above first checks if the stock is
-                     *  limited, then makes sure that the quantity does not exceed
-                     *  the limited stock before we check if we have exceeded the
-                     *  maximum allowed quantity per order. This could have the
-                     *  following outcomes:
-                     *
-                     *  (1) Lets assume that the user wants 30 items of "Product 1" and the current
-                     *  stock quantity is 10 while the maximum allowed quantity per order is 20. The
-                     *  quantity is first reduced to qualify the available stock (10), thereby also
-                     *  qualifying the maximum allowed quantity per order (20). The final result is
-                     *  quantity reduced due to limited stock.
-                     *
-                     *  (2) Lets assume that the user wants 30 items of "Product 1" and the current
-                     *  stock quantity is 20 while the maximum allowed quantity per order is 10. The
-                     *  quantity is first reduced to qualify the available stock (20), however this
-                     *  does not qualify the maximum allowed quantity per order. The quantity is
-                     *  therefore reduced again to qualify the maximum allowed quantity per order.
-                     *  The final result is quantity reduced due to exceeding the maximum allowed
-                     *  quantity per order and not because of limited stock since the quantity
-                     *  would been reduced regardless.
-                     */
-                    if( $exceededMaximumAllowedQuantityPerOrder ) {
-
-                        //  Default to maximum allowed quantity per order
-                        $quantity = $maximumAllowedQuantityPerOrder;
-
-                    }
-
-                    //  Set the sub total (based on the unit regular price and quantity)
-                    $subTotal = $relatedProduct->unit_regular_price->amount * $quantity;
-
-                    //  Set the sale discount (based on the sale discount and quantity)
-                    $saleDiscountTotal = $relatedProduct->unit_sale_discount->amount * $quantity;
-
-                    //  Set the grand total (based on the unit price and quantity)
-                    $grandTotal = $relatedProduct->unit_price->amount * $quantity;
-
-                    /**
-                     *  Mock the Item Line Model from the related Product Model by collecting related
-                     *  information that match the fillable fields of the Item Line Model.
-                     *  Then merge additional related information.
-                     */
-                    return new ProductLine(
-                        collect($relatedProduct->getAttributes())->merge([
-
-                            //  Set pricing information (Totals)
-                            'sale_discount_total' => $saleDiscountTotal,
-                            'grand_total' => $grandTotal,
-                            'sub_total' => $subTotal,
-
-                            //  Set quantity information
-                            'exceeded_maximum_allowed_quantity_per_order' => $exceededMaximumAllowedQuantityPerOrder,
-                            'original_quantity' => $originalQuantity,
-                            'quantity' => $quantity,
-
-                            //  Set cancellation status information
-                            'is_cancelled' => false,
-                            'cancellation_reasons' => [],
-
-                            //  Set detected changes information
-                            'detected_changes' => [],
-
-                            'store_id' => $this->store->id,
-                            'product_id' => $relatedProduct->id
-
-                        ])->toArray()
-                    );
-
-                }
-
-            //  Filter to remove NULL results
-            })->filter()->all();
-
-        }
-
-        //  Otherwise return nothing
-        return [];
-    }
-
-    public function getSpecifiedCouponLines()
-    {
-        //  If we have atleast one store coupon
-        if( count($this->storeCoupons) ) {
-
-            //  Calculate the grand total as it stands before applying any coupons
-            $grandTotal = $this->getProductLinePricingTotals()->grandTotal;
-
-            //  Convert to money format
-            $grandTotal = $this->convertToMoneyFormat($grandTotal, $this->currency);
-
-            return collect($this->storeCoupons)->map(function($storeCoupon) use ($grandTotal) {
-
-                $inValid = false;
-                $isCancelled = false;
-                $cancellationReasons = collect([]);
-
-                //  Search for an existing coupon line that matches this store coupon
-                $existingCouponLine = collect($this->existingCouponLines)->first(fn($existingCouponLine) => $existingCouponLine->coupon_id == $storeCoupon->id);
-
-                //  If the coupon is not active then don't apply this coupon
-                if( !$storeCoupon->active ) {
-
-                    $inValid = true;
-                    $cancellationReasons->push('Deactivated by store');
-
-                };
-
-                //  If the coupon activation depends on the coupon code
-                if( $storeCoupon->activate_using_code ) {
-
-                    //  If the coupon codes provided do not match the store code then don't apply this coupon
-                    if( collect($this->cartCouponCodes)->doesntContain($storeCoupon->code) ) {
-
-
-                        $inValid = true;
-                        $cancellationReasons->push('Required a code for activation but the code provided was invalid');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon minimum grand total
-                if( $storeCoupon->activate_using_minimum_grand_total ) {
-
-                    $minimumGrandTotal = $storeCoupon->minimum_grand_total;
-
-                    //  If the grand total is less than the minimum total then don't apply this coupon
-                    if( $grandTotal->amount < $minimumGrandTotal->amount ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Required a minimum grand total of '.$minimumGrandTotal->amountWithCurrency.' but the cart total was valued at '.$grandTotal->amountWithCurrency);
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon minimum products total
-                if( $storeCoupon->activate_using_minimum_total_products ) {
-
-                    //  If the uncancelled product line total is less than the minimum products total then don't apply this coupon
-                    if( $this->totalSpecifiedUnCancelledProductLines < $storeCoupon->minimum_total_products ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push(
-                            ('Required a minimum total of '. $storeCoupon->minimum_total_products . ($storeCoupon->minimum_total_products == 1) ? ' unique item ' : ' unique items ') .
-                            (', but the cart contained '.$this->totalSpecifiedUnCancelledProductLines . ($this->totalSpecifiedUnCancelledProductLines == 1) ? ' unique item ' : ' unique items ')
-                        );
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon minimum total product quantities
-                if( $storeCoupon->activate_using_minimum_total_product_quantities ) {
-
-                    //  If the uncancelled product line quantities total is less than the minimum total product quantities then don't apply this coupon
-                    if( $this->totalSpecifiedUncancelledProductLineQuantities < $storeCoupon->minimum_total_product_quantities ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push(
-                            ('Required a minimum total of '. $storeCoupon->minimum_total_product_quantities . ($storeCoupon->minimum_total_product_quantities == 1) ? ' total quantity ' : ' total quantities ') .
-                            (', but the cart contained '.$this->totalSpecifiedUncancelledProductLineQuantities . ($this->totalSpecifiedUncancelledProductLineQuantities == 1) ? ' total quantity ' : ' total quantities ')
-                        );
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon start datetime
-                if( $storeCoupon->activate_using_start_datetime ) {
-
-                    //  If the coupon start datetime is in the future then don't apply this coupon
-                    if( \Carbon\Carbon::parse($storeCoupon->start_datetime)->isFuture() ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Starting date was not yet reached');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon end datetime
-                if( $storeCoupon->activate_using_end_datetime ) {
-
-                    //  If the coupon end datetime is in the past then don't apply this coupon
-                    if( \Carbon\Carbon::parse($storeCoupon->end_datetime)->isPast() ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Ending date was reached');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon time (Specific hour of a 24hour day)
-                if( $storeCoupon->activate_using_hours_of_day ) {
-
-                    /**
-                     *  If the current hour of the day is not present in the coupon
-                     *  allowed hours of the day then don't apply this coupon
-                     */
-                    if( !in_array(Carbon::now()->format('H'), $storeCoupon->hours_of_day) ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Invalid hour of the day (Activated at specific hours of the day)');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon day of the week
-                if( $storeCoupon->activate_using_days_of_the_week ) {
-
-                    /**
-                     *  If the current day of the week is not present in the coupon
-                     *  allowed days of the week then don't apply this coupon
-                     */
-                    if( !in_array(Carbon::now()->format('l'), $storeCoupon->days_of_the_week) ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Invalid day of the week (Activated on specific days of the week)');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon day of the month
-                if( $storeCoupon->activate_using_days_of_the_month ) {
-
-                    /**
-                     *  If the current day of the month is not present in the coupon
-                     *  allowed days of the month then don't apply this coupon
-                     */
-                    if( !in_array(Carbon::now()->format('d'), $storeCoupon->days_of_the_month) ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Invalid day of the month (Activated on specific days of the month)');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the coupon month of the year
-                if( $storeCoupon->activate_using_months_of_the_year ) {
-
-                    /**
-                     *  If the current month of the year is not present in the coupon
-                     *  allowed months of the year then don't apply this coupon
-                     */
-                    if( !in_array(Carbon::now()->format('F'), $storeCoupon->months_of_the_year) ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Invalid month of the year (Activated on specific months of the year)');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the shopper as an new customer
-                if( $storeCoupon->activate_for_new_customer ) {
-
-                    //  If the current shopper is an existing customer then don't apply this coupon
-                    if( $this->isExistingCustomer == true ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Must be a new customer');
-
-                    }else if( $this->isExistingCustomer == null) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Cannot determine if this is a new customer. Customer mobile number or email has not been provided');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the shopper as an existing customer
-                if( $storeCoupon->activate_for_existing_customer ) {
-
-                    //  If the current shopper is not an existing customer then don't apply this coupon
-                    if( $this->isExistingCustomer == false ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Must be an existing customer');
-
-                    }else if( $this->isExistingCustomer == null) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('Cannot determine if this is an existing customer. Customer mobile number or email has not been provided');
-
-                    }
-
-                }
-
-                //  If the coupon activation depends on the usage limit
-                if( $storeCoupon->activate_using_usage_limit ) {
-
-                    //  If the remaining quantity is zero then don't apply this coupon
-                    if( $storeCoupon->remaining_quantity == 0 ) {
-
-                        $inValid = true;
-
-                        $cancellationReasons->push('The usage limit was reached');
-
-                    }
-
-                }
-
-                //  If the coupon is invalid and we don't have an existing coupon line
-                if( $inValid == true && !$existingCouponLine ) {
-
-                    //  Return null to exclude this coupon
-                    return null;
-
-                }
-
-                /**
-                 *  Mock the Coupon Line Model from the Store Coupon Model by collecting related
-                 *  information that match the fillable fields of the Coupon Line Model.
-                 *  Then merge additional related information.
-                 *
-                 *  @var CouponLine $couponLine
-                 */
-                $couponLine = new CouponLine(
-                    collect($storeCoupon->getAttributes())->merge([
-
-                        //  Set cancellation status information
-                        'is_cancelled' => false,
-                        'cancellation_reasons' => [],
-
-                        //  Set detected changes information
-                        'detected_changes' => [],
-
-                        'store_id' => $this->store->id,
-                        'coupon_id' => $storeCoupon->id
-
-                    ])->toArray()
-                );
-
-                //  If we have an existing coupon line
-                if( $existingCouponLine ) {
-
-                    /**
-                     *  Cancel if any of the following conditions are met:
-                     *
-                     *  1) If this was not cancelled but is now invalid (We must cancel)
-                     *  2) If this was cancelled and is still invalid (We must cancel)
-                     */
-                    $wasNotCancelledButIsNowInvalid = $existingCouponLine->is_cancelled == false && $inValid == true;
-                    $wasCancelledAndIsStillInvalid = $existingCouponLine->is_cancelled == true && $inValid == true;
-
-                    //  If we should cancel
-                    if( $wasNotCancelledButIsNowInvalid || $wasCancelledAndIsStillInvalid ) {
-
-                        $message = 'The ('.$storeCoupon->name. ') coupon was cancelled because its no longer valid';
-                        $couponLine->recordDetectedChange('cancelled', $message, $existingCouponLine)
-                                   ->cancelItemLine($cancellationReasons);
-
-                    //  If we should uncancel
-                    }else{
-
-                        $message = 'The ('.$storeCoupon->name. ') coupon was added because its valid again';
-                        $couponLine->recordDetectedChange('uncancelled', $message, $existingCouponLine);
-
-                    }
-
-                }
-
-                return $couponLine;
-
-            })->filter()->all();
-
-        }
-
-        //  Otherwise return nothing
-        return [];
+        return $productLine;
     }
 
     /**
-     *  Prepare the product lines for database entry
-     *  @param int $cartId
-     *  @param int|array<int> $productIds
+     * Handle no stock condition.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine|null $existingProductLine
+     * @return void
      */
-    public function prepareSpecifiedProductLinesForDB($cartId, $productIds = null, $convertToJson = true)
+    protected function handleNoStock(ProductLine $productLine, ProductLine|null $existingProductLine): void
     {
-        /**
-         *  @param ProductLine $specifiedProductLine
-         */
-        $collection = collect($this->specifiedProductLines)->map(function($specifiedProductLine) use ($cartId, $productIds, $convertToJson) {
-
-            //  Swap the detected_changes with the detected_changes_history
-            $specifiedProductLine->detected_changes = collect($specifiedProductLine->detected_changes_history)->only(['date', 'type', 'message'])->toArray();
-
-            //  Unset the detected_changes_history
-            unset($specifiedProductLine->detected_changes_history);
-
-            //  Set the product line id
-            $specifiedProductLine->id = Str::uuid();
-
-            //  Set the cart id
-            $specifiedProductLine->cart_id = $cartId;
-
-            //  Ready the product line for database insertion
-            return $specifiedProductLine->readyForDatabase($convertToJson);
-
-        //  If the product ids specified as an integer or array of integers then we want to extract a specific entry
-        })->when(is_array($productIds) || is_int($productIds), function ($specifiedProductLines, $value) use ($productIds) {
-
-            /**
-             *  If this is an integer then convert to an array containing the integer.
-             *  Its important to know that the mutation of the $productIds does not
-             *  change the value of the $productIds passed as a parameter to this
-             *  method. We are mutating this value within the current scope only.
-             */
-            if( is_int($productIds) ) $productIds = [$productIds];
-
-            //  Let us return only the specified product lines that match the given product ids
-            return $specifiedProductLines->filter(fn($specifiedProductLine) => (collect($productIds)->contains($specifiedProductLine['product_id'])));
-
-        //  If the product ids specified is a single integer then we want to extract a specific entry
-        });
-
-        //  If we expected to return a single result but found no results then return Null
-        if( is_int($productIds) && $collection->count() === 0) return null;
-
-        //  If we expected to return a single result, then return an associative array of the first entry
-        if( is_int($productIds)) return $collection->first();
-
-        //  Otherwise return the collection as an associative array
-        return $collection->toArray();
-
+        $message = $productLine->quantity . 'x(' . $productLine->name . ') cancelled because it sold out';
+        $this->recordProductLineDetectedChangeAndCancel('no_stock', $message, $productLine, $existingProductLine);
     }
 
     /**
-     *  Prepare the coupon lines for database entry
-     *  @param int $cartId
-     *  @param int|array<int> $couponIds
+     * Handle limited stock condition.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine|null $existingProductLine
+     * @return void
      */
-    public function prepareSpecifiedCouponLinesForDB($cartId, $couponIds = null, $convertToJson = true)
+    protected function handleLimitedStock(ProductLine $productLine, ProductLine|null $existingProductLine): void
     {
-        /**
-         *  @param CouponLine $specifiedCouponLine
-         */
-        $collection = collect($this->specifiedCouponLines)->map(function($specifiedCouponLine) use ($cartId, $couponIds, $convertToJson) {
+        $message = $productLine->original_quantity . 'x(' . $productLine->name . ') reduced to (' . $productLine->quantity . ') because of limited stock';
+        $this->recordProductLineDetectedChange('limited_stock', $message, $productLine, $existingProductLine);
+    }
 
-            //  Set the coupon line id
-            $specifiedCouponLine->id = Str::uuid();
+    /**
+     * Handle exceeded maximum allowed quantity per order.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine|null $existingProductLine
+     * @return void
+     */
+    protected function handleExceededMaximumAllowedQuantityPerOrder(ProductLine $productLine, ProductLine|null $existingProductLine): void
+    {
+        $message = $productLine->original_quantity . 'x(' . $productLine->name . ') reduced to (' . $productLine->quantity . ') because of maximum allowed quantity exceeded';
+        $this->recordProductLineDetectedChange('has_exceeded_maximum_allowed_quantity_per_order', $message, $productLine, $existingProductLine);
+    }
 
-            //  Set the cart id
-            $specifiedCouponLine->cart_id = $cartId;
+    /**
+     * Check if no stock condition is met.
+     *
+     * @param Product $relatedProduct
+     * @return bool
+     */
+    protected function hasNoStock($relatedProduct): bool
+    {
+        return !$relatedProduct->has_stock;
+    }
 
-            //  Ready the coupon line for database insertion
-            return $specifiedCouponLine->readyForDatabase($convertToJson);
+    /**
+     * Check if limited stock condition is met.
+     *
+     * @param ProductLine $productLine
+     * @param Product $relatedProduct
+     * @return bool
+     */
+    protected function hasLimitedStockAtLowest(ProductLine $productLine, Product $relatedProduct): bool
+    {
+        $stockQuantity = $relatedProduct->stock_quantity;
+        $maximumAllowedQuantityPerOrder = $relatedProduct->maximum_allowed_quantity_per_order;
+        return $productLine->has_limited_stock && $stockQuantity < $maximumAllowedQuantityPerOrder;
+    }
 
-        //  If the coupon ids specified as an integer or array of integers then we want to extract a specific entry
-        })->when(is_array($couponIds) || is_int($couponIds), function ($specifiedCouponLines, $value) use ($couponIds) {
+    /**
+     * Check if maximum allowed quantity has been exceeded.
+     *
+     * @param ProductLine $productLine
+     * @param Product $relatedProduct
+     * @return bool
+     */
+    protected function hasExceededMaximumAllowedQuantityAtLowest(ProductLine $productLine, Product $relatedProduct): bool
+    {
+        $stockQuantity = $relatedProduct->stock_quantity;
+        $maximumAllowedQuantityPerOrder = $relatedProduct->maximum_allowed_quantity_per_order;
+        return $productLine->has_exceeded_maximum_allowed_quantity_per_order && $maximumAllowedQuantityPerOrder < $stockQuantity;
+    }
 
-            /**
-             *  If this is an integer then convert to an array containing the integer.
-             *  Its important to know that the mutation of the $couponIds does not
-             *  change the value of the $couponIds passed as a parameter to this
-             *  method. We are mutating this value within the current scope only.
-             */
-            if( is_int($couponIds) ) $couponIds = [$couponIds];
+    /**
+     * Detect changes against the existing product line.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine|null $existingProductLine
+     * @return ProductLine
+     */
+    protected function detectChangesAgainstExistingProductLine(ProductLine $productLine, ?ProductLine $existingProductLine): ProductLine
+    {
+        if(!$existingProductLine) return $productLine;
 
-            //  Let us return only the specified coupon lines that match the given coupon ids
-            return $specifiedCouponLines->filter(fn($specifiedCouponLine) => (collect($couponIds)->contains($specifiedCouponLine['coupon_id'])));
+        $this->handleExceededToNotExceededMaximumAllowedQuantityPerOrderChanges($productLine, $existingProductLine);
+        $this->handleNoStockToEnoughStockChanges($productLine, $existingProductLine);
+        $this->handleNoStockToLimitedStockChanges($productLine, $existingProductLine);
+        $this->handleLimitedStockToEnoughStock($productLine, $existingProductLine);
+        $this->handleVisibleToNotVisibleChanges($productLine, $existingProductLine);
+        $this->handleNotVisibleToVisibleChanges($productLine, $existingProductLine);
+        $this->handleFreeToNotFreeChanges($productLine, $existingProductLine);
+        $this->handleNotFreeToFreeChanges($productLine, $existingProductLine);
+        $this->handlePriceChanges($productLine, $existingProductLine);
+        $this->handleNameChanges($productLine, $existingProductLine);
 
-        //  If the coupon ids specified is a single integer then we want to extract a specific entry
-        });
+        return $productLine;
+    }
 
-        //  If we expected to return a single result but found no results then return Null
-        if( is_int($couponIds) && $collection->count() === 0) return null;
+    /**
+     * Handle change from exceeded to not exceeded maximum allowed quantity per order.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleExceededToNotExceededMaximumAllowedQuantityPerOrderChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasChangedFromExceededToNotExceededMaximumQuantity($productLine, $existingProductLine)){
+            $message = $productLine->quantity.'x('.$productLine->name.') added because larger quantities are now permitted for this item';
+            $this->recordProductLineDetectedChange('exceeded_to_not_has_exceeded_maximum_allowed_quantity_per_order', $message, $productLine, $existingProductLine);
+        }
+    }
 
-        //  If we expected to return a single result, then return an associative array of the first entry
-        if( is_int($couponIds)) return $collection->first();
+    /**
+     * Handle change from no stock to enough stock.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleNoStockToEnoughStockChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasChangedFromNoStockToEnoughStock($productLine, $existingProductLine)){
+            $message = $productLine->quantity.'x('.$productLine->name.') added because of new stock';
+            $this->recordProductLineDetectedChange('no_stock_to_enough_stock', $message, $productLine, $existingProductLine);
+        }
+    }
 
-        //  Otherwise return the collection as an associative array
-        return $collection->toArray();
+    /**
+     * Handle change from no stock to limited stock.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleNoStockToLimitedStockChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasChangedFromNoStockToLimitedStock($productLine, $existingProductLine)){
+            $message = $productLine->quantity.'x('.$productLine->name.') added because of new stock';
+            $this->recordProductLineDetectedChange('no_stock_to_limited_stock', $message, $productLine, $existingProductLine);
+        }
+    }
 
+    /**
+     * Handle change from limited stock to enough stock.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleLimitedStockToEnoughStock(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasChangedFromLimitedStockToEnoughStock($productLine, $existingProductLine)){
+            $message = $productLine->quantity.'x('.$productLine->name.') added because of new stock';
+            $this->recordProductLineDetectedChange('limited_stock_to_enough_stock', $message, $productLine, $existingProductLine);
+        }
+    }
+
+    /**
+     * Handle free to not free change.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleFreeToNotFreeChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasChangedFromFreeToNotFree($productLine, $existingProductLine)){
+            $productLineUnitPrice = $productLine->unit_price->amountWithCurrency;
+            $message = $productLine->quantity.'x('.$productLine->name.') added with new price '.$productLineUnitPrice.' each';
+            $this->recordProductLineDetectedChange('free_to_not_free', $message, $productLine, $existingProductLine);
+        }
+    }
+
+    /**
+     * Handle not free to free change.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleNotFreeToFreeChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasChangedFromNotFreeToFree($productLine, $existingProductLine)){
+            $message = $productLine->quantity.'x('.$productLine->name.') is now free';
+            $this->recordProductLineDetectedChange('not_free_to_free', $message, $productLine, $existingProductLine);
+        }
+    }
+
+    /**
+     * Handle visible to not visible change.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleVisibleToNotVisibleChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasChangedFromVisibleToNotVisible($productLine, $existingProductLine)){
+            $message = $productLine->quantity.'x('.$productLine->name.') cancelled because it was removed from the shelf';
+            $this->recordProductLineDetectedChangeAndCancel('not_visible', $message, $productLine, $existingProductLine);
+        }
+    }
+
+    /**
+     * Handle not visible to visible change.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleNotVisibleToVisibleChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasChangedFromNotVisibleToVisible($productLine, $existingProductLine)){
+            $message = $productLine->quantity.'x('.$productLine->name.') added because it was placed on the shelf';
+            $this->recordProductLineDetectedChange('visible', $message, $productLine, $existingProductLine);
+        }
+    }
+
+    /**
+     * Handle old price to new price change.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handlePriceChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasPriceChanged($productLine, $existingProductLine)){
+
+            $inflation = $productLine->unit_price > $existingProductLine->unit_price ? 'increased' : 'reduced';
+            $message = $productLine->quantity.'x('.$productLine->name.') price '.$inflation.' from '.$existingProductLine->unit_price->amountWithCurrency .' to '.$productLine->unit_price->amountWithCurrency.' each';
+
+            //  Sale price changes - Was not on sale but the sale started
+            if(!$existingProductLine->on_sale && $productLine->on_sale){
+
+                $message .= ' (On sale)';
+
+                if($inflation == 'increased'){
+                    $changeType = 'old_price_to_new_price_increase_with_sale';
+                }else{
+                    $changeType = 'old_price_to_new_price_decrease_with_sale';
+                }
+
+            //  Sale price changes - Was on sale but the sale ended
+            }elseif($existingProductLine->on_sale && !$productLine->on_sale){
+
+                $message .= ' (Sale ended)';
+
+                if($inflation == 'increased'){
+                    $changeType = 'old_price_to_new_price_increase_without_sale';
+                }else{
+                    $changeType = 'old_price_to_new_price_decrease_without_sale';
+                }
+
+            //  Regular price changes
+            }else{
+
+                if($inflation == 'increased'){
+                    $changeType = 'old_price_to_new_price_increase';
+                }else{
+                    $changeType = 'old_price_to_new_price_decrease';
+                }
+
+            }
+
+            $this->recordProductLineDetectedChange($changeType, $message, $productLine, $existingProductLine);
+
+        }
+    }
+
+    /**
+     * Handle name changed event.
+     *
+     * @param ProductLine $productLine
+     * @param ProductLine $existingProductLine
+     * @return void
+     */
+    protected function handleNameChanges(ProductLine $productLine, ProductLine $existingProductLine): void
+    {
+        if($this->hasNameChanged($productLine, $existingProductLine)){
+            $message = 'Product name has changed';
+            $this->recordProductLineDetectedChange('name_changed', $message, $productLine, $existingProductLine);
+        }
+    }
+
+    /**
+     * Check if the quantity has changed from exceeding the maximum allowed to not exceeding it.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasChangedFromExceededToNotExceededMaximumQuantity(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return $existingProductLine->hasDetectedChange('has_exceeded_maximum_allowed_quantity_per_order')
+                   && !$productLine->hasDetectedChange('has_exceeded_maximum_allowed_quantity_per_order');
+    }
+
+    /**
+     * Check if the stock status has changed from no stock to enough stock.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasChangedFromNoStockToEnoughStock(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return $existingProductLine->hasDetectedChange('no_stock')
+                   && !$productLine->hasDetectedChange('no_stock')
+              && !$productLine->hasDetectedChange('limited_stock');
+    }
+
+    /**
+     * Check if the stock status has changed from no stock to limited stock.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasChangedFromNoStockToLimitedStock(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return $existingProductLine->hasDetectedChange('no_stock')
+               && $productLine->hasDetectedChange('limited_stock');
+    }
+
+    /**
+     * Check if the stock status has changed from limited stock to enough stock.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasChangedFromLimitedStockToEnoughStock(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return $existingProductLine->hasDetectedChange('limited_stock')
+                        && !$productLine->hasDetectedChange('no_stock')
+                   && !$productLine->hasDetectedChange('limited_stock');
+    }
+
+    /**
+     * Check if the product has changed from visible to not visible.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasChangedFromVisibleToNotVisible(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return $existingProductLine->visible && !$productLine->visible;
+    }
+
+    /**
+     * Check if the product has changed from not visible to visible.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasChangedFromNotVisibleToVisible(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return !$existingProductLine->visible && $productLine->visible;
+    }
+
+    /**
+     * Check if the product has changed from free to not free.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasChangedFromFreeToNotFree(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return $existingProductLine->is_free && !$productLine->is_free;
+    }
+
+    /**
+     * Check if the product has changed from not free to free.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasChangedFromNotFreeToFree(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return !$existingProductLine->is_free && $productLine->is_free;
+    }
+
+    /**
+     * Check if the price has changed.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasPriceChanged(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return $existingProductLine->unit_price != $productLine->unit_price;
+    }
+
+    /**
+     * Check if the name of the product has changed.
+     *
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function hasNameChanged(ProductLine $productLine, ProductLine $existingProductLine): bool
+    {
+        return $productLine->name !== $existingProductLine->name;
+    }
+
+    /**
+     * Record product line detected change and cancel.
+     *
+     * @param string $type.
+     * @param string $message.
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function recordProductLineDetectedChangeAndCancel(string $type, string $message, &$productLine, $existingProductLine)
+    {
+        $this->recordProductLineDetectedChange($type, $message, $productLine, $existingProductLine);
+        $productLine->cancelItemLine($message);
+    }
+
+    /**
+     * Record product line detected change.
+     *
+     * @param string $type.
+     * @param string $message.
+     * @param ProductLine $productLine The current product line.
+     * @param ProductLine $existingProductLine The previous product line.
+     * @return bool
+     */
+    protected function recordProductLineDetectedChange(string $type, string $message, &$productLine, $existingProductLine)
+    {
+        $productLine->recordDetectedChange($type, $message, $existingProductLine);
+        $notifiedUser = ($existingProductLine === null) ? false : $existingProductLine->hasDetectedChange($type);
+
+        if(!$notifiedUser) {
+            $lastDetectedChange = $productLine->detected_changes[count($productLine->detected_changes) - 1];
+            array_push($this->detectedProductLineChanges, $lastDetectedChange);
+        }
+    }
+
+    /**
+     * Record coupon line detected change and cancel.
+     *
+     * @param string $type.
+     * @param string $message.
+     * @param CouponLine $couponLine The current coupon line.
+     * @param CouponLine $existingCouponLine The previous coupon line.
+     * @return bool
+     */
+    protected function recordCouponLineDetectedChangeAndCancel(string $type, string $message, &$couponLine, $existingCouponLine)
+    {
+        $this->recordCouponLineDetectedChange($type, $message, $couponLine, $existingCouponLine);
+        $couponLine->cancelItemLine($message);
+    }
+
+    /**
+     * Record coupon line detected change.
+     *
+     * @param string $type.
+     * @param string $message.
+     * @param CouponLine $couponLine The current coupon line.
+     * @param CouponLine $existingCouponLine The previous coupon line.
+     * @return bool
+     */
+    protected function recordCouponLineDetectedChange(string $type, string $message, &$couponLine, $existingCouponLine)
+    {
+        $couponLine->recordDetectedChange($type, $message, $existingCouponLine);
+        $notifiedUser = ($existingCouponLine === null) ? false : $existingCouponLine->hasDetectedChange($type);
+
+        if(!$notifiedUser) {
+            $lastDetectedChange = $couponLine->detected_changes[count($couponLine->detected_changes) - 1];
+            array_push($this->detectedCouponLineChanges, $lastDetectedChange);
+        }
+    }
+
+    /**
+     * Set specified coupon lines based on store coupons and validations.
+     *
+     * @return void
+     */
+    public function setSpecifiedCouponLines(): void
+    {
+        if(count($this->storeCoupons) === 0){
+            $this->specifiedCouponLines = [];
+            return;
+        }
+
+        $this->specifiedCouponLines = $this->mapRelatedCouponsToCouponLines();
+    }
+
+    /**
+     *  Map related coupons to coupon lines.
+     *
+     *  @return array
+     */
+    protected function mapRelatedCouponsToCouponLines(): array
+    {
+        return collect($this->storeCoupons)
+            ->map(fn($storeCoupon) => $this->mapToCouponLine($storeCoupon))
+            ->filter()
+            ->all();
+    }
+
+    /**
+     *  Map a related coupon to a coupon line.
+     *
+     * @param object $storeCoupon
+     * @return CouponLine|null
+     */
+    private function mapToCouponLine($storeCoupon): ?CouponLine
+    {
+        $inValid = false;
+        $cancellationReasons = [];
+
+        $this->validateCoupon($storeCoupon, $inValid, $cancellationReasons);
+
+        $existingCouponLine = collect($this->existingCouponLines)
+            ->first(fn($existingCouponLine) => $existingCouponLine->coupon_id == $storeCoupon->id);
+
+        if($inValid && !$existingCouponLine){
+            return null;
+        }
+
+        return $this->prepareCouponLine($storeCoupon, $inValid, $cancellationReasons, $existingCouponLine);
+    }
+
+    /**
+     * Validate store coupon.
+     *
+     * @param object $storeCoupon
+     * @param bool &$inValid
+     * @param array $cancellationReasons
+     * @return void
+     */
+    private function validateCoupon($storeCoupon, &$inValid, &$cancellationReasons): void
+    {
+        $invalidate = function ($reason) use (&$inValid, &$cancellationReasons){
+            $inValid = true;
+            $cancellationReasons[] = $reason;
+        };
+
+        if(!$storeCoupon->active){
+            $invalidate('Deactivated by store');
+        }
+
+        if($storeCoupon->activate_using_code && $this->cartCouponCode != $storeCoupon->code){
+            $invalidate('Required a code for activation but the code provided was invalid');
+        }
+
+        if($storeCoupon->activate_using_minimum_grand_total && $this->subtotalAfterDiscount < $storeCoupon->minimum_grand_total->amount){
+            $subtotalAfterDiscount = $this->convertToMoneyFormat($this->subtotalAfterDiscount, $this->currency);
+            $invalidate('Required a minimum grand total of ' . $storeCoupon->minimum_grand_total->amountWithCurrency .
+                ' but the cart total was valued at ' . $subtotalAfterDiscount->amountWithCurrency);
+        }
+
+        if($storeCoupon->activate_using_minimum_total_products &&
+            $this->totalSpecifiedUnCancelledProductLines < $storeCoupon->minimum_total_products){
+            $invalidate('Required a minimum total of ' . $storeCoupon->minimum_total_products . ' unique items, ' .
+                'but the cart contained ' . $this->totalSpecifiedUnCancelledProductLines . ' unique items');
+        }
+
+        if($storeCoupon->activate_using_minimum_total_product_quantities &&
+            $this->totalSpecifiedUncancelledProductLineQuantities < $storeCoupon->minimum_total_product_quantities){
+            $invalidate('Required a minimum total of ' . $storeCoupon->minimum_total_product_quantities . ' total quantities, ' .
+                'but the cart contained ' . $this->totalSpecifiedUncancelledProductLineQuantities . ' total quantities');
+        }
+
+        if($storeCoupon->activate_using_start_datetime && Carbon::parse($storeCoupon->start_datetime)->isFuture()){
+            $invalidate('Starting date was not yet reached');
+        }
+
+        if($storeCoupon->activate_using_end_datetime && Carbon::parse($storeCoupon->end_datetime)->isPast()){
+            $invalidate('Ending date was reached');
+        }
+
+        if($storeCoupon->activate_using_hours_of_day && !in_array(Carbon::now()->format('H:00'), $storeCoupon->hours_of_day)){
+            $invalidate('Invalid hour of the day (Activated at specific hours of the day)');
+        }
+
+        if($storeCoupon->activate_using_days_of_the_week && !in_array(Carbon::now()->format('l'), $storeCoupon->days_of_the_week)){
+            $invalidate('Invalid day of the week (Activated on specific days of the week)');
+        }
+
+        if($storeCoupon->activate_using_days_of_the_month && !in_array(Carbon::now()->format('d'), $storeCoupon->days_of_the_month)){
+            $invalidate('Invalid day of the month (Activated on specific days of the month)');
+        }
+
+        if($storeCoupon->activate_using_months_of_the_year && !in_array(Carbon::now()->format('F'), $storeCoupon->months_of_the_year)){
+            $invalidate('Invalid month of the year (Activated on specific months of the year)');
+        }
+
+        if($storeCoupon->activate_for_new_customer){
+            if($this->isExistingCustomer === true){
+                $invalidate('Must be a new customer');
+            } elseif($this->isExistingCustomer === null){
+                $invalidate('Cannot determine if this is a new customer. Customer mobile number or email has not been provided');
+            }
+        }
+
+        if($storeCoupon->activate_for_existing_customer){
+            if($this->isExistingCustomer === false){
+                $invalidate('Must be an existing customer');
+            } elseif($this->isExistingCustomer === null){
+                $invalidate('Cannot determine if this is an existing customer. Customer mobile number or email has not been provided');
+            }
+        }
+
+        if($storeCoupon->activate_using_usage_limit && $storeCoupon->remaining_quantity == 0){
+            $invalidate('The usage limit was reached');
+        }
+    }
+
+    /**
+     * Prepare coupon line.
+     *
+     * @param object $storeCoupon
+     * @param bool $inValid
+     * @param array $cancellationReasons
+     * @param object|null $existingCouponLine
+     * @return CouponLine
+     */
+    private function prepareCouponLine($storeCoupon, $inValid, $cancellationReasons, $existingCouponLine): CouponLine
+    {
+        $couponLine = new CouponLine(
+            collect($storeCoupon->getAttributes())->merge([
+                'detected_changes' => [],
+                'is_cancelled' => $inValid,
+                'store_id' => $this->store->id,
+                'coupon_id' => $storeCoupon->id,
+                'cancellation_reasons' => $cancellationReasons
+            ])->toArray()
+        );
+
+        if($existingCouponLine){
+            $wasCancelledAndIsStillInvalid = $existingCouponLine->is_cancelled && $inValid;
+            $wasNotCancelledButIsNowInvalid = !$existingCouponLine->is_cancelled && $inValid;
+
+            if($wasNotCancelledButIsNowInvalid || $wasCancelledAndIsStillInvalid){
+                $message = 'The (' . $storeCoupon->name . ') coupon was cancelled because it is no longer valid';
+                $this->recordCouponLineDetectedChangeAndCancel('cancelled', $message, $couponLine, $existingCouponLine);
+            } else {
+                $message = 'The (' . $storeCoupon->name . ') coupon was added because it is valid again';
+                $this->recordCouponLineDetectedChange('uncancelled', $message, $couponLine, $existingCouponLine);
+            }
+        }
+
+        return $couponLine;
     }
 
     public function getSpecifiedCancelledProductLines()
@@ -963,24 +1201,24 @@ class ShoppingCartService
         return collect($this->specifiedProductLines)->count();
     }
 
-    public function countSpecifiedProductLineQuantities()
-    {
-        return collect($this->specifiedProductLines)->sum('quantity');
-    }
-
     public function countSpecifiedCancelledProductLines()
     {
         return collect($this->getSpecifiedCancelledProductLines())->count();
     }
 
-    public function countSpecifiedCancelledProductLineQuantities()
-    {
-        return collect($this->getSpecifiedCancelledProductLines())->sum('quantity');
-    }
-
     public function countSpecifiedUnCancelledProductLines()
     {
         return collect($this->getSpecifiedUnCancelledProductLines())->count();
+    }
+
+    public function countSpecifiedProductLineQuantities()
+    {
+        return collect($this->specifiedProductLines)->sum('quantity');
+    }
+
+    public function countSpecifiedCancelledProductLineQuantities()
+    {
+        return collect($this->getSpecifiedCancelledProductLines())->sum('quantity');
     }
 
     public function countSpecifiedUncancelledProductLineQuantities()
@@ -1013,460 +1251,361 @@ class ShoppingCartService
         return collect($this->getSpecifiedUnCancelledCouponLines())->count();
     }
 
-    public function getProductLinePricingTotals()
+    public function handleDeliveryMethod()
     {
-        $obj = new stdClass;
-        $obj->subTotal = 0;
-        $obj->grandTotal = 0;
-        $obj->saleDiscountTotal = 0;
-
-        /**
-         *  Apply the totals from the uncancelled product lines collected
-         */
-        foreach($this->getSpecifiedUnCancelledProductLines() as $productLine) {
-
-            //  Calculate the total excluding sale discounts
-            $obj->subTotal += $productLine->sub_total->amount;
-
-            //  Calculate the total including sale discounts
-            $obj->grandTotal += $productLine->grand_total->amount;
-
-            //  Calculate the total sale discounts
-            $obj->saleDiscountTotal += $productLine->sale_discount_total->amount;
-
-        }
-
-        return $obj;
+        if(!$this->deliveryMethod) return;
+        $this->validateDeliveryMethod();
+        $this->validateDeliveryMethodSchedule();
+        $this->setDeliveryMethodTips();
     }
 
-    public function calculateAndSetPricingTotals()
+    /**
+     * Validate delivery method.
+     *
+     * @return void
+     */
+    private function validateDeliveryMethod(): void
     {
-        $pricing = $this->getProductLinePricingTotals();
+        $this->deliveryMethodAvailable = true;
 
-        $this->subTotal = $pricing->subTotal;
-        $this->grandTotal = $pricing->grandTotal;
-        $this->saleDiscountTotal = $pricing->saleDiscountTotal;
+        $disqualify = function ($message) {
+            array_push($this->deliveryMethodUnavailabilityReasons, $message);
+            if($this->deliveryMethodAvailable) $this->deliveryMethodAvailable = false;
+        };
 
-        //  Calculate the coupon discount total
-        $this->couponDiscountTotal = $this->calculateCouponDiscount();
-
-        //  Apply the coupon discount total
-        $this->grandTotal -= $this->couponDiscountTotal;
-
-        //  Calculate the sale and coupon discount total combined
-        $this->couponAndSaleDiscountTotal = $this->saleDiscountTotal + $this->couponDiscountTotal;
-
-        /**
-         *  If we are not offering free delivery then apply the delivery fee
-         *
-         *  Note: The delivery fee is applied after the discounts have been
-         *  applied to the grand total so that we can avoid discounting the
-         *  delivery fee. The delivery fee must be applied as is without
-         *  being discounted incase of percetage rate based discounts.
-         */
-        if( $this->allowFreeDelivery === false) {
-
-            //  Calculate the delivery fee total
-            $this->deliveryFee = $this->calculateDeliveryFee()->amount;
-
-            //  Apply the delivery fee total
-            $this->grandTotal += $this->deliveryFee;
-
+        if($this->deliveryMethod->qualify_on_minimum_grand_total && $this->subtotalAfterDiscount < $this->deliveryMethod->minimum_grand_total->amount){
+            $disqualify('Minimum order amount is '.$this->deliveryMethod->minimum_grand_total->amountWithCurrency.' for '.$this->deliveryMethod->name);
         }
     }
 
     /**
-     *  Calculate the total coupon discount
+     * Validate delivery method schedule.
+     *
+     * @return void
      */
-    public function calculateCouponDiscount()
+    private function validateDeliveryMethodSchedule(): void
     {
-        //  Collect coupons that offer discounts
-        $couponsOfferingDiscounts = collect($this->specifiedCouponLines)->filter(fn($coupon) => $coupon->offer_discount && $coupon->is_cancelled == false);
+        $this->scheduleIsRequired = $this->deliveryMethod->set_schedule;
 
-        //  Sum the total of the discounts
-        $totalCouponDiscount = $couponsOfferingDiscounts->map(function($coupon) {
+        if($this->scheduleIsRequired) {
 
-            if( $coupon->discount_type == 'Percentage' ) {
+            $this->scheduleIsComplete = true;
 
-                return ($coupon->discount_percentage_rate / 100) * $this->grandTotal;
+            $disqualify = function ($message) {
+                array_push($this->scheduleIncompleteReasons, $message);
+                if($this->scheduleIsComplete) $this->scheduleIsComplete = false;
+            };
 
-            }elseif( $coupon->discount_type == 'Fixed' ) {
-
-                return $coupon->discount_fixed_rate;
-
-            }else {
-
-                return 0;
-
+            if(!$this->deliveryDate){
+                $disqualify('The delivery date is required');
+            }else if(!$this->deliveryMethod->isValidDate($this->deliveryDate)){
+                $disqualify('The selected delivery date is unavailable');
+            }else if($this->deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE_AND_TIME->value && !$this->deliveryTimeslot){
+                $disqualify('The delivery time is required');
+            }else if($this->deliveryMethod->schedule_type == DeliveryMethodScheduleType::DATE_AND_TIME->value && !$this->deliveryMethod->isValidTimeSlot($this->deliveryDate, $this->deliveryTimeslot)){
+                $disqualify('The selected delivery time is unavailable');
             }
 
-        })->sum();
-
-        //  The total coupon discount cannot exceed the grand total
-        return $totalCouponDiscount < $this->grandTotal ? $totalCouponDiscount : $this->grandTotal;
-    }
-
-    /**
-     *  Calculate the delivery free
-     */
-    public function calculateDeliveryFee()
-    {
-        //  If the store supports delivery
-        if( $this->store->allow_delivery ) {
-
-            //  Return the matching destination delivery fee
-            if( $deliveryDestination = $this->getDeliveryDestination() ) return $this->convertToMoneyFormat($deliveryDestination['cost']->amount, $this->store->currency);
-
-            /**
-             *  In the case that we could not match any specific delivery destination,
-             *  then check if we generally charge a flat fee for any destination.
-             */
-            if( $this->store->delivery_flat_fee ) return $this->store->delivery_flat_fee;
-
-        }
-
-        //  Otherwise default to "0" as the delivery fee
-        return $this->convertToMoneyFormat(0, $this->store->currency);
-    }
-
-    /**
-     *  Get the matching delivery destination
-     */
-    public function getDeliveryDestination()
-    {
-        //  If we provided a specific delivery destination name
-        if( $this->deliveryDestinationName ) {
-
-            //  Return the matching delivery destination
-            return collect($this->store->delivery_destinations)->first(function($destination) {
-                return $destination['name'] == $this->deliveryDestinationName;
-            });
-
         }
     }
 
     /**
-     *  Check if we can offer free delivery
+     * Set delivery method tips.
+     *
+     * @return void
      */
-    public function offerFreeDelivery()
+    private function setDeliveryMethodTips(): void
     {
-        return $this->hasCouponToOfferFreeDelivery() || $this->hasDestinationToOfferFreeDelivery();
-    }
-
-    /**
-     *  Check if we have a coupon that offers free delivery
-     */
-    public function hasCouponToOfferFreeDelivery()
-    {
-        return collect($this->specifiedCouponLines)->contains(fn($coupon) => $coupon->offer_free_delivery && $coupon->is_cancelled == false);
-    }
-
-    /**
-     *  Check if we have coupons that offer free delivery
-     */
-    public function hasDestinationToOfferFreeDelivery()
-    {
-        //  If the store supports delivery
-        if( $this->store->allow_delivery ) {
-
-            //  Search the matching destination (Return whether this destination allows free delivery)
-            if( $deliveryDestination = $this->getDeliveryDestination() ) return $deliveryDestination['allow_free_delivery'];
-
-            /**
-             *  In the case that we could not match any specific delivery destination,
-             *  then check if we generally allow free delivery for any destination.
-             */
-            if( $this->store->allow_free_delivery ) return $this->store->allow_free_delivery;
-
-        }
-
-        //  Otherwise default to false that this store
-        return false;
-    }
-
-    /**
-     *  Detect changes that directly affect this product line
-     *  such as changes on price, stock or availability.
-     */
-    public function detectChangesOnProductLines()
-    {
-        if( $this->specifiedProductLines ) {
-
-            //  Foreach specified product line
-            collect($this->specifiedProductLines)->each(function(ProductLine $specifiedProductLine) {
-
-                /**
-                 *  Get the related product of the specified product line
-                 *  @var Product $relatedProduct
-                 */
-                $relatedProduct = collect($this->relatedProducts)->first(fn($relatedProduct) => $relatedProduct->id == $specifiedProductLine->product_id);
-
-                /**
-                 *  Get the existing product line of the specified product line
-                 *  @var ProductLine $existingProductLine
-                 */
-                $existingProductLine = collect($this->existingProductLines)->first(fn($existingProductLine) => $existingProductLine->product_id == $specifiedProductLine->product_id);
-
-                /**
-                 *  There are two types of changes
-                 *
-                 *  (1) Changes that do not require comparisons with a cached record of this product line
-                 *      i.e We can compare the specified product line against the related product
-                 *
-                 *  (2) Changes that require comparisons with a cached record of this product
-                 *      i.e We can compare the specified product line against the existing
-                 *      product line record stored in the cache
-                 *
-                 *   We will handle these two changes in their respective order
-                 */
-
-                /**
-                 *  Approach 1: Changes on related product
-                 *
-                 *  If the specified product line does not have a matching existing product line
-                 *  that is recorded in the cache, then we can compare the specified product
-                 *  line with the related product for now.
-                 */
-                $noStock = $relatedProduct->has_stock == false;
-                //  $noPrice = $relatedProduct->has_price == false;     Note: Disabled to allow shopping while product unit price is zero (0)
-                $limitedStock = ($specifiedProductLine->quantity < $specifiedProductLine->original_quantity) && $specifiedProductLine->exceeded_maximum_allowed_quantity_per_order == false;
-                $exceededMaximumAllowedQuantityPerOrder = ($specifiedProductLine->quantity < $specifiedProductLine->original_quantity) && $specifiedProductLine->exceeded_maximum_allowed_quantity_per_order == true;
-
-                //  If the related product does not have stock (Sold out)
-                if( $noStock ) {
-
-                    $noStockMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') cancelled because it sold out';
-                    $specifiedProductLine->recordDetectedChange('no_stock', $noStockMessage, $existingProductLine)->cancelItemLine($noStockMessage);
-
-                }
-
-                //  If the specified product line has less quantities than intended (Limited Stock)
-                if( $limitedStock ) {
-
-                    $limitedStockMessage = $specifiedProductLine->original_quantity.'x('.$specifiedProductLine->name.') reduced to ('.$specifiedProductLine->quantity.') because of limited stock';
-                    $specifiedProductLine->recordDetectedChange('limited_stock', $limitedStockMessage, $existingProductLine);
-
-                }
-
-                //  If the specified product line has exceeded the maximum allowed quantity per order
-                if( $exceededMaximumAllowedQuantityPerOrder ) {
-
-                    $exceededMaximumAllowedQuantityPerOrderMessage = $specifiedProductLine->original_quantity.'x('.$specifiedProductLine->name.') reduced to ('.$specifiedProductLine->quantity.') because you cannot place more than '. $relatedProduct->maximum_allowed_quantity_per_order . ($relatedProduct->maximum_allowed_quantity_per_order == 1 ? ' quantity' : ' quantities'). ' of this item per order';
-                    $specifiedProductLine->recordDetectedChange('exceeded_maximum_allowed_quantity_per_order', $exceededMaximumAllowedQuantityPerOrderMessage, $existingProductLine);
-
-                }
-
-                /**
-                 *  If the related product does not have a price
-                 *
-                 *  Note: Disabled to allow shopping while product unit price is zero (0)
-                 */
-                 // if( $noPrice ) {
-                 //     $noPriceMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') cancelled because it has no price';
-                 //     $specifiedProductLine->recordDetectedChange('no_price', $noPriceMessage, $existingProductLine)->cancelItemLine($noPriceMessage);
-                 // }
-
-                /**
-                 *  Approach 2: Changes on existing product
-                 *
-                 *  If the specified product line has a matching existing product line
-                 *  that is recorded in the database, then we can compare changes on
-                 *  the two states.
-                 */
-                if( $existingProductLine ) {
-
-                    $exceededToNotExceededMaximumAllowedQuantityPerOrder =
-                        $existingProductLine->hasDetectedChange('exceeded_maximum_allowed_quantity_per_order') == true
-                        && $specifiedProductLine->hasDetectedChange('exceeded_maximum_allowed_quantity_per_order') == false;
-
-                    //  If the product line did not have stock but now we have enough stock
-                    $noStockToEnoughStock = $existingProductLine->hasDetectedChange('no_stock') == true
-                                            && $specifiedProductLine->hasDetectedChange('no_stock') == false
-                                            && $specifiedProductLine->hasDetectedChange('limited_stock') == false;
-
-                    //  If the product line did not have stock but now we have limited stock
-                    $noStockToLimitedStock = $existingProductLine->hasDetectedChange('no_stock') == true
-                                            && $specifiedProductLine->hasDetectedChange('limited_stock') == true;
-
-                    //  If the product line had limited stock but now we have enough stock
-                    $limitedStockToEnoughStock = $existingProductLine->hasDetectedChange('limited_stock') == true
-                                                && $specifiedProductLine->hasDetectedChange('no_stock') == false
-                                                && $specifiedProductLine->hasDetectedChange('limited_stock') == false;
-
-                    if( $exceededToNotExceededMaximumAllowedQuantityPerOrder ) {
-
-                        $exceededToNotExceededMaximumAllowedQuantityPerOrderMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') added because larger quantities are now permitted for this item';
-                        $specifiedProductLine->recordDetectedChange('exceeded_to_not_exceeded_maximum_allowed_quantity_per_order', $exceededToNotExceededMaximumAllowedQuantityPerOrderMessage, $existingProductLine);
-
-                    }elseif( $noStockToEnoughStock ) {
-
-                        $noStockToEnoughStockMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') added because of new stock';
-                        $specifiedProductLine->recordDetectedChange('no_stock_to_enough_stock', $noStockToEnoughStockMessage, $existingProductLine);
-
-                    }elseif( $noStockToLimitedStock ) {
-
-                        $noStockToLimitedStockMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') added because of new stock';
-                        $specifiedProductLine->recordDetectedChange('no_stock_to_limited_stock', $noStockToLimitedStockMessage, $existingProductLine);
-
-                    }elseif( $limitedStockToEnoughStock ) {
-
-                        $limitedStockToLimitedStockMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') added because of new stock';
-                        $specifiedProductLine->recordDetectedChange('limited_stock_to_enough_stock', $limitedStockToLimitedStockMessage, $existingProductLine);
-
-                    }
-
-                    //  If the product line was free but is not free anymore
-                    $freeToNotFree = $existingProductLine->is_free && !$specifiedProductLine->is_free;
-
-                    //  If the product line was not free but is not free
-                    $notFreeToFree = !$existingProductLine->is_free && $specifiedProductLine->is_free;
-
-                    /**
-                     *  If the product line did not have a price but now has a new price
-                     *
-                     *  Note: Disabled to allow shopping while product unit price is zero (0)
-                     */
-                    //  $noPriceToNewPrice = $existingProductLine->hasDetectedChange('no_price') == true
-                    //                       && $specifiedProductLine->hasDetectedChange('no_price') == false;
-
-                    //  If the product line did have a price but now the price changed
-                    $oldPriceToNewPrice = $existingProductLine->unit_price != $specifiedProductLine->unit_price;
-
-                    //  Get the existing product line unit price
-                    $existingProductLineUnitPrice = $existingProductLine->unit_price->amountWithCurrency;
-
-                    //  Get the specified product line unit price
-                    $specifiedProductLineUnitPrice = $specifiedProductLine->unit_price->amountWithCurrency;
-
-                    if( $freeToNotFree ){
-
-                        $freeToNotFreeMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') added with new price '.$specifiedProductLineUnitPrice.' each';
-                        $specifiedProductLine->recordDetectedChange('free_to_not_free', $freeToNotFreeMessage, $existingProductLine);
-
-                    }elseif( $notFreeToFree ){
-
-                        $notFreeToFreeMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') is now free';
-                        $specifiedProductLine->recordDetectedChange('not_free_to_free', $notFreeToFreeMessage, $existingProductLine);
-
-                    /**
-                     *  Note: Disabled to allow shopping without being notified that the product unit price is zero (0)
-                     */
-                    //  }elseif( $noPriceToNewPrice ) {
-                    //      $noPriceToNewPriceMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') added with new price '.$specifiedProductLineUnitPrice.' each (Not Free)';
-                    //      $specifiedProductLine->recordDetectedChange('no_price_to_new_price', $noPriceToNewPriceMessage, $existingProductLine);
-
-                    }elseif( $oldPriceToNewPrice ) {
-
-                        $inflation = $specifiedProductLine->unit_price > $existingProductLine->unit_price ? 'increased' : 'reduced';
-
-                        $oldPriceToNewPriceMessage = $specifiedProductLine->quantity.'x('.$specifiedProductLine->name.') price '.$inflation.' from '.$existingProductLineUnitPrice .' to '.$specifiedProductLineUnitPrice.' each';
-
-                        //  If the existing product line was not on sale but the sale started
-                        if( !$existingProductLine->on_sale && $specifiedProductLine->on_sale ) {
-
-                            $oldPriceToNewPriceMessage .= ' (On sale)';
-
-                            if( $inflation == 'increased' ){
-
-                                $changeType = 'old_price_to_new_price_increase_with_sale';
-
-                            }else{
-
-                                $changeType = 'old_price_to_new_price_decrease_with_sale';
-
-                            }
-
-                        //  If the existing product line was on sale but the sale ended
-                        }elseif( $existingProductLine->on_sale && !$specifiedProductLine->on_sale ) {
-
-                            $oldPriceToNewPriceMessage .= ' (Sale ended)';
-
-                            if( $inflation == 'increased' ) {
-
-                                $changeType = 'old_price_to_new_price_increase_without_sale';
-
-                            }else{
-
-                                $changeType = 'old_price_to_new_price_decrease_without_sale';
-
-                            }
-
-                        }else{
-
-                            if( $inflation == 'increased' ) {
-
-                                $changeType = 'old_price_to_new_price_increase';
-
-                            }else{
-
-                                $changeType = 'old_price_to_new_price_decrease';
-
-                            }
-
-                        }
-
-                        $specifiedProductLine->recordDetectedChange($changeType, $oldPriceToNewPriceMessage, $existingProductLine);
-
-                    }
-
-                    //  If the product line name changed
-                    $nameChanged = $existingProductLine->name !== $specifiedProductLine->name;
-
-                    if( $nameChanged ) {
-
-                        $nameChangedMessage = $existingProductLine->name.' renamed to '.$specifiedProductLine->name;
-                        $specifiedProductLine->recordDetectedChange('name_changed', $nameChangedMessage, $existingProductLine);
-
-                    }
-
-                    //  If the product line visibility changed
-                    $visibleToNotVisible = $existingProductLine->visible && !$specifiedProductLine->visible;
-                    $invisibleToVisible = !$existingProductLine->visible && $specifiedProductLine->visible;
-
-                    if( $visibleToNotVisible ) {
-
-                        $visibleToNotVisibleMessage = $specifiedProductLine->quantity.'x('.$relatedProduct->name.') cancelled because it was removed from the shelf';
-                        $specifiedProductLine->recordDetectedChange('not_visible', $visibleToNotVisibleMessage, $existingProductLine)->cancelItemLine($visibleToNotVisibleMessage);
-
-                    }else if( $invisibleToVisible ) {
-
-                        $invisibleToVisibleMessage = $specifiedProductLine->quantity.'x('.$relatedProduct->name.') added because it was placed on the shelf';
-                        $specifiedProductLine->recordDetectedChange('visible', $invisibleToVisibleMessage, $existingProductLine);
-
-                    }
-
-                }
-
-                /**
-                 *  Capture the history of every detected change since the first request to the current request.
-                 *  Simply capture the detected changes where the user has not been notified (recently detected
-                 *  change). Detected changes where the user has already been notified should not be captured
-                 *  as part of the detected change history since they are older detected changes that have
-                 *  already been captured as part of the history at the moment of their first occurance.
-                 *
-                 *  The detected_changes_history is not a fillable field on the ProductLine and therefore
-                 *  cannot be saved on the database. Refer to the prepareSpecifiedProductLinesForDB() to
-                 *  see how we swap the detected_changes for the detected_changes_history before we
-                 *  remove the detected_changes_history attribute before saving each ProductLine.
-                 *  This is done so that we can detected_changes_history can be saved as the
-                 *  detected_changes on the database.
-                 *
-                 *  The temporary separation of the detected_changes and detected_changes_history allows the
-                 *  recordDetectedChange() method to detect current changes in comparison with that last
-                 *  request changes "$existingProductLine->detected_changes" instead of comparing with
-                 *  all the request changes ($existingProductLine->detected_changes_history).
-                 */
-                $specifiedProductLine->detected_changes_history = collect($existingProductLine->detected_changes_history ?? [])->merge(
-                    collect($specifiedProductLine->detected_changes)->filter(function($detected_change) {
-                        return $detected_change['notified_user'] === false;
-                    })
-                )->toArray();
-
-                //  Capture the detected changes to share with the shopping cart
-                $this->detectedChanges = collect($this->detectedChanges)->merge($specifiedProductLine->detected_changes)->all();
-            });
-
+        $tip = function ($message){
+            array_push($this->deliveryMethodTips, $message);
+        };
+
+        if($this->deliveryMethod->offer_free_delivery_on_minimum_grand_total && $this->subtotalAfterDiscount < $this->deliveryMethod->free_delivery_minimum_grand_total->amount){
+            $tip('Minimum order amount is '.$this->deliveryMethod->free_delivery_minimum_grand_total->amountWithCurrency.' for free delivery');
         }
     }
 
+    /**
+     * Calculate product line totals.
+     *
+     * @return void
+     */
+    private function calculateProductLineTotals(): void
+    {
+        collect($this->getSpecifiedUnCancelledProductLines())->each(function($productLine){
+            $this->subtotal += $productLine->subtotal->amount;
+            $this->subtotalAfterDiscount += $productLine->subtotal->amount;
+            $this->addDiscount('sale discount', $productLine->sale_discount_total->amount);
+        });
+    }
+
+    /**
+     * Apply coupon line discounts.
+     *
+     * @return void
+     */
+    private function applyCouponLineDiscounts(): void
+    {
+        collect($this->getSpecifiedUnCancelledCouponLines())->each(function($couponLine){
+            if(!$couponLine->offer_discount) return;
+
+            if($couponLine->discount_type == DiscountType::FIXED->value) {
+                $totalDiscount = $couponLine->discount_fixed_rate->amount;
+            }else if($couponLine->discount_type == DiscountType::PERCENTAGE->value) {
+                $totalDiscount = $this->subtotalAfterDiscount * ($couponLine->discount_percentage_rate / 100);
+            }
+
+            $this->addDiscount('coupon discount', $totalDiscount);
+        });
+    }
+
+    /**
+     * Add discount.
+     *
+     * @return void
+     */
+    private function addDiscount($name, $amount): void
+    {
+        // Update or add the discount
+        $this->discounts[$name] = [
+            'name' => ucfirst($name),
+            'amount' => $this->convertToMoneyFormat(($this->discounts[$name]['amount']->amount ?? 0) + $amount, $this->currency)
+        ];
+
+        // Update totals
+        $this->discountTotal += $amount;
+        $this->subtotalAfterDiscount -= $amount;
+    }
+
+    /**
+     * Add fee.
+     *
+     * @return void
+     */
+    private function addFee($name, $amount): void
+    {
+        // Update or add the fee
+        $this->additionalFees[$name] = [
+            'name' => ucfirst($name),
+            'amount' => $this->convertToMoneyFormat(($this->additionalFees[$name]['amount']->amount ?? 0) + $amount, $this->currency)
+        ];
+
+        // Update totals
+        $this->feeTotal += $amount;
+    }
+
+    /**
+     * Calculate tax totals.
+     *
+     * @return void
+     */
+    private function calculateTaxTotals(): void
+    {
+        $this->vatRate = $this->store->tax_percentage_rate;
+
+        if($this->store->tax_method == TaxMethod::EXCLUSIVE->value) {
+            $this->vat = round($this->subtotalAfterDiscount * ($this->store->tax_percentage_rate / 100), 2);
+        }else{
+            $this->vat = round($this->subtotalAfterDiscount * ($this->vatRate / (100 + $this->vatRate)), 2);
+        }
+    }
+
+    /**
+     * Calculate custom fee totals.
+     *
+     * @return void
+     */
+    private function calculateCustomFeeTotals(): void
+    {
+        collect($this->store->checkout_fees)->each(function($checkoutFee) {
+            $this->handleCustomFlatFee($checkoutFee);
+            $this->handleCustomPercentageFee($checkoutFee);
+        });
+    }
+
+    /**
+     * Handle custom flat fee.
+     *
+     * @param array $checkoutFee
+     * @return void
+     */
+    private function handleCustomFlatFee(array $checkoutFee): void
+    {
+        $name = $checkoutFee['name'];
+        $type = $checkoutFee['type'];
+        $flatRate = $checkoutFee['flat_rate'];
+
+        if($type == CheckoutFeeType::FLAT->value) {
+            $feeAmount = (float) $flatRate;
+            $this->addFee($name, $feeAmount);
+        }
+    }
+
+    /**
+     * Handle custom percentage fee.
+     *
+     * @param array $checkoutFee
+     * @return void
+     */
+    private function handleCustomPercentageFee(array $checkoutFee): void
+    {
+        $name = $checkoutFee['name'];
+        $type = $checkoutFee['type'];
+        $percentageRate = $checkoutFee['percentage_rate'];
+
+        if($type == CheckoutFeeType::PERCENTAGE->value) {
+            $feeAmount = $this->subtotalAfterDiscount * ($percentageRate / 100);
+            $this->addFee($name, $feeAmount);
+        }
+    }
+
+    /**
+     * Calculate delivery fee totals.
+     *
+     * @return void
+     */
+    private function calculateDeliveryFeeTotals(): void
+    {
+        if(!$this->deliveryMethodAvailable) return;
+        if(!$this->deliveryMethod->charge_fee) return;
+
+        $this->handleDeliveryFlatFee();
+        $this->handleDeliveryPercentageFee();
+    }
+
+    /**
+     * Handle delivery flat fee.
+     *
+     * @return void
+     */
+    private function handleDeliveryFlatFee(): void
+    {
+        if($this->deliveryMethod->fee_type != DeliveryMethodFeeType::FLAT_FEE->value) return;
+        $this->addFee('Delivery fee', $this->deliveryMethod->flat_fee_rate->amount);
+    }
+
+    /**
+     * Handle delivery percentage fee.
+     *
+     * @return void
+     */
+    private function handleDeliveryPercentageFee(): void
+    {
+        if($this->deliveryMethod->fee_type != DeliveryMethodFeeType::PERCENTAGE_FEE->value) return;
+        $this->addFee('Delivery fee', $this->subtotalAfterDiscount * ($this->deliveryMethod->percentage_fee_rate / 100));
+    }
+
+    /**
+     * Calculate tip fee totals.
+     *
+     * @return void
+     */
+    private function calculateTipFeeTotals(): void
+    {
+        $this->handleFlatFeeTip();
+        $this->handlePercentageFeeTip();
+    }
+
+    /**
+     * Handle flat fee tip.
+     *
+     * @return void
+     */
+    private function handleFlatFeeTip(): void
+    {
+        if(!is_null($this->tipFlatRate)) {
+            $tipFee = (float) $this->tipFlatRate;
+            $this->addFee('Tip', $tipFee);
+        }
+    }
+
+    /**
+     * Handle percentage fee tip.
+     *
+     * @return void
+     */
+    private function handlePercentageFeeTip(): void
+    {
+        if(!is_null($this->tipPercentageRate)) {
+            $tipFee = $this->subtotalAfterDiscount * ($this->tipPercentageRate / 100);
+            if($tipFee) $this->addFee('Tip', $tipFee);
+        }
+    }
+
+    /**
+     * Calculate grand total.
+     *
+     * @return void
+     */
+    private function calculateGrandTotal(): void
+    {
+        if($this->store->tax_method == TaxMethod::EXCLUSIVE->value) {
+            $this->grandTotal = round($this->subtotalAfterDiscount + $this->vat + $this->feeTotal, 2);
+        }else{
+            $this->grandTotal = round($this->subtotalAfterDiscount + $this->feeTotal, 2);
+        }
+    }
+
+    /**
+     * Determine if can checkout.
+     *
+     * @return bool
+     */
+    private function canCheckout(): bool
+    {
+        return $this->totalSpecifiedUnCancelledProductLines > 0 && $this->deliveryMethodAvailable;
+    }
+
+    /**
+     * Get transformed product lines.
+     *
+     * @return array
+     */
+    private function getTransformedProductLines(): array
+    {
+        return collect($this->specifiedProductLines)->map(function($productLine) {
+            return [
+                'name' => $productLine->name,
+                'is_free' => $productLine->is_free,
+                'on_sale' => $productLine->on_sale,
+                'subtotal' => $productLine->subtotal,
+                'quantity' => $productLine->quantity,
+                'product_id' => $productLine->product_id,
+                'unit_price' => $productLine->unit_price,
+                'grand_total' => $productLine->grand_total,
+                'description' => $productLine->description,
+                'is_cancelled' => $productLine->is_cancelled,
+                'unit_sale_price' => $productLine->unit_sale_price,
+                'detected_changes' => $productLine->detected_changes,
+                'original_quantity' => $productLine->original_quantity,
+                'has_limited_stock' => $productLine->has_limited_stock,
+                'unit_sale_discount' => $productLine->unit_sale_discount,
+                'unit_regular_price' => $productLine->unit_regular_price,
+                'sale_discount_total' => $productLine->sale_discount_total,
+                'cancellation_reasons' => $productLine->cancellation_reasons,
+                'unit_sale_discount_percentage' => $productLine->unit_sale_discount_percentage,
+                'has_exceeded_maximum_allowed_quantity_per_order' => $productLine->has_exceeded_maximum_allowed_quantity_per_order,
+            ];
+        })->all();
+
+    }
+
+    /**
+     * Get transformed coupon lines.
+     *
+     * @return array
+     */
+    private function getTransformedCouponLines(): array
+    {
+        return collect($this->specifiedCouponLines)->map(function($couponLine) {
+            return [
+                'name' => $couponLine->name,
+                'coupon_id' => $couponLine->coupon_id,
+                'description' => $couponLine->description,
+                'is_cancelled' => $couponLine->is_cancelled,
+                'detected_changes' => $couponLine->detected_changes,
+                'cancellation_reasons' => $couponLine->cancellation_reasons,
+            ];
+        })->all();
+    }
 }

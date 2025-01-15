@@ -6,6 +6,7 @@ use App\Models\Store;
 use App\Models\Product;
 use App\Models\Variable;
 use App\Traits\AuthTrait;
+use App\Enums\Association;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use App\Enums\SortProductBy;
@@ -26,21 +27,38 @@ class ProductRepository extends BaseRepository
     /**
      * Show products.
      *
-     * @param Store|string|null $storeId
+     * @param array $data
      * @return ProductResources|array
      */
-    public function showProducts(Store|string|null $storeId = null): ProductResources|array
+    public function showProducts(array $data = []): ProductResources|array
     {
         if($this->getQuery() == null) {
+
+            $storeId = isset($data['store_id']) ? $data['store_id'] : null;
+
             if(is_null($storeId)) {
                 if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show products'];
                 $this->setQuery(Product::query()->isNotVariation()->orderBy('position'));
             }else{
-                $store = $storeId instanceof Store ? $storeId : Store::find($storeId);
+
+                $store = Store::find($storeId);
+
                 if($store) {
-                    $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                    if(!$isAuthourized) return ['message' => 'You do not have permission to show products'];
-                    $this->setQuery($store->products()->isNotVariation()->orderBy('position'));
+
+                    $association = isset($data['association']) ? Association::tryFrom($data['association']) : null;
+
+                    if($association == Association::SHOPPER) {
+
+                        $this->setQuery($store->products()->isNotVariation()->visible()->orderBy('position'));
+
+                    }else{
+
+                        $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                        if(!$isAuthourized) return ['message' => 'You do not have permission to show products'];
+                        $this->setQuery($store->products()->isNotVariation()->orderBy('position'));
+
+                    }
+
                 }else{
                     return ['message' => 'This store does not exist'];
                 }

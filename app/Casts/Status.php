@@ -76,7 +76,7 @@ class Status implements CastsAttributes
                 $name = $value ? 'Abandoned' : 'Not Abandoned';
                 $description = 'This '.$descriptionName.' '.($value ? 'is' : 'is not').' abandoned';
                 break;
-            case 'exceeded_maximum_allowed_quantity_per_order':
+            case 'has_exceeded_maximum_allowed_quantity_per_order':
                 $name = $value ? 'Exceeded' : 'Not Exceeded';
                 $description = 'This '.$descriptionName.' '.($value ? 'has' : 'has not').' exceeded the maximum allowed quantity per order';
                 break;

@@ -8,17 +8,19 @@ use App\Casts\Percentage;
 use App\Casts\JsonToArray;
 use App\Models\Base\BaseModel;
 use App\Traits\Base\BaseTrait;
-use App\Enums\DeliveryMethodType;
-use App\Enums\DeliveryMethodFeeType;
 use App\Enums\DeliveryTimeUnit;
+use App\Enums\DeliveryMethodType;
+use App\Traits\DeliveryMethodTrait;
+use App\Enums\DeliveryMethodFeeType;
+use App\Enums\AutoGenerateTimeSlotsUnit;
 use App\Enums\DeliveryMethodScheduleType;
 use App\Enums\DeliveryMethodFallbackFeeType;
-use App\Enums\AutoGenerateTimeSlotsUnit;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class DeliveryMethod extends BaseModel
 {
-    use HasFactory, BaseTrait;
+    use HasFactory, DeliveryMethodTrait, BaseTrait;
 
     /**
      *  Magic Numbers
@@ -65,6 +67,7 @@ class DeliveryMethod extends BaseModel
         'charge_fee' => 'boolean',
         'set_schedule' => 'boolean',
         'flat_fee_rate' => Money::class,
+        'same_day_delivery' => 'boolean',
         'set_daily_order_limit' => 'boolean',
         'minimum_grand_total' => Money::class,
         'distance_zones' => JsonToArray::class,
@@ -76,17 +79,17 @@ class DeliveryMethod extends BaseModel
         'additional_fields' => JsonToArray::class,
         'postal_code_zones' => JsonToArray::class,
         'operational_hours' => JsonToArray::class,
-        'percentage_fee_rate' => Percentage::class,
         'qualify_on_minimum_grand_total' => 'boolean',
         'require_minimum_notice_for_orders' => 'boolean',
         'restrict_maximum_notice_for_orders' => 'boolean',
-        'fallback_percentage_fee_rate' => Percentage::class,
         'free_delivery_minimum_grand_total' => Money::class,
         'offer_free_delivery_on_minimum_grand_total' => 'boolean',
     ];
 
     protected $tranformableCasts = [
-        'currency' => Currency::class
+        'currency' => Currency::class,
+        'percentage_fee_rate' => Percentage::class,
+        'fallback_percentage_fee_rate' => Percentage::class,
     ];
 
     protected $fillable = [
@@ -96,8 +99,8 @@ class DeliveryMethod extends BaseModel
         'percentage_fee_rate','flat_fee_rate','postal_code_zones','distance_zones','fallback_fee_type',
         'fallback_percentage_fee_rate','fallback_flat_fee_rate','set_schedule',
         'schedule_type','operational_hours','auto_generate_time_slots','time_slot_interval_value',
-        'time_slot_interval_unit','require_minimum_notice_for_orders','earliest_delivery_time_value','earliest_delivery_time_unit',
-        'restrict_maximum_notice_for_orders','latest_delivery_time_value',
+        'time_slot_interval_unit','same_day_delivery','require_minimum_notice_for_orders','earliest_delivery_time_value',
+        'earliest_delivery_time_unit','restrict_maximum_notice_for_orders','latest_delivery_time_value',
         'set_daily_order_limit','daily_order_limit','capture_additional_fields','additional_fields',
         'position','store_id',
     ];
@@ -128,5 +131,29 @@ class DeliveryMethod extends BaseModel
     public function address()
     {
         return $this->morphOne(Address::class, 'owner');
+    }
+
+    /****************************
+     *  ACCESSORS               *
+     ***************************/
+
+    protected $appends = [
+        'schedule_options'
+    ];
+
+    protected function scheduleOptions(): Attribute
+    {
+        return Attribute::make(
+            get: function() {
+                if(!$this->set_schedule) return null;
+
+                return [
+                    'min_date' => $this->minDate(),
+                    'max_date' => $this->maxDate(),
+                    'dates_disabled' => $this->datesDisabled(),
+                    'days_of_week_disabled' => $this->daysOfWeekDisabled()
+                ];
+            }
+        );
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Association;
 use Illuminate\Http\JsonResponse;
 use App\Repositories\ProductRepository;
 use App\Http\Resources\ProductResources;
@@ -39,9 +40,17 @@ class ProductController extends BaseController
      * @param string|null $storeId
      * @return JsonResponse
      */
-    public function showProducts(ShowProductsRequest $request, string|null $storeId = null): JsonResponse
+    public function showProducts(ShowProductsRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->repository->showProducts($storeId ?? $request->input('store_id')));
+        if($request->storeId) {
+            $request->merge(['store_id' => $request->storeId]);
+        }
+
+        if($request->route()->named('show.store.shopping.products')) {
+            $request->merge(['association' => Association::SHOPPER->value]);
+        }
+
+        return $this->prepareOutput($this->repository->showProducts($request->all()));
     }
 
     /**
