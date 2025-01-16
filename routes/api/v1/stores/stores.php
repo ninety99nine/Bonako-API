@@ -148,8 +148,16 @@ Route::controller(StoreController::class)
         });
 
         //  Delivery Methods
-        Route::controller(DeliveryMethodController::class)->prefix('delivery-methods')->group(function () {
-            Route::get('/', 'showDeliveryMethods')->name('show.store.delivery.methods');
+        Route::controller(DeliveryMethodController::class)->group(function () {
+
+            Route::prefix('delivery-methods')->group(function () {
+                Route::get('/', 'showDeliveryMethods')->name('show.store.delivery.methods');
+            });
+
+            Route::withoutMiddleware('auth:sanctum')->group(function () {
+                Route::get('/shopping/delivery-methods', 'showDeliveryMethods')->name('show.store.shopping.delivery.methods');
+            });
+
         });
 
         //  Workflows

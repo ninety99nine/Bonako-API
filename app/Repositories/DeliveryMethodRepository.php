@@ -5,6 +5,7 @@ namespace App\Repositories;
 use Carbon\Carbon;
 use App\Models\Store;
 use App\Traits\AuthTrait;
+use App\Enums\Association;
 use App\Models\DeliveryMethod;
 use App\Traits\Base\BaseTrait;
 use Illuminate\Support\Facades\DB;
@@ -21,21 +22,38 @@ class DeliveryMethodRepository extends BaseRepository
     /**
      * Show delivery methods.
      *
-     * @param Store|string|null $storeId
+     * @param array $data
      * @return DeliveryMethodResources|array
      */
-    public function showDeliveryMethods(Store|string|null $storeId = null): DeliveryMethodResources|array
+    public function showDeliveryMethods(array $data = []): DeliveryMethodResources|array
     {
         if($this->getQuery() == null) {
+
+            $storeId = isset($data['store_id']) ? $data['store_id'] : null;
+
             if(is_null($storeId)) {
                 if(!$this->isAuthourized()) return ['message' => 'You do not have permission to show delivery methods'];
                 $this->setQuery(DeliveryMethod::orderBy('position'));
             }else{
-                $store = $storeId instanceof Store ? $storeId : Store::find($storeId);
+
+                $store = Store::find($storeId);
+
                 if($store) {
-                    $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
-                    if(!$isAuthourized) return ['message' => 'You do not have permission to show delivery methods'];
-                    $this->setQuery($store->deliveryMethods()->orderBy('position'));
+
+                    $association = isset($data['association']) ? Association::tryFrom($data['association']) : null;
+
+                    if($association == Association::SHOPPER) {
+
+                        $this->setQuery($store->deliveryMethods()->visible()->orderBy('position'));
+
+                    }else{
+
+                        $isAuthourized = $this->isAuthourized() || $this->getStoreRepository()->checkIfAssociatedAsStoreCreatorOrAdmin($store);
+                        if(!$isAuthourized) return ['message' => 'You do not have permission to show delivery methods'];
+                        $this->setQuery($store->deliveryMethods()->orderBy('position'));
+
+                    }
+
                 }else{
                     return ['message' => 'This store does not exist'];
                 }

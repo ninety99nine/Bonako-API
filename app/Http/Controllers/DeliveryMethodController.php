@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Association;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Base\BaseController;
 use App\Repositories\DeliveryMethodRepository;
@@ -36,9 +37,17 @@ class DeliveryMethodController extends BaseController
      * @param string|null $storeId
      * @return JsonResponse
      */
-    public function showDeliveryMethods(ShowDeliveryMethodsRequest $request, string|null $storeId = null): JsonResponse
+    public function showDeliveryMethods(ShowDeliveryMethodsRequest $request): JsonResponse
     {
-        return $this->prepareOutput($this->repository->showDeliveryMethods($storeId ?? $request->input('store_id')));
+        if($request->storeId) {
+            $request->merge(['store_id' => $request->storeId]);
+        }
+
+        if($request->route()->named('show.store.shopping.delivery.methods')) {
+            $request->merge(['association' => Association::SHOPPER->value]);
+        }
+
+        return $this->prepareOutput($this->repository->showDeliveryMethods($request->all()));
     }
 
     /**
