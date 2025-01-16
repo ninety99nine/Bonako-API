@@ -9,7 +9,7 @@ Route::controller(AddressController::class)
         Route::get('/', 'showAddresses')->name('show.addresses');
         Route::post('/', 'createAddress')->name('create.address');
         Route::delete('/', 'deleteAddresses')->name('delete.addresses');
-        Route::post('/validate', 'validateAddAddress')->withoutMiddleware('auth:sanctum')->name('validate.add.address');
+        Route::post('/validate', 'validateCreateAddress')->withoutMiddleware('auth:sanctum')->name('validate.add.address');
 
         //  Address
         Route::prefix('{addressId}')->group(function () {

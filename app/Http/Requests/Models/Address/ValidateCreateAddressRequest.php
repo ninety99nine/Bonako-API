@@ -7,7 +7,7 @@ use App\Traits\Base\BaseTrait;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class ValidateAddAddressRequest extends FormRequest
+class ValidateCreateAddressRequest extends FormRequest
 {
     use BaseTrait;
 

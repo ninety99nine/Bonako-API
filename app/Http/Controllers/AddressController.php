@@ -8,7 +8,7 @@ use App\Http\Controllers\Base\BaseController;
 use App\Http\Requests\Models\Address\CreateAddressRequest;
 use App\Http\Requests\Models\Address\UpdateAddressRequest;
 use App\Http\Requests\Models\Address\DeleteAddressesRequest;
-use App\Http\Requests\Models\Address\ValidateAddAddressRequest;
+use App\Http\Requests\Models\Address\ValidateCreateAddressRequest;
 
 class AddressController extends BaseController
 {
@@ -59,10 +59,10 @@ class AddressController extends BaseController
     /**
      * Validate add address.
      *
-     * @param ValidateAddAddressRequest $request
+     * @param ValidateCreateAddressRequest $request
      * @return JsonResponse
      */
-    public function validateAddAddress(ValidateAddAddressRequest $request): JsonResponse
+    public function validateCreateAddress(ValidateCreateAddressRequest $request): JsonResponse
     {
         return $this->prepareOutput([
             'complete_address' => $this->completeAddress($request->input('address_line'),$request->input('address_line2'),$request->input('city'),$request->input('state'),$request->input('postal_code'),$request->input('country'))
