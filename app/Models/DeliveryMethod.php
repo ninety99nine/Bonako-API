@@ -119,6 +119,11 @@ class DeliveryMethod extends BaseModel
         return $query->where('active', '1');
     }
 
+    public function scopeInactive($query)
+    {
+        return $query->where('active', '0');
+    }
+
     /********************
      *  RELATIONSHIPS   *
      *******************/

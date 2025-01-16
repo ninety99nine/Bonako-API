@@ -44,7 +44,7 @@ class DeliveryMethodRepository extends BaseRepository
 
                     if($association == Association::SHOPPER) {
 
-                        $this->setQuery($store->deliveryMethods()->visible()->orderBy('position'));
+                        $this->setQuery($store->deliveryMethods()->active()->orderBy('position'));
 
                     }else{
 
