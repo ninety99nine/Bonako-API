@@ -30,12 +30,12 @@ Route::controller(SocialAuthController::class)
     Route::get('linkedin/callback', 'handleLinkedInCallback');
 });
 
-Route::controller(WebController::class)->group(function(){
+Route::controller(WebController::class)->group(function () {
     Route::get('/', 'welcome')->name('welcome.page');
+    Route::get('/privacy-policy', 'privacyPolicy')->name('privacy.policy');
+    Route::get('/terms-of-service', 'termsOfService')->name('terms.of.service');
+    Route::get('/data-deletion-instructions', 'dataDeletionInstructions')->name('data.deletion.instructions');
 });
-
-//  Redirect to terms and conditions
-Route::redirect('/terms-and-conditions', config('app.TERMS_AND_CONDITIONS_REDIRECT_URL'), 301)->name('show.terms.and.conditions');
 
 //  Incase we don't match any route
 Route::fallback(function() {
